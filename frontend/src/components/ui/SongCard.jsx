@@ -1,14 +1,27 @@
 import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import { FiPlay, FiPlus, FiMusic } from 'react-icons/fi'
 import { usePlayer } from '../../context/PlayerContext.jsx'
 
 export default function SongCard({ song, songs = [], index = 0, isRadio = false, isChart = false }) {
+  const navigate = useNavigate()
   const { playSong, currentSong, isPlaying, setIsSidebarExpanded, setSongToAdd } = usePlayer()
   
+  const isArtist = isRadio || song.isArtist
   const isCurrent = currentSong?.videoId === song.videoId
   const isActive = isCurrent && isPlaying
 
   const handleClick = () => {
+    if (isChart) {
+      navigate(`/charts/${encodeURIComponent(song.title || song.id)}`)
+      return
+    }
+
+    if (isArtist) {
+      navigate(`/artist/${encodeURIComponent(song.title || song.name)}`)
+      return
+    }
+    
     if (song.videoId) {
       playSong(song, songs, index)
     }

@@ -14,115 +14,42 @@ const MOCK_SUGGESTIONS = [
 
 export default function TopBar() {
   const navigate = useNavigate()
-  const { playSong, addToPlaylist } = usePlayer()
-  
-  const [query, setQuery] = useState('')
-  const [isSearchFocused, setIsSearchFocused] = useState(false)
-  const [suggestions, setSuggestions] = useState([])
-  const searchRef = useRef(null)
-
-  useEffect(() => {
-    if (query.trim().length > 0) {
-      const filtered = MOCK_SUGGESTIONS.filter(s => 
-        s.title.toLowerCase().includes(query.toLowerCase()) || 
-        s.artist.toLowerCase().includes(query.toLowerCase())
-      )
-      setSuggestions(filtered)
-    } else {
-      setSuggestions([])
-    }
-  }, [query])
-
-  const handleSearchSubmit = (item) => {
-    if (item) {
-      playSong(item)
-      setQuery('')
-      setIsSearchFocused(false)
-    } else if (query.trim()) {
-      navigate('/search', { state: { query } })
-      setIsSearchFocused(false)
-    }
-  }
+  const { playSong, addToPlaylist, setIsSearchOpen } = usePlayer()
 
   return (
-    <div className="sticky top-0 z-40 flex items-center justify-between px-6 py-4 bg-surface/80 backdrop-blur-md">
+    <div className="sticky top-0 z-40 flex items-center justify-between px-6 py-4 bg-[#121212]/80 backdrop-blur-md border-b border-white/5">
       {/* Left: Navigation */}
       <div className="flex items-center gap-2">
         <button 
           onClick={() => navigate(-1)}
-          className="w-8 h-8 rounded-full flex items-center justify-center bg-black/40 text-white/60 hover:text-white mr-2"
+          className="w-10 h-10 rounded-full flex items-center justify-center bg-black/40 text-white/60 hover:text-white transition-all hover:bg-black/60"
         >
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6" /></svg>
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M15 18l-6-6 6-6" /></svg>
         </button>
         <button 
           onClick={() => navigate(1)}
-          className="w-8 h-8 rounded-full flex items-center justify-center bg-black/40 text-white/60 hover:text-white mr-2"
+          className="w-10 h-10 rounded-full flex items-center justify-center bg-black/40 text-white/60 hover:text-white transition-all hover:bg-black/60"
         >
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 18l6-6-6-6" /></svg>
         </button>
       </div>
 
-      {/* Center: Search */}
-      <div className="flex items-center gap-2 max-w-2xl flex-1 justify-center relative" ref={searchRef}>
-        <motion.div 
-          layout
-          className="relative w-full max-w-[480px]"
+      {/* Center: Search Button (Premium Redesign) */}
+      <div className="flex-1 flex justify-center px-4">
+        <button 
+          onClick={() => setIsSearchOpen(true)}
+          className="group relative flex items-center gap-4 bg-white/[0.03] hover:bg-white/[0.08] border border-white/10 px-8 py-3.5 rounded-full w-full max-w-lg transition-all duration-500 hover:-translate-y-0.5 hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)] active:scale-[0.98]"
         >
-          <div className={`relative flex items-center bg-[#242424] hover:bg-[#2a2a2a] transition-all rounded-full overflow-hidden search-glow ${isSearchFocused ? 'h-[52px]' : 'h-[48px]'}`}>
-            <FiSearch className="text-white/40 text-xl ml-4 mr-2" />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onFocus={() => setIsSearchFocused(true)}
-              onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearchSubmit(suggestions[0] || null)}
-              placeholder="What do you want to play?"
-              className="w-full bg-transparent border-none outline-none text-white text-[15px] font-medium placeholder:text-white/35 h-full pr-12"
-            />
-            <button className="absolute right-4 text-white/40 hover:text-white">
-              <span className="text-lg">✦</span>
-            </button>
+          {/* Subtle Glow */}
+          <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 rounded-full blur-xl transition-opacity duration-700" />
+          
+          <FiSearch className="text-white/20 group-hover:text-[#1DB954] group-hover:scale-110 transition-all duration-500 text-xl relative z-10" />
+          <span className="text-white/20 group-hover:text-white/40 font-bold text-[15px] tracking-tight transition-colors relative z-10">What do you want to play?</span>
+          
+          <div className="ml-auto flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500 relative z-10">
+            <span className="text-[10px] font-black text-white/20 border border-white/10 px-2 py-0.5 rounded-md">SEARCH</span>
           </div>
-
-          {/* Search Suggestions Dropdown */}
-          <AnimatePresence>
-            {isSearchFocused && query.trim().length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-                className="absolute top-[calc(100%+8px)] left-0 right-0 rounded-xl p-2 z-50 overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-white/[0.06] bg-[#1a1a1a]"
-              >
-                {suggestions.length > 0 ? (
-                  suggestions.map((s, i) => (
-                    <div
-                      key={i}
-                      className="w-full text-left flex items-center justify-between gap-4 px-4 py-2 rounded-lg hover:bg-white/10 transition-colors group cursor-pointer"
-                      onClick={() => handleSearchSubmit(s)}
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <img src={s.thumbnail} alt="" className="w-10 h-10 rounded object-cover" />
-                        <div className="min-w-0">
-                          <p className="text-[14px] font-bold text-white truncate">{s.title}</p>
-                          <p className="text-[12px] text-white/50 truncate">{s.type} • {s.artist}</p>
-                        </div>
-                      </div>
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); addToPlaylist('temp', s) }}
-                        className="text-white/40 hover:text-white transition-colors"
-                      >
-                        <FiPlusCircle className="text-xl" />
-                      </button>
-                    </div>
-                  ))
-                ) : (
-                  <p className="p-4 text-center text-white/40 text-sm">No results found for "{query}"</p>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.div>
+        </button>
       </div>
 
       {/* Right: Actions */}

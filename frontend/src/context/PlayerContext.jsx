@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react'
 import toast from 'react-hot-toast'
+import { getRecommendations } from '../utils/api.js'
 
 const PlayerContext = createContext(null)
 
@@ -19,23 +20,38 @@ export function PlayerProvider({ children }) {
   const [queueIndex, setQueueIndex] = useState(-1)
   const [recentlyPlayed, setRecentlyPlayed] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem('recentlyPlayed') || '[]')
+      const saved = JSON.parse(localStorage.getItem('recentlyPlayed') || '[]')
+      return Array.isArray(saved) ? saved : []
     } catch { return [] }
   })
   const [playlists, setPlaylists] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem('playlists') || '[]')
+      const saved = JSON.parse(localStorage.getItem('playlists') || '[]')
+      return Array.isArray(saved) ? saved : []
     } catch { return [] }
   })
   const [savedSongs, setSavedSongs] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem('savedSongs') || '[]')
+      const saved = JSON.parse(localStorage.getItem('savedSongs') || '[]')
+      return Array.isArray(saved) ? saved : []
     } catch { return [] }
   })
+  const [recommendations, setRecommendations] = useState([])
+  const [isRecLoading, setIsRecLoading] = useState(false)
+  const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false)
 
   const playerRef = useRef(null)
   const playerReady = useRef(false)
   const timeUpdateInterval = useRef(null)
+
+  // Refs for state to avoid stale closures in event listeners
+  const queueRef = useRef([])
+  const queueIndexRef = useRef(-1)
+  const recommendationsRef = useRef([])
+
+  useEffect(() => { queueRef.current = queue }, [queue])
+  useEffect(() => { queueIndexRef.current = queueIndex }, [queueIndex])
+  useEffect(() => { recommendationsRef.current = recommendations }, [recommendations])
 
   // Persist to localStorage
   useEffect(() => {
@@ -52,23 +68,27 @@ export function PlayerProvider({ children }) {
 
   // Initialize YouTube IFrame API
   useEffect(() => {
-    if (window.YT && window.YT.Player) {
-      createPlayer()
-      return
+    const initYT = () => {
+      if (window.YT && window.YT.Player) {
+        createPlayer()
+      } else {
+        window.onYouTubeIframeAPIReady = createPlayer
+        if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
+          const tag = document.createElement('script')
+          tag.src = 'https://www.youtube.com/iframe_api'
+          document.body.appendChild(tag)
+        }
+      }
     }
 
-    const tag = document.createElement('script')
-    tag.src = 'https://www.youtube.com/iframe_api'
-    document.body.appendChild(tag)
-
-    window.onYouTubeIframeAPIReady = () => {
-      createPlayer()
-    }
+    initYT()
 
     return () => {
       if (timeUpdateInterval.current) clearInterval(timeUpdateInterval.current)
     }
   }, [])
+
+
 
   function createPlayer() {
     playerRef.current = new window.YT.Player('yt-player', {
@@ -85,12 +105,50 @@ export function PlayerProvider({ children }) {
       },
       events: {
         onReady: () => {
+          console.log('[Player] YouTube Player Ready')
           playerReady.current = true
           playerRef.current.setVolume(volume)
         },
         onStateChange: (event) => {
+          const states = {
+            '-1': 'UNSTARTED',
+            '0': 'ENDED',
+            '1': 'PLAYING',
+            '2': 'PAUSED',
+            '3': 'BUFFERING',
+            '5': 'CUED'
+          }
+          console.log(`[Player] State Change: ${states[event.data] || event.data}`)
+
           if (event.data === window.YT.PlayerState.ENDED) {
-            playNext()
+            console.log('[Player] Song Ended. Checking for next track...')
+            
+            // 1. Check manual queue first
+            const nextInQueue = queueIndexRef.current + 1
+            if (nextInQueue < queueRef.current.length) {
+              console.log('[Player] Playing next from manual queue')
+              playNext()
+            } 
+            // 2. Check Smart Suggestions for Autoplay
+            else if (recommendationsRef.current.length > 0) {
+              console.log('[Player] Autoplay: Playing from Smart Suggestions')
+              const nextSong = recommendationsRef.current[0]
+              setRecommendations(prev => prev.slice(1))
+              playSong(nextSong)
+            } else {
+              console.log('[Player] No queue or suggestions. Retrying in 2s...')
+              // Retry once after a delay in case suggestions were still loading
+              setTimeout(() => {
+                if (recommendationsRef.current.length > 0) {
+                  const nextSong = recommendationsRef.current[0]
+                  setRecommendations(prev => prev.slice(1))
+                  playSong(nextSong)
+                } else {
+                  console.log('[Player] Still no suggestions. Stopping.')
+                  setIsPlaying(false)
+                }
+              }, 2000)
+            }
           }
           if (event.data === window.YT.PlayerState.PLAYING) {
             setIsPlaying(true)
@@ -102,7 +160,8 @@ export function PlayerProvider({ children }) {
             stopTimeTracking()
           }
         },
-        onError: () => {
+        onError: (err) => {
+          console.error('[Player] Error:', err.data)
           toast.error('Playback error. Skipping...')
           setTimeout(() => playNext(), 1500)
         }
@@ -127,26 +186,85 @@ export function PlayerProvider({ children }) {
     }
   }
 
-  const playSong = useCallback((song, songQueue = null, index = 0) => {
+  const fadeInterval = useRef(null)
+
+  const fadeVolume = useCallback((targetVol, duration = 1500) => {
+    return new Promise((resolve) => {
+      if (fadeInterval.current) clearInterval(fadeInterval.current)
+      
+      const startVol = playerRef.current?.getVolume() || volume
+      const steps = 20
+      const stepTime = duration / steps
+      const volStep = (targetVol - startVol) / steps
+      let currentStep = 0
+
+      fadeInterval.current = setInterval(() => {
+        currentStep++
+        const newVol = startVol + (volStep * currentStep)
+        if (playerRef.current && playerReady.current) {
+          playerRef.current.setVolume(newVol)
+        }
+        
+        if (currentStep >= steps) {
+          clearInterval(fadeInterval.current)
+          fadeInterval.current = null
+          resolve()
+        }
+      }, stepTime)
+    })
+  }, [volume])
+
+  const fetchRecommendations = useCallback(async (song) => {
     if (!song) return
+    console.log(`[Context] Fetching recs for: ${song.title}`)
+    setIsRecLoading(true)
+    const recs = await getRecommendations(song.videoId, song.artist, song.title)
+    console.log(`[Context] Received ${recs.length} recommendations`)
+    setRecommendations(recs)
+    setIsRecLoading(false)
+  }, [])
+
+  // Auto-fetch recommendations when song changes
+  useEffect(() => {
+    if (currentSong) {
+      fetchRecommendations(currentSong)
+    }
+  }, [currentSong, fetchRecommendations])
+
+  const playSong = useCallback(async (song, songQueue = null, index = 0) => {
+    if (!song) return
+    console.log(`[Context] playSong called for: ${song.title} (${song.videoId})`)
+
+    // Seamless Transition: Fade Out
+    if (currentSong && isPlaying) {
+      await fadeVolume(0, 1000)
+    }
+
     setCurrentSong(song)
+    fetchRecommendations(song)
 
     if (songQueue) {
       setQueue(songQueue)
       setQueueIndex(index)
     }
 
-    // Add to recently played
+    // Add to recently played (History)
     setRecentlyPlayed(prev => {
-      const filtered = prev.filter(s => s.videoId !== song.videoId)
-      return [song, ...filtered].slice(0, 30)
+      const lastSong = prev[0]
+      const songWithTimestamp = { ...song, playedAt: new Date().toISOString() }
+      if (lastSong && lastSong.videoId === song.videoId) {
+        return [songWithTimestamp, ...prev.slice(1)]
+      }
+      return [songWithTimestamp, ...prev].slice(0, 100)
     })
 
     if (playerReady.current && playerRef.current) {
       playerRef.current.loadVideoById(song.videoId)
-      playerRef.current.setVolume(volume)
+      // Seamless Transition: Fade In
+      playerRef.current.setVolume(0)
+      setTimeout(() => fadeVolume(volume, 1000), 500)
     }
-  }, [volume])
+  }, [volume, currentSong, isPlaying, fadeVolume, fetchRecommendations])
 
   const togglePlay = useCallback(() => {
     if (!playerRef.current || !playerReady.current) return
@@ -275,19 +393,28 @@ export function PlayerProvider({ children }) {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [togglePlay, playNext, playPrevious])
 
+  const removeFromHistory = useCallback((videoId, playedAt) => {
+    setRecentlyPlayed(prev => prev.filter(s => !(s.videoId === videoId && s.playedAt === playedAt)))
+  }, [])
+
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
+  const [activeSidebarTab, setActiveSidebarTab] = useState('playlists') // 'playlists' or 'history'
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(false)
   const [songToAdd, setSongToAdd] = useState(null)
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
 
   const value = {
     currentSong, isPlaying, currentTime, duration, volume, queue, queueIndex,
     recentlyPlayed, playlists, savedSongs,
+    recommendations, isRecLoading, isSuggestionsOpen, setIsSuggestionsOpen,
     isSidebarExpanded, setIsSidebarExpanded,
+    activeSidebarTab, setActiveSidebarTab,
     isRightPanelOpen, setIsRightPanelOpen,
     songToAdd, setSongToAdd,
+    isSearchOpen, setIsSearchOpen,
     playSong, togglePlay, seekTo, setPlayerVolume, playNext, playPrevious, addToQueue,
     createPlaylist, addToPlaylist, removeFromPlaylist, deletePlaylist,
-    toggleSavedSong, isSongSaved,
+    toggleSavedSong, isSongSaved, removeFromHistory,
   }
 
   return (

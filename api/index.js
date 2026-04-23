@@ -1,21 +1,15 @@
 import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
-import path from 'path'
-import { fileURLToPath } from 'url'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
 
 dotenv.config()
 
 const app = express()
-const PORT = process.env.PORT || 3001
 
 app.use(cors())
 app.use(express.json())
 
-// ─── In-memory cache ───
+// ─── In-memory cache (Note: Serverless functions are stateless, so this will only persist within a single instance's lifecycle) ───
 const cache = new Map()
 const CACHE_TTL = 10 * 60 * 1000 // 10 minutes
 
@@ -30,8 +24,7 @@ function getCached(key) {
 }
 
 function setCache(key, data) {
-  // Limit cache size
-  if (cache.size > 500) {
+  if (cache.size > 100) { // Smaller cache for serverless
     const oldest = cache.keys().next().value
     cache.delete(oldest)
   }
@@ -50,7 +43,6 @@ app.get('/api/search', async (req, res) => {
 
     const API_KEY = process.env.YOUTUBE_API_KEY
     if (!API_KEY) {
-      console.warn('No YouTube API key set. Returning demo results.')
       return res.json({ results: getDemoResults(query) })
     }
 
@@ -59,7 +51,6 @@ app.get('/api/search', async (req, res) => {
     const data = await response.json()
 
     if (!data.items) {
-      console.error('YouTube API error:', data)
       return res.json({ results: getDemoResults(query) })
     }
 
@@ -80,7 +71,6 @@ app.get('/api/search', async (req, res) => {
     setCache(cacheKey, results)
     res.json({ results })
   } catch (err) {
-    console.error('Search error:', err)
     res.status(500).json({ error: 'Search failed', results: [] })
   }
 })
@@ -121,7 +111,6 @@ app.get('/api/trending', async (req, res) => {
     setCache('trending', results)
     res.json({ results })
   } catch (err) {
-    console.error('Trending error:', err)
     res.status(500).json({ error: 'Failed to fetch trending', results: [] })
   }
 })
@@ -139,19 +128,18 @@ app.get('/api/artist/:id/songs', async (req, res) => {
     const API_KEY = process.env.YOUTUBE_API_KEY
     if (!API_KEY) {
       return res.json({
-        artist: { name: artistId, id: artistId, image: `https://picsum.photos/400/400?random=${Math.random()}` },
+        artist: { name: artistId, id: artistId, image: `https://picsum.photos/400/400?random=1` },
         songs: getDemoResults(artistId).slice(0, 10)
       })
     }
 
-    // Search for songs by this artist
     const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoCategoryId=10&maxResults=30&q=${encodeURIComponent(artistId + ' songs')}&key=${API_KEY}`
     const response = await fetch(url)
     const data = await response.json()
 
     if (!data.items) {
       return res.json({
-        artist: { name: artistId, id: artistId, image: `https://picsum.photos/400/400?random=${Math.random()}` },
+        artist: { name: artistId, id: artistId, image: `https://picsum.photos/400/400?random=1` },
         songs: getDemoResults(artistId)
       })
     }
@@ -171,7 +159,7 @@ app.get('/api/artist/:id/songs', async (req, res) => {
       artist: {
         id: artistId,
         name: artistId,
-        image: songs[0]?.thumbnail || `https://picsum.photos/400/400?random=${Math.random()}`
+        image: songs[0]?.thumbnail || `https://picsum.photos/400/400?random=1`
       },
       songs
     }
@@ -179,7 +167,6 @@ app.get('/api/artist/:id/songs', async (req, res) => {
     setCache(cacheKey, result)
     res.json(result)
   } catch (err) {
-    console.error('Artist fetch error:', err)
     res.status(500).json({ error: 'Failed to fetch artist songs' })
   }
 })
@@ -188,27 +175,19 @@ app.get('/api/artist/:id/songs', async (req, res) => {
 app.get('/api/recommendations', async (req, res) => {
   try {
     const { videoId, artist, title } = req.query
-    console.log(`[Rec] Fetching for: ${title} by ${artist} (${videoId})`)
-
     if (!videoId) return res.status(400).json({ error: 'Video ID is required' })
 
     const cacheKey = `rec:${videoId}`
     const cached = getCached(cacheKey)
-    if (cached) {
-      console.log(`[Rec] Returning cached results for ${videoId}`)
-      return res.json({ results: cached })
-    }
+    if (cached) return res.json({ results: cached })
 
     const API_KEY = process.env.YOUTUBE_API_KEY
     if (!API_KEY) {
-      console.warn('[Rec] No API Key. Returning demo results.')
       return res.json({ results: getDemoResults(artist || title || 'trending').slice(0, 10) })
     }
 
-    // Clean artist name (remove " - Topic", "VEVO", etc.)
     const cleanArtist = artist ? artist.replace(/ - Topic|VEVO|Official|Music|Records/gi, '').trim() : ''
-    console.log(`[Rec] Cleaned Artist: ${cleanArtist}`)
-
+    
     // 1. Fetch related videos
     let url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoCategoryId=10&maxResults=15&relatedToVideoId=${videoId}&key=${API_KEY}`
     let response = await fetch(url)
@@ -241,12 +220,10 @@ app.get('/api/recommendations', async (req, res) => {
           thumbnail: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.medium?.url,
           publishedAt: item.snippet.publishedAt,
         }))
-        // Prepend artist songs to prioritize "same artist" as requested
         results = [...artistSongs, ...results]
       }
     }
 
-    // Filter and Deduplicate
     results = results
       .filter(item => item.videoId !== videoId)
       .filter(item => !item.title.toLowerCase().includes('bhojpuri'))
@@ -267,12 +244,9 @@ app.get('/api/recommendations', async (req, res) => {
     })
 
     const finalResults = uniqueResults.slice(0, 10)
-    console.log(`[Rec] Found ${finalResults.length} relevant songs`)
-    
     setCache(cacheKey, finalResults)
     res.json({ results: finalResults })
   } catch (err) {
-    console.error('[Rec] API Error:', err)
     res.status(500).json({ error: 'Failed to fetch recommendations', results: getDemoResults('trending').slice(0, 10) })
   }
 })
@@ -323,10 +297,9 @@ app.get('/api/charts/:id', async (req, res) => {
     }
 
     if (!API_KEY) {
-      const demoSongs = getDemoResults(query).slice(0, 20)
       return res.json({
         chart: { id: chartId, name, description },
-        songs: demoSongs
+        songs: getDemoResults(query).slice(0, 20)
       })
     }
 
@@ -360,12 +333,10 @@ app.get('/api/charts/:id', async (req, res) => {
     setCache(cacheKey, result)
     res.json(result)
   } catch (err) {
-    console.error('Chart fetch error:', err)
     res.status(500).json({ error: 'Failed to fetch chart' })
   }
 })
 
-// ─── Demo results fallback ───
 function getDemoResults(query) {
   const allSongs = [
     { videoId: 'dQw4w9WgXcQ', title: 'Winning Speech', artist: 'Karan Aujla', channelTitle: 'Karan Aujla', thumbnail: 'https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg' },
@@ -383,16 +354,4 @@ function getDemoResults(query) {
   return [...allSongs].sort(() => Math.random() - 0.5)
 }
 
-
-
-// Serve static files from the React frontend app
-app.use(express.static(path.join(__dirname, '../frontend/dist')))
-
-// Catch-all handler for any request that doesn't match an API route
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'))
-})
-
-app.listen(PORT, () => {
-  console.log(`🎵 Vybe backend running on port ${PORT}`)
-})
+export default app

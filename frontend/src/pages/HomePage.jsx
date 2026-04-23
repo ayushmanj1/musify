@@ -30,13 +30,13 @@ export default function HomePage() {
   }, [])
 
   const artistCards = [
-    { title: 'Arijit Singh', artist: 'Artist', thumbnail: 'https://picsum.photos/200/200?random=50', isArtist: true },
-    { title: 'Kishore Kumar', artist: 'Artist', thumbnail: 'https://picsum.photos/200/200?random=51', isArtist: true },
-    { title: 'Snoop Dogg', artist: 'Artist', thumbnail: 'https://picsum.photos/200/200?random=52', isArtist: true },
-    { title: 'Pritam', artist: 'Artist', thumbnail: 'https://picsum.photos/200/200?random=53', isArtist: true },
+    { title: 'Karan Aujla', artist: 'Artist', thumbnail: 'https://picsum.photos/200/200?random=50', isArtist: true },
+    { title: 'Arijit Singh', artist: 'Artist', thumbnail: 'https://picsum.photos/200/200?random=51', isArtist: true },
+    { title: 'Sidhu Moose Wala', artist: 'Artist', thumbnail: 'https://picsum.photos/200/200?random=52', isArtist: true },
+    { title: 'Badshah', artist: 'Artist', thumbnail: 'https://picsum.photos/200/200?random=53', isArtist: true },
     { title: 'Ar Rahman', artist: 'Artist', thumbnail: 'https://picsum.photos/200/200?random=54', isArtist: true },
     { title: 'The Weeknd', artist: 'Artist', thumbnail: 'https://picsum.photos/200/200?random=55', isArtist: true },
-    { title: 'Badshah', artist: 'Artist', thumbnail: 'https://picsum.photos/200/200?random=56', isArtist: true },
+    { title: 'RMC (Haryanvi)', artist: 'Artist', thumbnail: 'https://picsum.photos/200/200?random=56', isArtist: true },
   ]
 
   const radioStations = [

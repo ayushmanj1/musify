@@ -46,6 +46,26 @@ export async function getTrending() {
   }
 }
 
+export async function getArtistSongs(artistId) {
+  try {
+    const { data } = await api.get(`/artist/${encodeURIComponent(artistId)}/songs`)
+    return data
+  } catch (error) {
+    console.error('Artist songs error:', error)
+    throw error
+  }
+}
+
+export async function getChart(chartId) {
+  try {
+    const { data } = await api.get(`/charts/${encodeURIComponent(chartId)}`)
+    return data
+  } catch (error) {
+    console.error('Chart error:', error)
+    throw error
+  }
+}
+
 export function getSuggestions(query) {
   if (!query || query.length < 2) return []
   
@@ -62,4 +82,22 @@ export function getSuggestions(query) {
     .filter(k => k.includes(q) || q.split(' ').some(w => k.includes(w)))
     .map(k => `${query} ${k}`)
     .slice(0, 5)
+}
+
+export async function getRecommendations(videoId, artist, title) {
+  try {
+    const { data } = await api.get('/recommendations', {
+      params: { videoId, artist, title }
+    })
+    return data.results || []
+  } catch (error) {
+    console.error('Recommendations error:', error)
+    // Robust fallback to trending if recommendations API fails
+    try {
+      const { data } = await api.get('/trending')
+      return data.results || []
+    } catch {
+      return []
+    }
+  }
 }

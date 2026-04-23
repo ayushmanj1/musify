@@ -1,15 +1,18 @@
 import { lazy, Suspense } from 'react'
-import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
+import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom'
 import Sidebar from './components/layout/Sidebar.jsx'
 import Player from './components/layout/Player.jsx'
 import TopBar from './components/layout/TopBar.jsx'
 import MobileNav from './components/layout/MobileNav.jsx'
+import SearchOverlay from './components/layout/SearchOverlay.jsx'
 
 const HomePage = lazy(() => import('./pages/HomePage.jsx'))
 const SearchPage = lazy(() => import('./pages/SearchPage.jsx'))
 const LibraryPage = lazy(() => import('./pages/LibraryPage.jsx'))
 const PlaylistPage = lazy(() => import('./pages/PlaylistPage.jsx'))
 const YourEpisodesPage = lazy(() => import('./pages/YourEpisodesPage.jsx'))
+const ArtistPage = lazy(() => import('./pages/ArtistPage.jsx'))
+const ChartsPage = lazy(() => import('./pages/ChartsPage.jsx'))
 
 function PageLoader() {
   return (
@@ -38,6 +41,9 @@ export default function App() {
                   <Route path="/library" element={<LibraryPage />} />
                   <Route path="/playlist/:id" element={<PlaylistPage />} />
                   <Route path="/episodes" element={<YourEpisodesPage />} />
+                  <Route path="/artist/:id" element={<ArtistPage />} />
+                  <Route path="/charts/:id" element={<ChartsPage />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </Suspense>
             </div>
@@ -47,6 +53,7 @@ export default function App() {
 
       <Player />
       <MobileNav />
+      <SearchOverlay />
     </div>
   )
 }

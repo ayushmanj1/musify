@@ -7,7 +7,8 @@ export default function Player() {
   const { 
     currentSong, isPlaying, togglePlay, currentTime, duration, 
     seekTo, volume, setPlayerVolume, playNext, playPrevious,
-    isRightPanelOpen, setIsRightPanelOpen, setIsSidebarExpanded, setSongToAdd
+    isRightPanelOpen, setIsRightPanelOpen, setIsSidebarExpanded, setSongToAdd,
+    recommendations, isRecLoading, isSuggestionsOpen, setIsSuggestionsOpen, playSong
   } = usePlayer()
 
   const [isHoveringArt, setIsHoveringArt] = useState(false)
@@ -121,6 +122,13 @@ export default function Player() {
               {isPlaying ? <FiPause className="text-[20px] fill-current" /> : <FiPlay className="text-[20px] fill-current ml-0.5" />}
             </button>
             <button onClick={playNext} className="text-white/60 hover:text-white active:scale-90 transition-transform"><FiSkipForward className="text-[22px] fill-current" /></button>
+            <button 
+              onClick={() => setIsSuggestionsOpen(!isSuggestionsOpen)}
+              className={`transition-all duration-300 ${isSuggestionsOpen ? 'text-[#1DB954] scale-125' : 'text-white/30 hover:text-white'}`}
+              title="Smart Suggestions"
+            >
+              <FiList className="text-[18px]" />
+            </button>
             <button className="text-white/30 hover:text-white hidden md:block"><FiRepeat className="text-[16px]" /></button>
           </div>
           
@@ -143,8 +151,6 @@ export default function Player() {
 
         {/* Right: Actions */}
         <div className="hidden md:flex items-center justify-end gap-3 w-[30%] min-w-[180px]">
-          <button className="text-white/30 hover:text-white p-2"><FiMic className="text-[18px]" /></button>
-          <button className="text-white/30 hover:text-white p-2"><FiList className="text-[18px]" /></button>
           <div className="flex items-center gap-2 group ml-2 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 transition-all">
             <button onClick={() => setPlayerVolume(volume === 0 ? 80 : 0)} className="text-white/40 hover:text-white">
               {volume === 0 ? <FiVolumeX className="text-[18px]" /> : <FiVolume2 className="text-[18px]" />}
@@ -162,6 +168,67 @@ export default function Player() {
           </div>
         </div>
       </div>
+      
+      {/* Smart Suggestions Panel */}
+      <AnimatePresence>
+        {isSuggestionsOpen && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsSuggestionsOpen(false)}
+              className="fixed inset-0 bg-black/40 z-[55] backdrop-blur-[2px]"
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="fixed bottom-24 right-4 w-80 max-h-[400px] glass z-[58] overflow-hidden flex flex-col shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10"
+            >
+              <div className="p-4 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+                <span className="text-[12px] font-black uppercase tracking-widest text-[#1DB954]">Smart Suggestions</span>
+                {isRecLoading && (
+                  <div className="w-4 h-4 border-2 border-[#1DB954] border-t-transparent rounded-full animate-spin" />
+                )}
+              </div>
+              
+              <div className="overflow-y-auto p-2 flex-1 hide-scrollbar">
+                {recommendations.length > 0 ? (
+                  <div className="flex flex-col gap-1">
+                    {recommendations.map((song, i) => (
+                      <motion.div
+                        key={song.videoId}
+                        initial={{ opacity: 0, x: 10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.05 }}
+                        onClick={() => { playSong(song); setIsSuggestionsOpen(false); }}
+                        className="group flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 cursor-pointer transition-all duration-300"
+                      >
+                        <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 shadow-lg relative">
+                          <img src={song.thumbnail} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                            <FiPlay className="text-white text-[10px] fill-current" />
+                          </div>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-[13px] font-bold text-white truncate group-hover:text-[#1DB954] transition-colors">{song.title}</h4>
+                          <p className="text-[11px] text-white/40 truncate font-medium">{song.artist}</p>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-12 text-center">
+                    <p className="text-white/20 text-xs font-medium italic">No suggestions found.</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </>
   )
 }
