@@ -44,7 +44,7 @@ export default function YourEpisodesPage() {
           <div className="w-16 h-16 rounded-full border-2 border-white/20 flex items-center justify-center mb-6 text-white/40">
             <FiPlus className="text-3xl" />
           </div>
-          <h2 className="text-2xl font-bold mb-2">Add to Your Episodes</h2>
+          <h2 className="section-heading text-2xl font-bold">Add to Your Episodes</h2>
           <p className="text-white/60 max-w-sm">
             Save episodes to this playlist by tapping the plus icon on any episode.
           </p>

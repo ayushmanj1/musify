@@ -39,9 +39,9 @@ export default function HomeRow({
       transition={{ duration: 0.4 }}
       className="relative z-10 mb-40 md:mb-56"
     >
-      <div className="pt-24 pb-20 md:pt-32 md:pb-24 px-4 md:px-16 relative z-10">
+      <div className="px-4 md:px-16 relative z-10 pt-12 pb-5 md:pt-16 md:pb-6">
         <div>
-          <h2 className="text-[14px] md:text-[20px] font-black text-white/40 uppercase tracking-[0.6em] leading-none">
+          <h2 className="section-heading text-[14px] md:text-[20px] font-black text-white/40 uppercase tracking-[0.6em] leading-none">
             {title}
           </h2>
         </div>
@@ -49,7 +49,7 @@ export default function HomeRow({
 
       <div className="relative z-10">
         {/* The Solid Grid - Strictly 7 Columns */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-8 md:gap-16 px-2">
+        <div className="flex md:grid overflow-x-auto md:overflow-x-visible md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-5 md:gap-16 px-4 md:px-2 w-full hide-scrollbar snap-x snap-mandatory pb-4">
           {displayItems.map((item, i) => (
             <SongCard 
               key={i} 

@@ -18,6 +18,7 @@
 html, body, #root {
   height: 100%;
   overflow: hidden;
+  overflow-x: hidden !important;
   background: var(--luxury-black);
   font-family: 'Outfit', 'Inter', sans-serif;
   color: #fff;
@@ -182,5 +183,66 @@ input[type="range"]::-webkit-slider-thumb {
 
 .btn-press:active {
   transform: scale(0.92);
+}
+
+.section-heading {
+  margin-top: 48px !important;
+  margin-bottom: 20px !important;
+  display: block !important;
+}
+
+/* Mobile Premium Optimization */
+@media (max-width: 768px) {
+  /* Section Headings */
+  .section-heading {
+    margin-top: 32px !important;
+    margin-bottom: 12px !important;
+    font-size: 13px !important;
+    letter-spacing: 0.4em !important;
+    opacity: 0.6 !important;
+    font-weight: 900 !important;
+  }
+
+  /* Compact Header */
+  .sticky.top-0 {
+    padding-top: 12px !important;
+    padding-bottom: 12px !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    background: rgba(0, 0, 0, 0.6) !important;
+  }
+
+  /* Content Spacing */
+  .pb-32.md\:pb-24 {
+    padding-bottom: 100px !important; /* Extra space for bottom nav + player */
+  }
+
+  .px-4.md\:px-12 {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  /* Typography Scaling */
+  h3.text-\[13px\], h3.text-\[15px\] {
+    font-size: 13px !important;
+  }
+
+  p.text-\[11px\], p.text-\[12px\] {
+    font-size: 11px !important;
+  }
+
+  /* Song Card Refinement */
+  .rounded-\[28px\] {
+    border-radius: 20px !important;
+  }
+
+  /* Hide scrollbars */
+  .hide-scrollbar {
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none !important;
+  }
 }
 

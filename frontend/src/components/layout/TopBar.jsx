@@ -9,7 +9,7 @@ export default function TopBar() {
   const { setIsSearchOpen } = usePlayer()
 
   return (
-    <div className="sticky top-0 z-50 flex items-center justify-between px-6 py-4 md:px-10 md:py-6 bg-black/40 backdrop-blur-2xl border-b border-white/5">
+    <div className="sticky top-0 z-50 flex items-center justify-between px-6 py-3 md:px-10 md:py-6 bg-black/40 backdrop-blur-2xl border-b border-white/5">
       {/* Left: Brand */}
       <div className="flex items-center gap-4 cursor-pointer" onClick={() => navigate('/')}>
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#A78BFA] to-[#7C3AED] flex items-center justify-center shadow-[0_0_20px_rgba(167,139,250,0.3)]">
@@ -22,7 +22,13 @@ export default function TopBar() {
       <div className="flex-1" />
 
       {/* Right: Actions */}
-      <div className="flex items-center gap-3 md:gap-5">
+      <div className="flex items-center gap-2 md:gap-5">
+        <button 
+          onClick={() => setIsSearchOpen(true)}
+          className="md:hidden text-white/40 hover:text-[#A78BFA] transition-all p-2 rounded-full hover:bg-white/5"
+        >
+          <FiSearch className="text-xl" />
+        </button>
         <button className="text-white/40 hover:text-[#A78BFA] transition-all relative p-2 rounded-full hover:bg-white/5">
           <FiBell className="text-xl" />
           <span className="absolute top-2 right-2 w-2 h-2 bg-[#A78BFA] rounded-full shadow-[0_0_10px_rgba(167,139,250,0.8)]" />

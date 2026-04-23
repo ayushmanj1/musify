@@ -95,24 +95,24 @@ export default function SearchOverlay() {
           className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-3xl flex flex-col"
         >
           {/* Header & Search Bar - Anchored to Top */}
-          <div className="p-8 md:px-12 md:py-10 flex flex-col items-center w-full bg-gradient-to-b from-black/60 to-transparent">
-            <div className="flex items-center gap-6 w-full max-w-7xl relative">
+          <div className="p-4 md:px-12 md:py-10 flex flex-col items-center w-full bg-gradient-to-b from-black/60 to-transparent">
+            <div className="flex items-center gap-4 md:gap-6 w-full max-w-7xl relative">
               <div className="flex-1 relative group">
                 <div className="absolute -inset-1 bg-lavender/20 rounded-full blur-3xl opacity-0 group-focus-within:opacity-100 transition-all duration-1000" />
                 
                 <motion.div 
                   layout
-                  className="relative flex items-center bg-white/[0.05] backdrop-blur-3xl border border-white/10 rounded-full px-8 py-4 focus-within:bg-white/[0.1] focus-within:border-lavender/30 transition-all shadow-2xl group-focus-within:scale-[1.01]"
+                  className="relative flex items-center bg-white/[0.05] backdrop-blur-3xl border border-white/10 rounded-full px-5 py-3 md:px-8 md:py-4 focus-within:bg-white/[0.1] focus-within:border-lavender/30 transition-all shadow-2xl group-focus-within:scale-[1.01]"
                 >
-                  <FiSearch className="text-white/30 text-2xl mr-5 group-focus-within:text-lavender transition-all" />
+                  <FiSearch className="text-white/30 text-xl md:text-2xl mr-3 md:mr-5 group-focus-within:text-lavender transition-all" />
                   <input
                     ref={inputRef}
                     type="text"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSearch(query)}
-                    placeholder="What do you want to listen to?"
-                    className="w-full bg-transparent border-none outline-none text-xl md:text-2xl font-bold text-white placeholder:text-white/20 tracking-tight"
+                    placeholder="Search music..."
+                    className="w-full bg-transparent border-none outline-none text-lg md:text-2xl font-bold text-white placeholder:text-white/20 tracking-tight"
                   />
                   
                   {query && (
@@ -125,9 +125,9 @@ export default function SearchOverlay() {
 
               <button 
                 onClick={handleClose}
-                className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-lavender hover:bg-white/10 border border-white/5 transition-all active:scale-90"
+                className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-lavender hover:bg-white/10 border border-white/5 transition-all active:scale-90"
               >
-                <FiX size={28} />
+                <FiX className="text-xl md:text-2xl" />
               </button>
             </div>
           </div>
@@ -136,8 +136,8 @@ export default function SearchOverlay() {
           <div className="flex-1 overflow-y-auto hide-scrollbar px-6 md:px-12 pb-32">
             <div className="max-w-7xl mx-auto w-full">
               {query.length < 2 ? (
-                <div className="mt-4">
-                  <h3 className="text-2xl font-black text-white mb-8 tracking-tighter">Browse all</h3>
+                <div className="pt-12 pb-5">
+                  <h3 className="section-heading text-2xl font-black text-white tracking-tighter mb-8">Browse all</h3>
                   
                   {/* The Screenshot Grid - Strictly 7 Columns */}
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-6">
@@ -167,10 +167,9 @@ export default function SearchOverlay() {
                   </div>
                 </div>
               ) : (
-                <div className="mt-4">
-                  {/* Results Section (Lavender-centric) */}
-                  <div className="flex items-center justify-between mb-8">
-                    <h3 className="text-sm font-black text-white/40 uppercase tracking-[4px]">Top Matches</h3>
+                <div className="pt-12">
+                  <div className="flex items-center justify-between pb-5">
+                    <h3 className="section-heading text-sm font-black text-white/40 uppercase tracking-[4px]">Top Matches</h3>
                   </div>
                   
                   {loading ? (

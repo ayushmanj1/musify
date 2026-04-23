@@ -116,8 +116,8 @@ export default function ArtistPage() {
       </div>
 
       {/* Song List */}
-      <div className="px-2">
-        <h2 className="text-2xl font-bold text-white mb-6">Popular</h2>
+      <div className="px-2 pt-12 pb-5">
+        <h2 className="section-heading text-2xl font-bold text-white">Popular</h2>
         
         <div className="flex flex-col gap-1">
           {songs.map((song, index) => {

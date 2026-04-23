@@ -91,7 +91,7 @@ export default function HomePage() {
         <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-[#050505] to-transparent" />
       </section>
 
-      <div className="px-4 md:px-12 max-w-[1800px] mx-auto space-y-48 md:space-y-64 mb-64">
+      <div className="px-4 md:px-12 max-w-[1800px] mx-auto flex flex-col gap-24 mb-64">
         {/* 1. Recently Played */}
         {recentlyPlayed.length > 0 && (
           <HomeRow 

@@ -80,7 +80,7 @@ export default function SongCard({
       }}
       onClick={handleClick}
       className={`
-        ${isLarge ? 'w-[200px] md:w-[240px]' : 'w-[150px] md:w-[185px]'}
+        w-[160px] md:w-full
         p-3 md:p-4 rounded-[28px] 
         bg-[#111]
         border border-white/5
