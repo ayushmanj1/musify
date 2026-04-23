@@ -53,9 +53,12 @@ const SongCard = memo(({
   const isActive = isCurrent && isPlaying
 
   const handleClick = () => {
-    if (isChart) return // Charts navigation can be added later
+    if (isChart) {
+      navigate('/search', { state: { query: song.title + " songs" } })
+      return
+    }
     if (isArtist) {
-      navigate(`/artist/${encodeURIComponent(song.title || song.name)}`)
+      navigate(`/search`, { state: { query: song.title || song.name } }) // Route to search for artist songs instead of broken artist page
       return
     }
     if (song.videoId) {

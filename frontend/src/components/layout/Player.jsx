@@ -210,11 +210,10 @@ export default function Player() {
         {!isFullScreenPlayer && (
           <div className="fixed bottom-20 md:bottom-6 left-0 right-0 flex justify-center px-4 z-[60] pointer-events-none">
             <motion.div 
-              layoutId="player-container"
               initial={{ y: 50, opacity: 0, scale: 0.95 }}
               animate={{ y: 0, opacity: 1, scale: 1 }}
               exit={{ y: 50, opacity: 0, scale: 0.95 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 400 }}
               onClick={() => {
                 haptics.light()
                 setIsFullScreenPlayer(true)
@@ -281,11 +280,10 @@ export default function Player() {
       <AnimatePresence>
         {isFullScreenPlayer && (
           <motion.div 
-            layoutId="player-container"
             initial={{ y: '100%', opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: '100%', opacity: 0 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200, mass: 0.5 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300, mass: 0.5 }}
             drag="y"
             dragConstraints={{ top: 0, bottom: 0 }}
             dragElastic={0.1}

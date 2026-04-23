@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom'
 import Sidebar from './components/layout/Sidebar.jsx'
 import Player from './components/layout/Player.jsx'
@@ -28,19 +28,35 @@ function PageLoader() {
   )
 }
 
+import LockScreen from './components/layout/LockScreen.jsx'
+
 export default function App() {
   const { isGuestMode } = usePlayer()
   const location = useLocation()
+  const [isUnlocked, setIsUnlocked] = useState(false)
 
   return (
     <Suspense fallback={<PageLoader />}>
-      <SignedOut>
-        {!isGuestMode ? <LandingPage /> : <SignedInUI />}
-      </SignedOut>
-      
-      <SignedIn>
-        <SignedInUI />
-      </SignedIn>
+      <AnimatePresence mode="wait">
+        {!isUnlocked ? (
+          <LockScreen key="lockscreen" onUnlock={() => setIsUnlocked(true)} />
+        ) : (
+          <motion.div 
+            key="main-app"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            <SignedOut>
+              {!isGuestMode ? <LandingPage /> : <SignedInUI />}
+            </SignedOut>
+            
+            <SignedIn>
+              <SignedInUI />
+            </SignedIn>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </Suspense>
   )
 }
@@ -52,10 +68,10 @@ function SignedInUI() {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden text-white relative" style={{ background: 'var(--luxury-black)' }}>
-      {/* Ambient glow orbs */}
-      <div className="fixed top-0 left-0 w-full h-full pointer-events-none z-0 overflow-hidden">
-        <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-[#A78BFA]/[0.03] rounded-full blur-[100px] animate-float" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] bg-[#7C3AED]/[0.025] rounded-full blur-[80px]" style={{ animationDelay: '3s', animationDuration: '8s' }} />
+      {/* Ambient glow orbs (Static to prevent lag) */}
+      <div className="fixed top-0 left-0 w-full h-full pointer-events-none z-0 overflow-hidden transform-gpu">
+        <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-[#A78BFA]/[0.02] rounded-full blur-[80px]" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] bg-[#7C3AED]/[0.02] rounded-full blur-[60px]" />
       </div>
 
       <div className="flex flex-1 min-h-0 relative z-10 p-1 md:p-2 gap-2">

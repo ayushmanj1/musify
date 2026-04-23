@@ -75,14 +75,13 @@ export default function SearchOverlay() {
     setIsSearchOpen(false)
     setQuery('')
     setResults([])
-    navigate(-1)
   }
 
   const handleSearch = (q) => {
     if (!q.trim()) return
     addSearchToHistory(q)
+    setIsSearchOpen(false) // Close overlay
     navigate('/search', { state: { query: q } })
-    handleClose()
   }
 
   return (
@@ -197,7 +196,8 @@ export default function SearchOverlay() {
                         transition={{ delay: i * 0.015 }}
                         onClick={() => {
                           haptics.light()
-                          handleSearch(cat.name)
+                          // Append 'top songs' so the search API knows to return music tracks instead of random videos
+                          handleSearch(`${cat.name} top songs`)
                         }}
                         className="aspect-square rounded-[16px] p-4 cursor-pointer relative overflow-hidden group transition-all duration-300 hover:scale-[1.04] active:scale-95"
                         style={{ background: `linear-gradient(135deg, ${cat.color}cc, ${cat.color}66)`, boxShadow: `0 8px 30px ${cat.color}22` }}

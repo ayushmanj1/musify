@@ -24,26 +24,10 @@ export default function Sidebar() {
     setIsSidebarExpanded(!isSidebarExpanded)
   }
 
-
-
-  const containerVariants = {
-    expanded: { 
-      width: 340,
-      transition: { type: 'spring', damping: 25, stiffness: 200 }
-    },
-    collapsed: { 
-      width: 96,
-      transition: { type: 'spring', damping: 25, stiffness: 300 }
-    }
-  }
-
   return (
     <aside className="relative z-40 h-screen flex flex-col p-4 md:p-6 select-none">
-      <motion.div
-        initial={false}
-        animate={isSidebarExpanded ? 'expanded' : 'collapsed'}
-        variants={containerVariants}
-        className="h-full rounded-[32px] flex flex-col overflow-hidden relative"
+      <div
+        className={`h-full rounded-[32px] flex flex-col overflow-hidden relative transform-gpu will-change-[width] transition-[width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${isSidebarExpanded ? 'w-[340px]' : 'w-[96px]'}`}
         style={{
           background: 'rgba(10, 10, 14, 0.4)',
           backdropFilter: 'blur(20px)',
@@ -51,7 +35,7 @@ export default function Sidebar() {
         }}
       >
         {/* Navigation */}
-        <div className={`relative z-10 flex flex-col items-center transition-all duration-500 ${isSidebarExpanded ? 'flex-none pt-16 px-6 gap-8' : 'flex-1 justify-center gap-12'}`}>
+        <div className={`relative z-10 flex flex-col items-center ${isSidebarExpanded ? 'flex-none pt-16 px-6 gap-8' : 'flex-1 justify-center gap-12'}`}>
           <NavItem 
             to="/" 
             icon={<FiHome />} 
@@ -140,7 +124,7 @@ export default function Sidebar() {
             </div>
           </button>
         </div>
-      </motion.div>
+      </div>
     </aside>
   )
 }

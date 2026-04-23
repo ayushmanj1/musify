@@ -374,6 +374,9 @@ export function PlayerProvider({ children }) {
     if (!song) return
     console.log(`[Context] playSong called for: ${song.title} (${song.videoId})`)
 
+    // Start silent audio wake lock synchronously on direct user interaction
+    silentAudioRef.current.play().catch(err => console.log('WakeLock failed:', err))
+
     // Ultra-Smooth Crossfade: Fade Out (~1500ms)
     if (currentSong && isPlaying) {
       await fadeVolume(0, 1500)
@@ -410,8 +413,10 @@ export function PlayerProvider({ children }) {
     if (!playerRef.current || !playerReady.current) return
     if (isPlaying) {
       playerRef.current.pauseVideo()
+      silentAudioRef.current.pause()
     } else {
       playerRef.current.playVideo()
+      silentAudioRef.current.play().catch(() => {})
     }
   }, [isPlaying])
 
