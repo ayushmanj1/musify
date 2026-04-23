@@ -49,7 +49,7 @@ export default function Sidebar() {
         }}
       >
         {/* Navigation */}
-        <div className={`relative z-10 flex flex-col transition-all duration-500 ${isSidebarExpanded ? 'flex-none pt-12 px-8 gap-6' : 'flex-1 justify-center items-center gap-10'}`}>
+        <div className={`relative z-10 flex flex-col items-center transition-all duration-500 ${isSidebarExpanded ? 'flex-none pt-16 px-6 gap-8' : 'flex-1 justify-center gap-12'}`}>
           <NavItem 
             to="/" 
             icon={<FiHome />} 
@@ -57,7 +57,7 @@ export default function Sidebar() {
             isExpanded={isSidebarExpanded} 
             isActive={location.pathname === '/'}
             index={0}
-            className="scale-110"
+            className="w-full max-w-[280px]"
           />
           <NavItem 
             to="/search" 
@@ -67,7 +67,7 @@ export default function Sidebar() {
             isActive={location.pathname === '/search'}
             onClick={() => setIsSearchOpen(true)}
             index={1}
-            className="scale-110"
+            className="w-full max-w-[280px]"
           />
           <NavItem 
             to="/library"
@@ -76,7 +76,7 @@ export default function Sidebar() {
             isExpanded={isSidebarExpanded} 
             isActive={location.pathname === '/library'}
             index={2}
-            className="scale-110"
+            className="w-full max-w-[280px]"
           />
         </div>
 

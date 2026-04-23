@@ -9,9 +9,9 @@ import SearchOverlay from './components/layout/SearchOverlay.jsx'
 import { motion, AnimatePresence } from 'framer-motion'
 import { haptics } from './utils/haptics.js'
 
-const HomePage = lazy(() => import('./pages/HomePage.jsx'))
-const SearchPage = lazy(() => import('./pages/SearchPage.jsx'))
-const LibraryPage = lazy(() => import('./pages/LibraryPage.jsx'))
+import HomePage from './pages/HomePage.jsx'
+import SearchPage from './pages/SearchPage.jsx'
+import LibraryPage from './pages/LibraryPage.jsx'
 
 const YourEpisodesPage = lazy(() => import('./pages/YourEpisodesPage.jsx'))
 const ArtistPage = lazy(() => import('./pages/ArtistPage.jsx'))

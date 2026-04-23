@@ -11,7 +11,7 @@ const BROWSE_CATEGORIES = [
   { name: 'Audiobooks', color: '#27856A', img: 'https://images.unsplash.com/photo-1495446815901-a7297e633e8d?w=300' },
   { name: 'Made For You', color: '#1E3264', img: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300' },
   { name: 'New releases', color: '#E8115B', img: 'https://images.unsplash.com/photo-1514525253344-981c1caa8cd3?w=300' },
-  { name: 'Hip-Hop', color: '#BC5900', img: 'https://images.unsplash.com/photo-1571609832126-9932b17f5672?w=300' },
+  { name: 'Hip-Hop', color: '#BC5900', img: 'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?w=300' },
   { name: 'Pop', color: '#148A08', img: 'https://images.unsplash.com/photo-1526218626217-dc65a29bb444?w=300' },
   { name: 'Country', color: '#D84000', img: 'https://images.unsplash.com/photo-1541913051-111444633e1b?w=300' },
   { name: 'Latin', color: '#E1118C', img: 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=300' },
@@ -71,9 +71,11 @@ export default function SearchOverlay() {
   }, [query])
 
   const handleClose = () => {
+    haptics.light()
     setIsSearchOpen(false)
     setQuery('')
     setResults([])
+    navigate(-1)
   }
 
   const handleSearch = (q) => {
@@ -94,26 +96,28 @@ export default function SearchOverlay() {
           style={{ background: 'rgba(6,6,8,0.92)', backdropFilter: 'blur(60px)', WebkitBackdropFilter: 'blur(60px)' }}
         >
           {/* Header & Search Bar */}
-          <div className="p-4 md:px-12 md:py-10 flex flex-col items-center w-full" style={{ background: 'linear-gradient(to bottom, rgba(6,6,8,0.6), transparent)' }}>
-            <div className="flex items-center gap-4 md:gap-6 w-full max-w-7xl relative">
+          <div className="p-8 md:py-20 flex flex-col items-center w-full">
+            <div className="flex items-center justify-center w-full max-w-[850px] relative">
               <div className="flex-1 relative group">
-                <div className="absolute -inset-2 bg-lavender/10 rounded-full blur-3xl opacity-0 group-focus-within:opacity-100 transition-all duration-1000" />
+                {/* Luminous Glow Background */}
+                <div className="absolute -inset-4 bg-lavender/10 rounded-full blur-[100px] opacity-0 group-focus-within:opacity-100 transition-all duration-1000" />
                 
                 <motion.div 
                   layout
-                  className="relative flex items-center rounded-full px-5 py-3 md:px-8 md:py-4 transition-all shadow-2xl"
+                  className="relative flex items-center rounded-[32px] px-6 py-4 md:px-10 md:py-6 transition-all shadow-[0_30px_100px_rgba(0,0,0,0.8)]"
                   style={{
-                    background: 'rgba(255,255,255,0.04)',
-                    backdropFilter: 'blur(30px)',
-                    WebkitBackdropFilter: 'blur(30px)',
-                    border: '1px solid rgba(255,255,255,0.06)'
+                    background: 'rgba(255,255,255,0.06)',
+                    backdropFilter: 'blur(50px) saturate(200%)',
+                    WebkitBackdropFilter: 'blur(50px) saturate(200%)',
+                    border: '1px solid rgba(255,255,255,0.1)'
                   }}
                 >
-                  <FiSearch className="text-white/25 text-xl md:text-2xl mr-3 md:mr-5 group-focus-within:text-lavender transition-all" />
+                  <FiSearch className="text-white/30 text-2xl md:text-3xl mr-4 md:mr-6 group-focus-within:text-lavender transition-all" />
                   <input
                     ref={inputRef}
                     type="text"
                     value={query}
+                    autoFocus
                     onFocus={() => haptics.light()}
                     onChange={(e) => setQuery(e.target.value)}
                     onKeyDown={(e) => {
@@ -122,23 +126,25 @@ export default function SearchOverlay() {
                         handleSearch(query)
                       }
                     }}
-                    placeholder="Search music..."
-                    className="w-full bg-transparent border-none outline-none text-lg md:text-2xl font-bold text-white placeholder:text-white/15 tracking-tight transition-transform focus:scale-[1.01]"
+                    placeholder="Search for songs, artists..."
+                    className="w-full bg-transparent border-none outline-none text-xl md:text-3xl font-black text-white placeholder:text-white/10 tracking-tighter transition-transform focus:scale-[1.01]"
                   />
                   
                   {query && (
-                    <button onClick={() => setQuery('')} className="text-white/15 hover:text-white transition-all ml-4">
-                      <FiX size={20} />
+                    <button onClick={() => setQuery('')} className="text-white/20 hover:text-white transition-all ml-6">
+                      <FiX size={24} />
                     </button>
                   )}
                 </motion.div>
               </div>
 
+              {/* Close Button */}
               <button 
                 onClick={handleClose}
-                className="w-12 h-12 md:w-14 md:h-14 rounded-full glass-btn flex items-center justify-center text-white/30 hover:text-lavender transition-all active:scale-90"
+                className="ml-4 md:ml-8 w-12 h-12 md:w-16 md:h-16 rounded-full glass-btn flex items-center justify-center text-white/30 hover:text-lavender transition-all active:scale-90 border border-white/5 shadow-xl"
+                title="Close Search"
               >
-                <FiX className="text-xl md:text-2xl" />
+                <FiX className="text-xl md:text-3xl" />
               </button>
             </div>
           </div>
@@ -180,7 +186,7 @@ export default function SearchOverlay() {
                     </div>
                   )}
 
-                  <h3 className="section-heading text-2xl font-black text-white/80 tracking-tighter mb-8">Browse all</h3>
+
                   
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-4">
                     {BROWSE_CATEGORIES.map((cat, i) => (

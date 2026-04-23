@@ -62,10 +62,14 @@ export function PlayerProvider({ children }) {
   const queueRef = useRef([])
   const queueIndexRef = useRef(-1)
   const recommendationsRef = useRef([])
+  const shuffleRef = useRef(false)
+  const repeatRef = useRef('none')
 
   useEffect(() => { queueRef.current = queue }, [queue])
   useEffect(() => { queueIndexRef.current = queueIndex }, [queueIndex])
   useEffect(() => { recommendationsRef.current = recommendations }, [recommendations])
+  useEffect(() => { shuffleRef.current = shuffle }, [shuffle])
+  useEffect(() => { repeatRef.current = repeat }, [repeat])
 
   // Persist to localStorage
   useEffect(() => {
@@ -143,13 +147,30 @@ export function PlayerProvider({ children }) {
           if (event.data === window.YT.PlayerState.ENDED) {
             console.log('[Player] Song Ended. Checking for next track...')
             
-            // 1. Check manual queue first
+            // 0. Check Repeat One
+            if (repeatRef.current === 'one') {
+              console.log('[Player] Repeat One enabled. Replaying...')
+              playerRef.current.seekTo(0)
+              playerRef.current.playVideo()
+              return
+            }
+
+            // 1. Check Shuffle (Suggestion Mode)
+            if (shuffleRef.current && recommendationsRef.current.length > 0) {
+              console.log('[Player] Shuffle/Suggestion Mode: Playing from Smart Suggestions')
+              const nextSong = recommendationsRef.current[0]
+              setRecommendations(prev => prev.slice(1))
+              playSong(nextSong)
+              return
+            }
+
+            // 2. Check manual queue
             const nextInQueue = queueIndexRef.current + 1
             if (nextInQueue < queueRef.current.length) {
               console.log('[Player] Playing next from manual queue')
               playNext()
             } 
-            // 2. Check Smart Suggestions for Autoplay
+            // 3. Autoplay suggestions (fallback)
             else if (recommendationsRef.current.length > 0) {
               console.log('[Player] Autoplay: Playing from Smart Suggestions')
               const nextSong = recommendationsRef.current[0]
@@ -157,7 +178,6 @@ export function PlayerProvider({ children }) {
               playSong(nextSong)
             } else {
               console.log('[Player] No queue or suggestions. Retrying in 2s...')
-              // Retry once after a delay in case suggestions were still loading
               setTimeout(() => {
                 if (recommendationsRef.current.length > 0) {
                   const nextSong = recommendationsRef.current[0]
@@ -273,9 +293,9 @@ export function PlayerProvider({ children }) {
     if (!song) return
     console.log(`[Context] playSong called for: ${song.title} (${song.videoId})`)
 
-    // Seamless Transition: Fade Out (~300ms)
+    // Ultra-Smooth Crossfade: Fade Out (~1500ms)
     if (currentSong && isPlaying) {
-      await fadeVolume(0, 300)
+      await fadeVolume(0, 1500)
     }
 
     setCurrentSong(song)
@@ -299,9 +319,9 @@ export function PlayerProvider({ children }) {
 
     if (playerReady.current && playerRef.current) {
       playerRef.current.loadVideoById(song.videoId)
-      // Seamless Transition: Fade In (~300ms)
+      // Ultra-Smooth Crossfade: Fade In (~1200ms)
       playerRef.current.setVolume(0)
-      setTimeout(() => fadeVolume(volume, 300), 100)
+      setTimeout(() => fadeVolume(volume, 1200), 200)
     }
   }, [volume, currentSong, isPlaying, fadeVolume, fetchRecommendations])
 

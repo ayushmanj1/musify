@@ -123,16 +123,61 @@ export default function Player() {
       const fetchLyrics = async () => {
         setLyricsLoading(true)
         try {
-          const res = await fetch(`https://lrclib.net/api/get?artist_name=${encodeURIComponent(artist)}&track_name=${encodeURIComponent(title)}`)
-          if (!res.ok) throw new Error('Not found')
-          const data = await res.json()
-          const processed = {
-            plain: data.plainLyrics,
-            synced: parseSyncedLyrics(data.syncedLyrics)
+          const cleanString = (str) => {
+            return str
+              .replace(/\(Official.*?\)|\[Official.*?\]|Official Video|Lyric Video|Audio|Full Video|HD|4K|Video/gi, '')
+              .replace(/\(Lyrics\)|\[Lyrics\]|Lyrics/gi, '')
+              .replace(/\(feat\..*?\)|\[feat\..*?\]|ft\..*?|feat\./gi, '')
+              .replace(/\(.*?\)|\[.*?\]/g, '')
+              .replace(/\s\s+/g, ' ')
+              .trim()
           }
-          lyricsCache.current[cacheKey] = processed
-          setLyricsData(processed)
+
+          const searchArtist = cleanString(artist)
+          const searchTitle = cleanString(title)
+          const cacheKey = `${searchArtist}-${searchTitle}`
+
+          if (lyricsCache.current[cacheKey]) {
+            setLyricsData(lyricsCache.current[cacheKey])
+            setLyricsLoading(false)
+            return
+          }
+
+          // Stage 1: Try Direct Get
+          let res = await fetch(`https://lrclib.net/api/get?artist_name=${encodeURIComponent(searchArtist)}&track_name=${encodeURIComponent(searchTitle)}`)
+          
+          if (res.ok) {
+            const data = await res.json()
+            const processed = { plain: data.plainLyrics, synced: parseSyncedLyrics(data.syncedLyrics) }
+            lyricsCache.current[cacheKey] = processed
+            setLyricsData(processed)
+            return
+          }
+
+          // Stage 2: Broad Search
+          res = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(`${searchArtist} ${searchTitle}`)}`)
+          let searchResults = await res.json()
+
+          if (!searchResults || searchResults.length === 0) {
+            // Stage 3: Title-only Search (if artist is just a channel name)
+            res = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(searchTitle)}`)
+            searchResults = await res.json()
+          }
+
+          if (searchResults && searchResults.length > 0) {
+            // Find best match based on duration (if available) or just take the first with synced lyrics
+            const bestMatch = searchResults.find(s => s.syncedLyrics) || searchResults[0]
+            const processed = {
+              plain: bestMatch.plainLyrics,
+              synced: parseSyncedLyrics(bestMatch.syncedLyrics)
+            }
+            lyricsCache.current[cacheKey] = processed
+            setLyricsData(processed)
+          } else {
+            throw new Error('Not found')
+          }
         } catch (err) {
+          console.error('[Lyrics] Fetch error:', err)
           setLyricsData(null)
         } finally {
           setLyricsLoading(false)
@@ -203,8 +248,8 @@ export default function Player() {
                   <img src={currentSong.albumArt || currentSong.thumbnail} alt="" className="w-full h-full object-cover" />
                 </motion.div>
                 <div className="min-w-0 flex-1">
-                  <motion.p layoutId="player-title" className="text-[13px] font-bold text-white truncate leading-tight">{currentSong.title}</motion.p>
-                  <motion.p layoutId="player-artist" className="text-[10px] text-white/40 font-medium truncate uppercase tracking-wider">{currentSong.artist || currentSong.channelTitle}</motion.p>
+                  <p className="text-[13px] font-bold text-white truncate leading-tight">{currentSong.title}</p>
+                  <p className="text-[10px] text-white/40 font-medium truncate uppercase tracking-wider">{currentSong.artist || currentSong.channelTitle}</p>
                 </div>
               </div>
 
@@ -237,20 +282,20 @@ export default function Player() {
         {isFullScreenPlayer && (
           <motion.div 
             layoutId="player-container"
-            initial={{ opacity: 0, y: '100%' }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: '100%' }}
-            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+            initial={{ y: '100%', opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: '100%', opacity: 0 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200, mass: 0.5 }}
             drag="y"
             dragConstraints={{ top: 0, bottom: 0 }}
-            dragElastic={0.2}
+            dragElastic={0.1}
             onDragEnd={(e, { offset, velocity }) => {
-              if (offset.y > 100 || velocity.y > 500) {
+              if (offset.y > 80 || velocity.y > 400) {
                 haptics.medium()
                 setIsFullScreenPlayer(false)
               }
             }}
-            className="fixed inset-0 z-[100] flex flex-col overflow-hidden bg-[#060608]"
+            className="fixed inset-0 z-[100] flex flex-col overflow-hidden bg-[#000000] will-change-transform transform-gpu"
           >
             {/* Background Blur Layer (Optimized) */}
             <motion.div 
@@ -276,34 +321,12 @@ export default function Player() {
                 <FiChevronDown size={24} />
               </button>
               
-              <div className="text-center flex-1 mx-2 hidden sm:block">
-                <p className="text-[10px] font-black tracking-[0.3em] uppercase text-white/40">Now Playing</p>
-                <p className="text-[12px] font-bold text-white/60 mt-1 truncate">{currentSong.albumName || 'Album'}</p>
-              </div>
+              <div className="flex-1" />
 
-              <div className="flex items-center gap-1.5 md:gap-2 glass-panel rounded-full px-2 py-1.5 md:px-3 md:py-2 shadow-[0_0_30px_rgba(167,139,250,0.15)]" style={{ background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(30px) saturate(180%)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                <button 
-                  onClick={() => {
-                    haptics.success()
-                    toggleSavedSong(currentSong)
-                  }} 
-                  className={`w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all active:scale-90 ${isSongSaved(currentSong.videoId) ? 'text-lavender bg-white/5' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
-                >
-                  <FiHeart size={18} className={isSongSaved(currentSong.videoId) ? 'fill-current' : ''} />
-                </button>
-                <motion.button 
-                  onClick={() => {
-                    haptics.light()
-                    setIsSuggestionsOpen(true)
-                  }} 
-                  className={`w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all active:scale-90 ${isSuggestionsOpen ? 'text-lavender bg-white/5' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
-                >
-                  <FiList size={18} />
-                </motion.button>
-              </div>
+              <div className="w-10 h-10 md:w-12 md:h-12" />
             </div>
 
-            <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-8 md:px-16 overflow-y-auto hide-scrollbar pb-12">
+            <div className="relative z-10 flex-1 flex flex-col items-center justify-center gap-12 px-8 md:px-16 overflow-y-auto hide-scrollbar pb-12">
               <div className="relative w-full max-w-[320px] md:max-w-[420px] mb-10" style={{ perspective: '1200px' }}>
                 <motion.div 
                   animate={{ rotateY: isFlipped ? 180 : 0 }}
@@ -335,12 +358,12 @@ export default function Player() {
                   {/* Back: Lyrics */}
                   <motion.div 
                     style={{ backfaceVisibility: 'hidden', rotateY: 180 }}
-                    className="absolute inset-0 z-10 bg-black/40 backdrop-blur-3xl rounded-[40px] p-8 md:p-10 overflow-hidden flex flex-col border border-white/10"
+                    className="absolute inset-0 z-10 bg-[#0c0c0e]/80 backdrop-blur-xl rounded-[40px] p-10 overflow-hidden flex flex-col border border-white/5"
                   >
                     <div className="flex-1 overflow-y-auto hide-scrollbar scroll-smooth [will-change:scroll-position]" ref={lyricsScrollRef}>
                       {lyricsLoading ? (
                         <div className="flex items-center justify-center h-full">
-                          <div className="w-8 h-8 border-2 border-lavender/30 border-t-lavender rounded-full animate-spin" />
+                          <div className="w-10 h-10 border-2 border-lavender/20 border-t-lavender rounded-full animate-spin" />
                         </div>
                       ) : lyricsData?.synced?.length > 0 ? (
                         lyricsData.synced.map((line, i) => {
@@ -353,53 +376,67 @@ export default function Player() {
                             <motion.p
                               key={i}
                               animate={{ 
-                                opacity: isActive ? 1 : 0.2,
+                                opacity: isActive ? 1 : 0.15,
                                 scale: isActive ? 1.05 : 1,
-                                filter: isActive ? 'blur(0px)' : 'blur(1px)'
+                                filter: isActive ? 'blur(0px)' : 'blur(2px)'
                               }}
-                              className={`text-[22px] md:text-[28px] font-black mb-8 transition-all duration-700 text-left leading-tight tracking-tight ${isActive ? 'text-white' : 'text-white/60'}`}
+                              className={`text-[20px] md:text-[24px] font-black mb-10 transition-all duration-700 text-left leading-[1.3] tracking-tighter ${isActive ? 'text-white' : 'text-white/40'}`}
                             >
                               {line.text}
                             </motion.p>
                           )
                         })
                       ) : lyricsData?.plain ? (
-                        <p className="text-xl md:text-2xl font-bold text-white/80 leading-relaxed text-left whitespace-pre-wrap">{lyricsData.plain}</p>
+                        <p className="text-lg md:text-xl font-bold text-white/90 leading-relaxed text-left whitespace-pre-wrap py-4">{lyricsData.plain}</p>
                       ) : (
-                        <p className="text-center text-white/20 font-black uppercase tracking-widest mt-20">No lyrics found</p>
+                        <div className="flex flex-col items-center justify-center h-full opacity-20">
+                          <div className="text-4xl mb-4">🎤</div>
+                          <p className="text-xs font-black uppercase tracking-[0.3em]">Lyrics unavailable</p>
+                        </div>
                       )}
                     </div>
-                    {/* Gradient Fades */}
-                    <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-black/40 to-transparent pointer-events-none" />
-                    <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
+                    {/* Glossy Overlay */}
+                    <div className="absolute inset-0 pointer-events-none rounded-[40px] border border-white/5 shadow-inner" />
                   </motion.div>
                 </motion.div>
               </div>
 
-              <div className="w-full max-w-[500px] text-center mb-8">
-                <motion.h2 layoutId="player-title" className="text-3xl md:text-4xl font-black text-white leading-tight mb-2 tracking-tight">{currentSong.title}</motion.h2>
-                <motion.p layoutId="player-artist" className="text-base md:text-lg font-bold text-lavender/80 tracking-wide uppercase">{currentSong.artist || currentSong.channelTitle}</motion.p>
+              <div className="w-full max-w-[500px] text-center mb-12">
+                <h2 className="text-base md:text-lg font-semibold text-white/90 leading-tight mb-1 tracking-tight">{currentSong.title}</h2>
+                <p className="text-[10px] md:text-[12px] font-medium text-lavender/60 tracking-[0.2em] uppercase">{currentSong.artist || currentSong.channelTitle}</p>
               </div>
 
               <PlaybackProgress seekTo={seekTo} formatTime={formatTime} />
 
-              <div className="w-full max-w-[460px] mx-auto flex items-center justify-between px-6 py-4 rounded-[40px] shadow-[0_0_60px_rgba(167,139,250,0.2)] mb-8 transition-all" style={{ background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(40px) saturate(180%)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <div className="w-full max-w-[480px] mx-auto flex items-center justify-center gap-5 md:gap-8 px-6 py-4 md:px-8 md:py-5 rounded-[45px] shadow-[0_40px_100px_rgba(0,0,0,0.7)] mb-10 transition-all border border-white/10" style={{ background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(50px) saturate(200%)' }}>
+                <button 
+                  onClick={() => {
+                    haptics.success()
+                    toggleSavedSong(currentSong)
+                  }} 
+                  className={`text-xl transition-all active:scale-90 ${isSongSaved(currentSong.videoId) ? 'text-lavender' : 'text-white/20 hover:text-white/60'}`}
+                >
+                  <FiHeart className={isSongSaved(currentSong.videoId) ? 'fill-current' : ''} />
+                </button>
+
                 <button 
                   onClick={() => {
                     haptics.light()
                     setShuffle(!shuffle)
                   }} 
-                  className={`text-2xl transition-all active:scale-90 ${shuffle ? 'text-lavender' : 'text-white/20 hover:text-white/60'}`}
+                  className={`text-lg transition-all active:scale-90 relative ${shuffle ? 'text-lavender' : 'text-white/20 hover:text-white/60'}`}
                 >
                   <FiShuffle />
+                  {shuffle && <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 bg-lavender rounded-full shadow-[0_0_8px_rgba(167,139,250,1)]" />}
                 </button>
-                <div className="flex items-center gap-6 md:gap-8">
+
+                <div className="flex items-center gap-4 md:gap-6">
                   <button 
                     onClick={() => {
                       haptics.medium()
                       playPrevious()
                     }} 
-                    className="text-3xl text-white/40 hover:text-white active:scale-90 transition-all"
+                    className="text-xl text-white/40 hover:text-white active:scale-90 transition-all"
                   >
                     <FiSkipBack className="fill-current" />
                   </button>
@@ -408,29 +445,41 @@ export default function Player() {
                       haptics.medium()
                       togglePlay()
                     }} 
-                    className="w-20 h-20 md:w-20 md:h-20 rounded-full bg-white flex items-center justify-center text-black shadow-[0_0_40px_rgba(255,255,255,0.3)] hover:scale-105 active:scale-95 transition-all"
+                    className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-white flex items-center justify-center text-black shadow-[0_0_40px_rgba(255,255,255,0.25)] hover:scale-105 active:scale-95 transition-all"
                   >
-                    {isPlaying ? <FiPause size={32} className="fill-current" /> : <FiPlay size={32} className="fill-current ml-2" />}
+                    {isPlaying ? <FiPause size={24} className="fill-current" /> : <FiPlay size={24} className="fill-current ml-1" />}
                   </button>
                   <button 
                     onClick={() => {
                       haptics.medium()
                       playNext()
                     }} 
-                    className="text-3xl text-white/40 hover:text-white active:scale-90 transition-all"
+                    className="text-xl text-white/40 hover:text-white active:scale-90 transition-all"
                   >
                     <FiSkipForward className="fill-current" />
                   </button>
                 </div>
+
                 <button 
                   onClick={() => {
                     haptics.light()
                     handleRepeatToggle()
                   }} 
-                  className={`relative text-2xl transition-all active:scale-90 ${repeat !== 'none' ? 'text-lavender' : 'text-white/20 hover:text-white/60'}`}
+                  className={`relative text-lg transition-all active:scale-90 ${repeat !== 'none' ? 'text-lavender' : 'text-white/20 hover:text-white/60'}`}
                 >
                   <FiRepeat />
                   {repeat === 'one' && <span className="absolute -top-1 -right-1 w-3 h-3 bg-lavender text-white text-[7px] font-black rounded-full flex items-center justify-center">1</span>}
+                  {repeat === 'all' && <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 bg-lavender rounded-full shadow-[0_0_8px_rgba(167,139,250,1)]" />}
+                </button>
+
+                <button 
+                  onClick={() => {
+                    haptics.light()
+                    setIsSuggestionsOpen(true)
+                  }} 
+                  className={`text-xl transition-all active:scale-90 ${isSuggestionsOpen ? 'text-lavender' : 'text-white/20 hover:text-white/60'}`}
+                >
+                  <FiList />
                 </button>
               </div>
 
@@ -464,10 +513,9 @@ export default function Player() {
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
               className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[92%] max-w-[420px] h-[580px] z-[120] rounded-[40px] overflow-hidden flex flex-col bg-[#0c0c0e]/95 backdrop-blur-xl border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.8)] will-change-transform"
             >
-              <div className="px-8 pb-5 pt-8 flex items-center justify-between border-b border-white/5">
+              <div className="px-8 pb-6 pt-8 flex items-center justify-between border-b border-white/5">
                 <div>
-                  <h3 className="text-2xl font-black text-white">Up Next</h3>
-                  <p className="text-xs text-lavender font-bold uppercase tracking-widest mt-1">AI Suggestions</p>
+                  <h3 className="text-2xl font-black text-white tracking-tight">Up Next</h3>
                 </div>
                 <button 
                   onClick={() => {
@@ -480,10 +528,10 @@ export default function Player() {
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto px-4 py-2 space-y-1 hide-scrollbar scroll-smooth">
+              <div className="flex-1 overflow-y-auto px-5 py-6 space-y-5 hide-scrollbar scroll-smooth">
                 {isRecLoading ? (
                   <div className="flex items-center justify-center h-full">
-                    <div className="w-8 h-8 border-2 border-lavender/30 border-t-lavender rounded-full animate-spin" />
+                    <div className="w-10 h-10 border-2 border-lavender/20 border-t-lavender rounded-full animate-spin" />
                   </div>
                 ) : recommendations.length > 0 ? (
                   recommendations.map((song, i) => (
@@ -492,23 +540,23 @@ export default function Player() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.05, type: 'spring' }}
-                      whileTap={{ scale: 0.98, backgroundColor: 'rgba(255,255,255,0.05)' }}
+                      whileTap={{ scale: 0.96, backgroundColor: 'rgba(255,255,255,0.06)' }}
                       onClick={() => { 
                         haptics.light()
                         playSong(song)
                         setIsSuggestionsOpen(false) 
                       }}
-                      className="flex items-center gap-4 p-3 rounded-[20px] cursor-pointer hover:bg-white/5 transition-all group relative overflow-hidden"
+                      className="flex items-center gap-5 p-4 rounded-[24px] cursor-pointer hover:bg-white/5 transition-all group relative overflow-hidden"
                     >
-                      <div className="w-14 h-14 rounded-2xl overflow-hidden shadow-lg relative">
+                      <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-2xl relative">
                         <img src={song.thumbnail} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                           <FiPlay className="text-white fill-white ml-0.5" />
                         </div>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h4 className="text-[15px] font-bold text-white truncate group-hover:text-lavender transition-colors">{song.title}</h4>
-                        <p className="text-[12px] text-white/40 truncate font-medium uppercase tracking-wider">{song.artist}</p>
+                        <h4 className="text-[16px] font-bold text-white truncate group-hover:text-lavender transition-colors mb-1">{song.title}</h4>
+                        <p className="text-[12px] text-white/40 truncate font-semibold uppercase tracking-wider">{song.artist}</p>
                       </div>
                     </motion.div>
                   ))

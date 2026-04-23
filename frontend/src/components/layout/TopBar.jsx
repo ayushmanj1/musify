@@ -48,14 +48,34 @@ export default function TopBar() {
 
   return (
     <div className="sticky top-0 z-40 flex items-center justify-between px-6 py-3 md:px-10 md:py-4 transition-all duration-300" style={{ background: 'rgba(167, 139, 250, 0.08)', backdropFilter: 'blur(30px) saturate(180%)', borderBottom: '1px solid rgba(167, 139, 250, 0.1)' }}>
-      {/* Left: Brand */}
-      <div className="flex items-center gap-3 md:gap-4 cursor-pointer group" onClick={() => navigate('/')}>
-        <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-gradient-to-br from-lavender to-[#7C3AED] flex items-center justify-center shadow-[0_0_20px_rgba(167,139,250,0.3)] group-hover:scale-105 transition-all">
-          <FiGrid className="text-white text-lg md:text-xl" />
+      {/* Left: Brand & Navigation */}
+      <div className="flex items-center gap-6 md:gap-10">
+        <div className="flex items-center gap-3 md:gap-4 cursor-pointer group" onClick={() => navigate('/')}>
+          <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-gradient-to-br from-lavender to-[#7C3AED] flex items-center justify-center shadow-[0_0_20px_rgba(167,139,250,0.3)] group-hover:scale-105 transition-all">
+            <FiGrid className="text-white text-lg md:text-xl" />
+          </div>
+          <h1 className="text-xl md:text-2xl font-black tracking-tighter text-lavender hidden md:block group-hover:text-lavender-light transition-colors">
+            MUSIFY
+          </h1>
         </div>
-        <h1 className="text-xl md:text-2xl font-black tracking-tighter text-lavender hidden md:block group-hover:text-lavender-light transition-colors">
-          MUSIFY
-        </h1>
+
+        {/* Browser-style Navigation Arrows */}
+        <div className="flex items-center gap-2 md:gap-3">
+          <button 
+            onClick={() => navigate(-1)} 
+            className="w-9 h-9 md:w-10 md:h-10 rounded-full glass-btn flex items-center justify-center text-white/40 hover:text-white transition-all active:scale-90 border border-white/5"
+            title="Go Back"
+          >
+            <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" height="18" width="18" xmlns="http://www.w3.org/2000/svg"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <button 
+            onClick={() => navigate(1)} 
+            className="w-9 h-9 md:w-10 md:h-10 rounded-full glass-btn flex items-center justify-center text-white/40 hover:text-white transition-all active:scale-90 border border-white/5"
+            title="Go Forward"
+          >
+            <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" height="18" width="18" xmlns="http://www.w3.org/2000/svg"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
+        </div>
       </div>
 
       {/* Right: Actions */}
