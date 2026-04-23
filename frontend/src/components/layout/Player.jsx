@@ -87,8 +87,11 @@ export default function Player() {
     }).filter(l => l && l.text)
   }
 
+  // Throttle lyrics scroll to once every 500ms
+  const lastScrollTime = useRef(0)
   useEffect(() => {
-    if (isFlipped && lyricsData?.synced?.length > 0 && lyricsScrollRef.current) {
+    const now = Date.now()
+    if (isFlipped && lyricsData?.synced?.length > 0 && lyricsScrollRef.current && now - lastScrollTime.current > 500) {
       const activeIndex = lyricsData.synced.findIndex((l, idx) => {
         const nextLine = lyricsData.synced[idx + 1]
         return currentTime >= l.time && (!nextLine || currentTime < nextLine.time)
@@ -100,6 +103,7 @@ export default function Player() {
             top: activeLine.offsetTop - 150,
             behavior: 'smooth'
           })
+          lastScrollTime.current = now
         }
       }
     }
@@ -107,7 +111,10 @@ export default function Player() {
 
   useEffect(() => {
     if (isFullScreenPlayer && currentSong) {
-      const cacheKey = `${currentSong.artist}-${currentSong.title}`
+      const artist = (currentSong.artist || currentSong.channelTitle || '').replace(/ - Topic$/, '')
+      const title = currentSong.title.replace(/\(Official.*?\)|\[Official.*?\]|Official Video|Lyric Video|Audio/gi, '').trim()
+      
+      const cacheKey = `${artist}-${title}`
       if (lyricsCache.current[cacheKey]) {
         setLyricsData(lyricsCache.current[cacheKey])
         return
@@ -116,7 +123,8 @@ export default function Player() {
       const fetchLyrics = async () => {
         setLyricsLoading(true)
         try {
-          const res = await fetch(`https://lrclib.net/api/get?artist_name=${encodeURIComponent(currentSong.artist)}&track_name=${encodeURIComponent(currentSong.title)}`)
+          const res = await fetch(`https://lrclib.net/api/get?artist_name=${encodeURIComponent(artist)}&track_name=${encodeURIComponent(title)}`)
+          if (!res.ok) throw new Error('Not found')
           const data = await res.json()
           const processed = {
             plain: data.plainLyrics,
@@ -257,41 +265,40 @@ export default function Player() {
               <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-[#060608]/80 to-[#060608]" />
             </motion.div>
 
-            <div className="relative z-10 flex items-center justify-between p-6 md:p-10">
+            <div className="relative z-10 flex items-center justify-between p-5 md:p-10">
               <button 
                 onClick={() => {
                   haptics.light()
                   setIsFullScreenPlayer(false)
                 }} 
-                className="w-12 h-12 rounded-full glass-btn flex items-center justify-center text-white/50 active:scale-90 transition-transform"
+                className="w-10 h-10 md:w-12 md:h-12 rounded-full glass-btn flex items-center justify-center text-white/50 active:scale-90 transition-transform"
               >
-                <FiChevronDown size={28} />
+                <FiChevronDown size={24} />
               </button>
               
-              <div className="text-center flex-1 mx-4">
+              <div className="text-center flex-1 mx-2 hidden sm:block">
                 <p className="text-[10px] font-black tracking-[0.3em] uppercase text-white/40">Now Playing</p>
                 <p className="text-[12px] font-bold text-white/60 mt-1 truncate">{currentSong.albumName || 'Album'}</p>
               </div>
 
-              <div className="flex items-center gap-2 glass-panel rounded-full px-3 py-2 shadow-[0_0_30px_rgba(167,139,250,0.15)]" style={{ background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(30px) saturate(180%)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <div className="flex items-center gap-1.5 md:gap-2 glass-panel rounded-full px-2 py-1.5 md:px-3 md:py-2 shadow-[0_0_30px_rgba(167,139,250,0.15)]" style={{ background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(30px) saturate(180%)', border: '1px solid rgba(255,255,255,0.1)' }}>
                 <button 
                   onClick={() => {
                     haptics.success()
                     toggleSavedSong(currentSong)
                   }} 
-                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90 ${isSongSaved(currentSong.videoId) ? 'text-lavender bg-white/5' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
+                  className={`w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all active:scale-90 ${isSongSaved(currentSong.videoId) ? 'text-lavender bg-white/5' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
                 >
-                  <FiHeart size={20} className={isSongSaved(currentSong.videoId) ? 'fill-current' : ''} />
+                  <FiHeart size={18} className={isSongSaved(currentSong.videoId) ? 'fill-current' : ''} />
                 </button>
                 <motion.button 
-                  layoutId="suggestions"
                   onClick={() => {
                     haptics.light()
                     setIsSuggestionsOpen(true)
                   }} 
-                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90 ${isSuggestionsOpen ? 'text-lavender bg-white/5' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
+                  className={`w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all active:scale-90 ${isSuggestionsOpen ? 'text-lavender bg-white/5' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
                 >
-                  <FiList size={20} />
+                  <FiList size={18} />
                 </motion.button>
               </div>
             </div>
@@ -330,7 +337,7 @@ export default function Player() {
                     style={{ backfaceVisibility: 'hidden', rotateY: 180 }}
                     className="absolute inset-0 z-10 bg-black/40 backdrop-blur-3xl rounded-[40px] p-8 md:p-10 overflow-hidden flex flex-col border border-white/10"
                   >
-                    <div className="flex-1 overflow-y-auto hide-scrollbar scroll-smooth" ref={lyricsScrollRef}>
+                    <div className="flex-1 overflow-y-auto hide-scrollbar scroll-smooth [will-change:scroll-position]" ref={lyricsScrollRef}>
                       {lyricsLoading ? (
                         <div className="flex items-center justify-center h-full">
                           <div className="w-8 h-8 border-2 border-lavender/30 border-t-lavender rounded-full animate-spin" />
@@ -448,15 +455,14 @@ export default function Player() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsSuggestionsOpen(false)}
-              className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-md"
+              className="fixed inset-0 z-[110] bg-black/40 backdrop-blur-sm"
             />
             <motion.div
-              layoutId="suggestions"
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[92%] max-w-[420px] h-[580px] z-[120] rounded-[40px] overflow-hidden flex flex-col bg-[#0c0c0e]/90 backdrop-blur-3xl border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.8)]"
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[92%] max-w-[420px] h-[580px] z-[120] rounded-[40px] overflow-hidden flex flex-col bg-[#0c0c0e]/95 backdrop-blur-xl border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.8)] will-change-transform"
             >
               <div className="px-8 pb-5 pt-8 flex items-center justify-between border-b border-white/5">
                 <div>

@@ -39,7 +39,7 @@ const BROWSE_CATEGORIES = [
 
 export default function SearchOverlay() {
   const navigate = useNavigate()
-  const { isSearchOpen, setIsSearchOpen, playSong } = usePlayer()
+  const { isSearchOpen, setIsSearchOpen, playSong, searchHistory, addSearchToHistory, removeSearchFromHistory } = usePlayer()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [loading, setLoading] = useState(false)
@@ -78,6 +78,7 @@ export default function SearchOverlay() {
 
   const handleSearch = (q) => {
     if (!q.trim()) return
+    addSearchToHistory(q)
     navigate('/search', { state: { query: q } })
     handleClose()
   }
@@ -147,6 +148,38 @@ export default function SearchOverlay() {
             <div className="max-w-7xl mx-auto w-full">
               {query.length < 2 ? (
                 <div className="pt-12 pb-5">
+                  {searchHistory.length > 0 && (
+                    <div className="mb-16">
+                      <div className="flex items-center justify-between mb-8">
+                        <h3 className="text-xl font-black text-white uppercase tracking-[4px] opacity-40">Recently Searched</h3>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                        {searchHistory.map((q, i) => (
+                          <motion.div
+                            key={q}
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: i * 0.05 }}
+                            className="group relative flex items-center gap-4 p-5 rounded-3xl bg-white/[0.03] border border-white/[0.05] hover:bg-white/[0.06] transition-all cursor-pointer"
+                            onClick={() => handleSearch(q)}
+                          >
+                            <FiClock className="text-white/30 group-hover:text-lavender transition-colors" />
+                            <span className="flex-1 text-sm font-bold text-white/60 group-hover:text-white truncate">{q}</span>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                removeSearchFromHistory(q)
+                              }}
+                              className="w-10 h-10 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-white/10 text-white/30 transition-all"
+                            >
+                              <FiX size={16} />
+                            </button>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <h3 className="section-heading text-2xl font-black text-white/80 tracking-tighter mb-8">Browse all</h3>
                   
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-4">

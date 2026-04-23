@@ -32,6 +32,13 @@ export function PlayerProvider({ children }) {
     } catch { return [] }
   })
 
+  const [searchHistory, setSearchHistory] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('searchHistory') || '[]')
+      return Array.isArray(saved) ? saved : []
+    } catch { return [] }
+  })
+  
   const [savedSongs, setSavedSongs] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('savedSongs') || '[]')
@@ -70,6 +77,10 @@ export function PlayerProvider({ children }) {
   useEffect(() => {
     localStorage.setItem('savedSongs', JSON.stringify(savedSongs))
   }, [savedSongs])
+
+  useEffect(() => {
+    localStorage.setItem('searchHistory', JSON.stringify(searchHistory))
+  }, [searchHistory])
 
   useEffect(() => {
     localStorage.setItem('isGuestMode', isGuestMode)
@@ -385,6 +396,18 @@ export function PlayerProvider({ children }) {
     setRecentlyPlayed(prev => prev.filter(s => !(s.videoId === videoId && s.playedAt === playedAt)))
   }, [])
 
+  const addSearchToHistory = useCallback((query) => {
+    if (!query || !query.trim()) return
+    setSearchHistory(prev => {
+      const filtered = prev.filter(q => q.toLowerCase() !== query.toLowerCase())
+      return [query.trim(), ...filtered].slice(0, 4)
+    })
+  }, [])
+
+  const removeSearchFromHistory = useCallback((query) => {
+    setSearchHistory(prev => prev.filter(q => q !== query))
+  }, [])
+
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
   const [isFullScreenPlayer, setIsFullScreenPlayer] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
@@ -396,24 +419,26 @@ export function PlayerProvider({ children }) {
 
   const value = useMemo(() => ({
     currentSong, isPlaying, volume, queue, queueIndex,
-    recentlyPlayed, savedSongs,
+    recentlyPlayed, savedSongs, searchHistory,
     recommendations, isRecLoading, isSuggestionsOpen, setIsSuggestionsOpen,
     isSidebarExpanded, setIsSidebarExpanded,
     isFullScreenPlayer, setIsFullScreenPlayer,
     isSearchOpen, setIsSearchOpen,
     playSong, togglePlay, seekTo, setPlayerVolume, playNext, playPrevious, addToQueue,
     toggleSavedSong, isSongSaved, removeFromHistory,
+    addSearchToHistory, removeSearchFromHistory,
     shuffle, setShuffle, repeat, setRepeat,
     isGuestMode, setIsGuestMode,
   }), [
     currentSong, isPlaying, volume, queue, queueIndex,
-    recentlyPlayed, savedSongs,
+    recentlyPlayed, savedSongs, searchHistory,
     recommendations, isRecLoading, isSuggestionsOpen,
     isSidebarExpanded,
     isFullScreenPlayer,
     isSearchOpen,
     playSong, togglePlay, seekTo, setPlayerVolume, playNext, playPrevious, addToQueue,
     toggleSavedSong, isSongSaved, removeFromHistory,
+    addSearchToHistory, removeSearchFromHistory,
     shuffle, repeat, isGuestMode
   ])
 
