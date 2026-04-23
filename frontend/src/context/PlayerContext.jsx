@@ -58,6 +58,8 @@ export function PlayerProvider({ children }) {
   const playerRef = useRef(null)
   const playerReady = useRef(false)
   const timeUpdateInterval = useRef(null)
+  const silentAudioRef = useRef(new Audio('data:audio/wav;base64,UklGRigAAABXQVZFRm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAHAA'))
+  silentAudioRef.current.loop = true
 
   // Refs for state to avoid stale closures in event listeners
   const queueRef = useRef([])
@@ -153,6 +155,21 @@ export function PlayerProvider({ children }) {
       }
     }
   }, [currentSong, duration, currentTime])
+
+  // Handle Playback State Changes (Background Sync)
+  useEffect(() => {
+    if (isPlaying) {
+      silentAudioRef.current.play().catch(() => {})
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.playbackState = 'playing'
+      }
+    } else {
+      silentAudioRef.current.pause()
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.playbackState = 'paused'
+      }
+    }
+  }, [isPlaying])
 
   // Initialize YouTube IFrame API
   useEffect(() => {
