@@ -57,7 +57,8 @@ export default function Player() {
     isFullScreenPlayer, setIsFullScreenPlayer,
     setSongToAdd, setIsSidebarExpanded,
     isSuggestionsOpen, setIsSuggestionsOpen, recommendations, isRecLoading, playSong,
-    shuffle, setShuffle, repeat, setRepeat
+    shuffle, setShuffle, repeat, setRepeat,
+    toggleSavedSong, isSongSaved
   } = usePlayer()
 
   const playerRef = useRef(null)
@@ -107,6 +108,12 @@ export default function Player() {
               </div>
 
               <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                <button 
+                  onClick={() => toggleSavedSong(currentSong)} 
+                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${isSongSaved(currentSong.videoId) ? 'text-lavender' : 'text-white/40 hover:text-white'}`}
+                >
+                  <FiHeart size={18} className={isSongSaved(currentSong.videoId) ? 'fill-current' : ''} />
+                </button>
                 <button onClick={togglePlay} className="w-10 h-10 rounded-full flex items-center justify-center text-white hover:bg-white/5 transition-all">
                   {isPlaying ? <FiPause size={20} /> : <FiPlay size={20} className="ml-0.5" />}
                 </button>
@@ -178,7 +185,13 @@ export default function Player() {
               </div>
 
               <div className="w-full max-w-[500px] flex items-center justify-around text-white/20">
-                <button className="flex flex-col items-center gap-2 hover:text-lavender transition-all"><FiHeart size={24} /><span className="text-[10px] font-black uppercase tracking-widest">Like</span></button>
+                <button 
+                  onClick={() => toggleSavedSong(currentSong)} 
+                  className={`flex flex-col items-center gap-2 transition-all ${isSongSaved(currentSong.videoId) ? 'text-lavender' : 'hover:text-white/40'}`}
+                >
+                  <FiHeart size={24} className={isSongSaved(currentSong.videoId) ? 'fill-current' : ''} />
+                  <span className="text-[10px] font-black uppercase tracking-widest">{isSongSaved(currentSong.videoId) ? 'Liked' : 'Like'}</span>
+                </button>
                 <button onClick={() => { setSongToAdd(currentSong); setIsSidebarExpanded(true); }} className="flex flex-col items-center gap-2 hover:text-lavender transition-all"><FiPlus size={24} /><span className="text-[10px] font-black uppercase tracking-widest">Add</span></button>
                 <button className="flex flex-col items-center gap-2 hover:text-lavender transition-all"><FiShare2 size={24} /><span className="text-[10px] font-black uppercase tracking-widest">Share</span></button>
                 <button onClick={() => setIsSuggestionsOpen(!isSuggestionsOpen)} className={`flex flex-col items-center gap-2 transition-all ${isSuggestionsOpen ? 'text-lavender' : 'hover:text-white/40'}`}><FiList size={24} /><span className="text-[10px] font-black uppercase tracking-widest">Next</span></button>

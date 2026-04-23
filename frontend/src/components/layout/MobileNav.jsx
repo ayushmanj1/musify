@@ -1,6 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { FiHome, FiSearch } from 'react-icons/fi'
-import { VscLibrary } from 'react-icons/vsc'
+import { FiHome, FiSearch, FiHeart } from 'react-icons/fi'
 import { usePlayer } from '../../context/PlayerContext.jsx'
 
 export default function MobileNav() {
@@ -20,8 +19,8 @@ export default function MobileNav() {
         <span className="text-[10px] font-black uppercase tracking-widest">Search</span>
       </button>
       <NavLink to="/library" className={({isActive}) => `flex flex-col items-center gap-1.5 transition-all duration-300 ${isActive ? 'text-lavender' : 'text-white/35 hover:text-white/60'}`}>
-        <VscLibrary className="text-xl" />
-        <span className="text-[10px] font-black uppercase tracking-widest">Library</span>
+        <FiHeart className="text-xl" />
+        <span className="text-[10px] font-black uppercase tracking-widest">Liked</span>
       </NavLink>
     </div>
   )

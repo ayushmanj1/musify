@@ -37,10 +37,11 @@ function LibraryContent() {
   return (
     <div className="pt-6 px-4 md:px-10 pb-32 max-w-[1400px] mx-auto">
       <header className="mb-10">
-        <h1 className="text-4xl md:text-5xl font-black text-white tracking-tighter mb-8">Your Library</h1>
+        <h1 className="text-4xl md:text-5xl font-black text-white tracking-tighter mb-8 hidden md:block">Your Library</h1>
+        <h1 className="text-4xl font-black text-white tracking-tighter mb-8 md:hidden">Liked Music</h1>
         
-        {/* Modern Tab System */}
-        <div className="flex gap-4 p-1.5 rounded-2xl bg-white/[0.03] border border-white/[0.05] w-fit">
+        {/* Modern Tab System - Hidden on Mobile to focus only on Liked Music */}
+        <div className="hidden md:flex gap-4 p-1.5 rounded-2xl bg-white/[0.03] border border-white/[0.05] w-fit">
           {tabs.map((t) => (
             <button 
               key={t.id} 
@@ -66,6 +67,7 @@ function LibraryContent() {
       </header>
 
       <AnimatePresence mode="wait">
+        {/* On mobile, we only show 'saved' tab content. On desktop, we show based on selection. */}
         {tab === 'saved' && (
           <motion.div key="saved" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             {savedSongs.length > 0 ? (
@@ -85,8 +87,9 @@ function LibraryContent() {
           </motion.div>
         )}
         
+        {/* Hide History and Playlists on mobile to fulfill "only show liked music" request */}
         {tab === 'recent' && (
-          <motion.div key="recent" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div key="recent" className="hidden md:block" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             {recentlyPlayed.length > 0 ? (
               <div className="flex flex-col">
                 <div className="grid grid-cols-[50px_1fr_40px] px-4 py-3 text-[11px] font-black uppercase tracking-[0.2em] text-white/20 border-b border-white/5 mb-4">
@@ -105,7 +108,7 @@ function LibraryContent() {
         )}
         
         {tab === 'playlists' && (
-          <motion.div key="playlists" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div key="playlists" className="hidden md:block" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {/* Create Playlist Action Card */}
               <motion.div 
