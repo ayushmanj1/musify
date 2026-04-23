@@ -53,6 +53,7 @@ export function PlayerProvider({ children }) {
   const [isGuestMode, setIsGuestMode] = useState(() => {
     return localStorage.getItem('isGuestMode') === 'true'
   })
+  const [deferredPrompt, setDeferredPrompt] = useState(null)
 
   const playerRef = useRef(null)
   const playerReady = useRef(false)
@@ -89,6 +90,69 @@ export function PlayerProvider({ children }) {
   useEffect(() => {
     localStorage.setItem('isGuestMode', isGuestMode)
   }, [isGuestMode])
+
+  // PWA Install Prompt
+  useEffect(() => {
+    const handler = (e) => {
+      e.preventDefault()
+      setDeferredPrompt(e)
+    }
+    window.addEventListener('beforeinstallprompt', handler)
+    return () => window.removeEventListener('beforeinstallprompt', handler)
+  }, [])
+
+  const installApp = async () => {
+    if (!deferredPrompt) {
+      toast.error('App is already installed or not supported')
+      return
+    }
+    deferredPrompt.prompt()
+    const { outcome } = await deferredPrompt.userChoice
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null)
+      toast.success('Installing Musify...')
+    }
+  }
+
+  // Media Session API (Lock Screen Controls)
+  useEffect(() => {
+    if ('mediaSession' in navigator && currentSong) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: currentSong.title,
+        artist: currentSong.artist || currentSong.channelTitle,
+        album: 'Musify Premium',
+        artwork: [
+          { src: currentSong.thumbnail, sizes: '512x512', type: 'image/jpeg' }
+        ]
+      })
+
+      navigator.mediaSession.setActionHandler('play', () => {
+        haptics.light()
+        togglePlay()
+      })
+      navigator.mediaSession.setActionHandler('pause', () => {
+        haptics.light()
+        togglePlay()
+      })
+      navigator.mediaSession.setActionHandler('previoustrack', () => {
+        haptics.medium()
+        playPrevious()
+      })
+      navigator.mediaSession.setActionHandler('nexttrack', () => {
+        haptics.medium()
+        playNext()
+      })
+      
+      // Update position state
+      if (duration > 0) {
+        navigator.mediaSession.setPositionState({
+          duration: duration,
+          playbackRate: 1,
+          position: currentTime
+        })
+      }
+    }
+  }, [currentSong, duration, currentTime])
 
   // Initialize YouTube IFrame API
   useEffect(() => {
@@ -440,7 +504,10 @@ export function PlayerProvider({ children }) {
   const value = useMemo(() => ({
     currentSong, isPlaying, volume, queue, queueIndex,
     recentlyPlayed, savedSongs, searchHistory,
-    recommendations, isRecLoading, isSuggestionsOpen, setIsSuggestionsOpen,
+    recommendations, isRecLoading, installApp,
+    deferredPrompt,
+    isSuggestionsOpen,
+    setIsSuggestionsOpen,
     isSidebarExpanded, setIsSidebarExpanded,
     isFullScreenPlayer, setIsFullScreenPlayer,
     isSearchOpen, setIsSearchOpen,

@@ -15,7 +15,9 @@ export default function Sidebar() {
     setIsSidebarExpanded, 
     setIsSearchOpen,
     playSong,
-    removeFromHistory 
+    removeFromHistory,
+    installApp,
+    deferredPrompt
   } = usePlayer()
 
   const toggleSidebar = () => {
@@ -114,8 +116,20 @@ export default function Sidebar() {
           </AnimatePresence>
         </div>
 
-        {/* Expansion Toggle */}
-        <div className="p-6 flex justify-center mt-auto border-t border-white/5">
+        {/* Footer Actions */}
+        <div className="p-6 flex flex-col gap-3 mt-auto border-t border-white/5">
+          {deferredPrompt && (
+            <button 
+              onClick={installApp}
+              className="w-full h-12 rounded-2xl bg-lavender text-black font-bold flex items-center justify-center transition-all active:scale-95 shadow-[0_0_20px_rgba(167,139,250,0.3)]"
+            >
+              <div className="flex items-center gap-3">
+                <FiPlus size={20} className="rotate-0" />
+                {isSidebarExpanded && <span className="text-sm">Install App</span>}
+              </div>
+            </button>
+          )}
+          
           <button 
             onClick={toggleSidebar}
             className="w-full h-12 rounded-2xl glass-btn flex items-center justify-center transition-all active:scale-95 group"
