@@ -4,6 +4,7 @@ import { FiSearch, FiX, FiTrendingUp, FiClock, FiMusic } from 'react-icons/fi'
 import { useNavigate } from 'react-router-dom'
 import { usePlayer } from '../../context/PlayerContext.jsx'
 import { searchSongs } from '../../utils/api.js'
+import { haptics } from '../../utils/haptics.js'
 
 const BROWSE_CATEGORIES = [
   { name: 'Podcasts', color: '#E13300', img: 'https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=300' },
@@ -112,10 +113,16 @@ export default function SearchOverlay() {
                     ref={inputRef}
                     type="text"
                     value={query}
+                    onFocus={() => haptics.light()}
                     onChange={(e) => setQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearch(query)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        haptics.medium()
+                        handleSearch(query)
+                      }
+                    }}
                     placeholder="Search music..."
-                    className="w-full bg-transparent border-none outline-none text-lg md:text-2xl font-bold text-white placeholder:text-white/15 tracking-tight"
+                    className="w-full bg-transparent border-none outline-none text-lg md:text-2xl font-bold text-white placeholder:text-white/15 tracking-tight transition-transform focus:scale-[1.01]"
                   />
                   
                   {query && (
@@ -149,7 +156,10 @@ export default function SearchOverlay() {
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: i * 0.015 }}
-                        onClick={() => handleSearch(cat.name)}
+                        onClick={() => {
+                          haptics.light()
+                          handleSearch(cat.name)
+                        }}
                         className="aspect-square rounded-[16px] p-4 cursor-pointer relative overflow-hidden group transition-all duration-300 hover:scale-[1.04] active:scale-95"
                         style={{ background: `linear-gradient(135deg, ${cat.color}cc, ${cat.color}66)`, boxShadow: `0 8px 30px ${cat.color}22` }}
                       >
@@ -181,11 +191,16 @@ export default function SearchOverlay() {
                       {results.map((song, i) => (
                         <motion.div
                           key={song.videoId}
-                          initial={{ opacity: 0, y: 10 }}
+                          initial={{ opacity: 0, y: 15 }}
                           animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: i * 0.04 }}
-                          onClick={() => { playSong(song); handleClose(); }}
-                          className="flex items-center gap-5 p-4 rounded-[24px] glass-card cursor-pointer group"
+                          transition={{ delay: i * 0.04, type: 'spring' }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => { 
+                            haptics.success()
+                            playSong(song)
+                            handleClose() 
+                          }}
+                          className="flex items-center gap-5 p-4 rounded-[24px] glass-card cursor-pointer group hover:bg-white/5 transition-all duration-300"
                         >
                           <div className="shimmer-sweep" />
                           <div className="relative w-16 h-16 rounded-[14px] overflow-hidden shadow-xl flex-shrink-0 group-hover:scale-105 transition-transform duration-500">

@@ -7,11 +7,12 @@ import MobileNav from './components/layout/MobileNav.jsx'
 import SearchOverlay from './components/layout/SearchOverlay.jsx'
 
 import { motion, AnimatePresence } from 'framer-motion'
+import { haptics } from './utils/haptics.js'
 
 const HomePage = lazy(() => import('./pages/HomePage.jsx'))
 const SearchPage = lazy(() => import('./pages/SearchPage.jsx'))
 const LibraryPage = lazy(() => import('./pages/LibraryPage.jsx'))
-const PlaylistPage = lazy(() => import('./pages/PlaylistPage.jsx'))
+
 const YourEpisodesPage = lazy(() => import('./pages/YourEpisodesPage.jsx'))
 const ArtistPage = lazy(() => import('./pages/ArtistPage.jsx'))
 const ChartsPage = lazy(() => import('./pages/ChartsPage.jsx'))
@@ -46,6 +47,9 @@ export default function App() {
 
 function SignedInUI() {
   const location = useLocation()
+  const navigate = useNavigate()
+  const { isSearchOpen } = usePlayer()
+
   return (
     <div className="h-screen flex flex-col overflow-hidden text-white relative" style={{ background: 'var(--luxury-black)' }}>
       {/* Ambient glow orbs */}
@@ -75,7 +79,7 @@ function SignedInUI() {
                     <Route path="/" element={<HomePage />} />
                     <Route path="/search" element={<SearchPage />} />
                     <Route path="/library" element={<LibraryPage />} />
-                    <Route path="/playlist/:id" element={<PlaylistPage />} />
+
                     <Route path="/episodes" element={<YourEpisodesPage />} />
                     <Route path="/artist/:id" element={<ArtistPage />} />
                     <Route path="/charts/:id" element={<ChartsPage />} />

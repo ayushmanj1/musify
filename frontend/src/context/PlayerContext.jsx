@@ -31,12 +31,7 @@ export function PlayerProvider({ children }) {
       return Array.isArray(saved) ? saved : []
     } catch { return [] }
   })
-  const [playlists, setPlaylists] = useState(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem('playlists') || '[]')
-      return Array.isArray(saved) ? saved : []
-    } catch { return [] }
-  })
+
   const [savedSongs, setSavedSongs] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('savedSongs') || '[]')
@@ -70,9 +65,7 @@ export function PlayerProvider({ children }) {
     localStorage.setItem('recentlyPlayed', JSON.stringify(recentlyPlayed))
   }, [recentlyPlayed])
 
-  useEffect(() => {
-    localStorage.setItem('playlists', JSON.stringify(playlists))
-  }, [playlists])
+
 
   useEffect(() => {
     localStorage.setItem('savedSongs', JSON.stringify(savedSongs))
@@ -347,47 +340,7 @@ export function PlayerProvider({ children }) {
     toast.success(`Added "${song.title}" to queue`)
   }, [])
 
-  // Playlist management
-  const createPlaylist = useCallback((name) => {
-    const newPlaylist = {
-      id: Date.now().toString(),
-      name,
-      songs: [],
-      createdAt: new Date().toISOString(),
-    }
-    setPlaylists(prev => [...prev, newPlaylist])
-    toast.success(`Created playlist "${name}"`)
-    return newPlaylist
-  }, [])
 
-  const addToPlaylist = useCallback((playlistId, song) => {
-    setPlaylists(prev => prev.map(pl => {
-      if (pl.id === playlistId) {
-        if (pl.songs.some(s => s.videoId === song.videoId)) {
-          toast.error('Song already in playlist')
-          return pl
-        }
-        toast.success(`Added to "${pl.name}"`)
-        return { ...pl, songs: [...pl.songs, song] }
-      }
-      return pl
-    }))
-  }, [])
-
-  const removeFromPlaylist = useCallback((playlistId, videoId) => {
-    setPlaylists(prev => prev.map(pl => {
-      if (pl.id === playlistId) {
-        return { ...pl, songs: pl.songs.filter(s => s.videoId !== videoId) }
-      }
-      return pl
-    }))
-    toast.success('Removed from playlist')
-  }, [])
-
-  const deletePlaylist = useCallback((playlistId) => {
-    setPlaylists(prev => prev.filter(pl => pl.id !== playlistId))
-    toast.success('Playlist deleted')
-  }, [])
 
   // Saved songs
   const toggleSavedSong = useCallback((song) => {
@@ -433,9 +386,7 @@ export function PlayerProvider({ children }) {
   }, [])
 
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
-  const [activeSidebarTab, setActiveSidebarTab] = useState('playlists') // 'playlists' or 'history'
   const [isFullScreenPlayer, setIsFullScreenPlayer] = useState(false)
-  const [songToAdd, setSongToAdd] = useState(null)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
 
   const timeValue = useMemo(() => ({
@@ -445,29 +396,23 @@ export function PlayerProvider({ children }) {
 
   const value = useMemo(() => ({
     currentSong, isPlaying, volume, queue, queueIndex,
-    recentlyPlayed, playlists, savedSongs,
+    recentlyPlayed, savedSongs,
     recommendations, isRecLoading, isSuggestionsOpen, setIsSuggestionsOpen,
     isSidebarExpanded, setIsSidebarExpanded,
-    activeSidebarTab, setActiveSidebarTab,
     isFullScreenPlayer, setIsFullScreenPlayer,
-    songToAdd, setSongToAdd,
     isSearchOpen, setIsSearchOpen,
     playSong, togglePlay, seekTo, setPlayerVolume, playNext, playPrevious, addToQueue,
-    createPlaylist, addToPlaylist, removeFromPlaylist, deletePlaylist,
     toggleSavedSong, isSongSaved, removeFromHistory,
     shuffle, setShuffle, repeat, setRepeat,
     isGuestMode, setIsGuestMode,
   }), [
     currentSong, isPlaying, volume, queue, queueIndex,
-    recentlyPlayed, playlists, savedSongs,
+    recentlyPlayed, savedSongs,
     recommendations, isRecLoading, isSuggestionsOpen,
     isSidebarExpanded,
-    activeSidebarTab,
     isFullScreenPlayer,
-    songToAdd,
     isSearchOpen,
     playSong, togglePlay, seekTo, setPlayerVolume, playNext, playPrevious, addToQueue,
-    createPlaylist, addToPlaylist, removeFromPlaylist, deletePlaylist,
     toggleSavedSong, isSongSaved, removeFromHistory,
     shuffle, repeat, isGuestMode
   ])

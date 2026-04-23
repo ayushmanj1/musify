@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { useState, useEffect, memo, useCallback } from 'react'
-import { FiPlay, FiPlus, FiMusic } from 'react-icons/fi'
+import { FiPlay, FiMusic } from 'react-icons/fi'
 import { usePlayer, usePlayerTime } from '../../context/PlayerContext.jsx'
 import { enrichSongMetadata, generateGradientUrl } from '../../utils/api.js'
 
@@ -32,7 +32,7 @@ const SongCard = memo(({
   rank = null
 }) => {
   const navigate = useNavigate()
-  const { playSong, currentSong, isPlaying, setIsSidebarExpanded, setSongToAdd } = usePlayer()
+  const { playSong, currentSong, isPlaying } = usePlayer()
   const [song, setSong] = useState(initialSong)
   const [isEnriching, setIsEnriching] = useState(false)
   const [imgError, setImgError] = useState(false)
@@ -63,11 +63,7 @@ const SongCard = memo(({
     }
   }
 
-  const handlePlus = (e) => {
-    e.stopPropagation()
-    setSongToAdd(song)
-    setIsSidebarExpanded(true)
-  }
+
 
   const displayImage = imgError 
     ? generateGradientUrl(song.title || song.name || 'Music') 
@@ -130,14 +126,6 @@ const SongCard = memo(({
           <h3 className={`text-[13px] md:text-[14px] font-bold truncate leading-tight flex-1 ${isActive ? 'text-lavender' : 'text-white/90'}`}>
             {song.title || song.name || 'Title'}
           </h3>
-          {!isArtist && (
-            <button 
-              onClick={handlePlus}
-              className="text-white/20 hover:text-white transition-colors p-1"
-            >
-              <FiPlus size={14} />
-            </button>
-          )}
         </div>
         <p className={`text-[11px] text-white/30 font-bold truncate tracking-widest uppercase ${isArtist ? 'text-center' : ''}`}>
           {song.artist || song.channelTitle || (isArtist ? 'Artist' : 'Unknown')}
