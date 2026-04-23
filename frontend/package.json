@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@clerk/clerk-react": "^5.61.6",
+    "@clerk/themes": "^2.4.57",
     "axios": "^1.15.2",
     "framer-motion": "^12.38.0",
     "react": "^19.2.5",

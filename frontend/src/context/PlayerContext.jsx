@@ -1,12 +1,19 @@
-import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react'
+import { createContext, useContext, useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import toast from 'react-hot-toast'
 import { getRecommendations } from '../utils/api.js'
 
 const PlayerContext = createContext(null)
+const PlayerTimeContext = createContext(null)
 
 export function usePlayer() {
   const context = useContext(PlayerContext)
   if (!context) throw new Error('usePlayer must be used within PlayerProvider')
+  return context
+}
+
+export function usePlayerTime() {
+  const context = useContext(PlayerTimeContext)
+  if (!context) throw new Error('usePlayerTime must be used within PlayerProvider')
   return context
 }
 
@@ -237,18 +244,19 @@ export function PlayerProvider({ children }) {
   useEffect(() => {
     if (currentSong && isPlaying && duration > 0) {
       const interval = setInterval(() => {
+        const time = playerRef.current?.getCurrentTime ? playerRef.current.getCurrentTime() : 0;
         setRecentlyPlayed(prev => {
           if (prev.length === 0) return prev
           return prev.map(s => 
             s.videoId === currentSong.videoId 
-              ? { ...s, lastProgress: (currentTime / duration) * 100 } 
+              ? { ...s, lastProgress: (time / duration) * 100 } 
               : s
           )
         })
       }, 5000)
       return () => clearInterval(interval)
     }
-  }, [currentSong, isPlaying, currentTime, duration])
+  }, [currentSong, isPlaying, duration])
 
   const playSong = useCallback(async (song, songQueue = null, index = 0) => {
     if (!song) return
@@ -423,8 +431,13 @@ export function PlayerProvider({ children }) {
   const [songToAdd, setSongToAdd] = useState(null)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
 
-  const value = {
-    currentSong, isPlaying, currentTime, duration, volume, queue, queueIndex,
+  const timeValue = useMemo(() => ({
+    currentTime,
+    duration
+  }), [currentTime, duration])
+
+  const value = useMemo(() => ({
+    currentSong, isPlaying, volume, queue, queueIndex,
     recentlyPlayed, playlists, savedSongs,
     recommendations, isRecLoading, isSuggestionsOpen, setIsSuggestionsOpen,
     isSidebarExpanded, setIsSidebarExpanded,
@@ -436,12 +449,27 @@ export function PlayerProvider({ children }) {
     createPlaylist, addToPlaylist, removeFromPlaylist, deletePlaylist,
     toggleSavedSong, isSongSaved, removeFromHistory,
     shuffle, setShuffle, repeat, setRepeat,
-  }
+  }), [
+    currentSong, isPlaying, volume, queue, queueIndex,
+    recentlyPlayed, playlists, savedSongs,
+    recommendations, isRecLoading, isSuggestionsOpen,
+    isSidebarExpanded,
+    activeSidebarTab,
+    isFullScreenPlayer,
+    songToAdd,
+    isSearchOpen,
+    playSong, togglePlay, seekTo, setPlayerVolume, playNext, playPrevious, addToQueue,
+    createPlaylist, addToPlaylist, removeFromPlaylist, deletePlaylist,
+    toggleSavedSong, isSongSaved, removeFromHistory,
+    shuffle, repeat
+  ])
 
   return (
-    <PlayerContext.Provider value={value}>
-      {children}
-      <div id="yt-player" style={{ position: 'fixed', top: -9999, left: -9999, width: 0, height: 0, pointerEvents: 'none', opacity: 0 }} />
-    </PlayerContext.Provider>
+    <PlayerTimeContext.Provider value={timeValue}>
+      <PlayerContext.Provider value={value}>
+        {children}
+        <div id="yt-player" style={{ position: 'fixed', top: -9999, left: -9999, width: 0, height: 0, pointerEvents: 'none', opacity: 0 }} />
+      </PlayerContext.Provider>
+    </PlayerTimeContext.Provider>
   )
 }

@@ -1,10 +1,24 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { FiPlay, FiTrash2, FiMoreHorizontal, FiList } from 'react-icons/fi'
+import { FiPlay, FiTrash2, FiMoreHorizontal, FiList, FiClock, FiMusic } from 'react-icons/fi'
 import { usePlayer } from '../context/PlayerContext.jsx'
 import SongRow from '../components/ui/SongRow.jsx'
+import { SignedIn, SignedOut, RedirectToSignIn } from '@clerk/clerk-react'
 
 export default function PlaylistPage() {
+  return (
+    <>
+      <SignedIn>
+        <PlaylistContent />
+      </SignedIn>
+      <SignedOut>
+        <RedirectToSignIn />
+      </SignedOut>
+    </>
+  )
+}
+
+function PlaylistContent() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { playlists, playSong, removeFromPlaylist, deletePlaylist } = usePlayer()
@@ -12,10 +26,10 @@ export default function PlaylistPage() {
   const playlist = playlists.find(pl => pl.id === id)
   if (!playlist) {
     return (
-      <div className="text-center py-20">
-        <p className="text-6xl mb-4">🫠</p>
-        <p className="text-white font-bold text-xl">Playlist not found</p>
-        <button onClick={() => navigate('/library')} className="mt-4 text-white hover:underline font-bold">Back to Library</button>
+      <div className="flex flex-col items-center justify-center h-[60vh] text-center">
+        <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center text-4xl mb-6">🫠</div>
+        <h2 className="text-2xl font-black text-white mb-2">Collection Not Found</h2>
+        <button onClick={() => navigate('/library')} className="text-lavender font-bold hover:underline">Back to Library</button>
       </div>
     )
   }
@@ -27,80 +41,102 @@ export default function PlaylistPage() {
   }
 
   const handleDelete = () => {
-    deletePlaylist(id)
-    navigate('/library')
+    if (window.confirm('Delete this collection?')) {
+      deletePlaylist(id)
+      navigate('/library')
+    }
   }
 
   return (
-    <div className="pt-4 pb-32">
-      {/* Header matching Spotify */}
-      <div className="flex flex-col md:flex-row items-end gap-6 mb-8 pt-4">
-        {/* Large playlist image */}
-        <div className="w-48 h-48 md:w-60 md:h-60 rounded-md bg-surface-hover flex items-center justify-center overflow-hidden shadow-2xl flex-shrink-0">
+    <div className="relative pb-32">
+      {/* Dynamic Header */}
+      <div className="relative pt-12 pb-12 px-6 md:px-12 flex flex-col md:flex-row items-end gap-10 overflow-hidden">
+        {/* Background Ambient Glow */}
+        <div className="absolute inset-0 bg-gradient-to-b from-lavender/10 via-transparent to-transparent pointer-events-none" />
+        
+        {/* Playlist Artwork (Premium Stack) */}
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-56 h-56 md:w-72 md:h-72 rounded-[40px] overflow-hidden flex-shrink-0 shadow-[0_40px_80px_rgba(0,0,0,0.5)] z-10 border border-white/5"
+          style={{ background: 'rgba(255,255,255,0.02)' }}
+        >
           {playlist.songs.length > 0 ? (
             <div className="grid grid-cols-2 w-full h-full">
               {playlist.songs.slice(0, 4).map((s, idx) => <img key={idx} src={s.thumbnail} alt="" className="w-full h-full object-cover" />)}
-              {playlist.songs.length < 4 && Array.from({ length: 4 - Math.min(playlist.songs.length, 4) }).map((_, i) => (
-                <div key={`empty-${i}`} className="w-full h-full bg-surface-active" />
+              {playlist.songs.length < 4 && Array.from({ length: 4 - playlist.songs.length }).map((_, i) => (
+                <div key={i} className="bg-white/5" />
               ))}
             </div>
-          ) : <FiList className="text-6xl text-text-muted" />}
-        </div>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-white/5">
+              <FiMusic size={80} />
+            </div>
+          )}
+        </motion.div>
         
-        <div className="flex-1">
-          <p className="text-xs font-bold text-white uppercase tracking-wider mb-2">Playlist</p>
-          <h1 className="text-4xl md:text-6xl font-black text-white mb-6 tracking-tighter truncate leading-tight">
-            {playlist.name}
-          </h1>
-          <div className="flex items-center gap-1 text-sm text-text-secondary">
-            <span className="font-bold text-white">Vybe User</span>
-            <span>•</span>
-            <span>{playlist.songs.length} songs</span>
+        <div className="flex-1 z-10">
+          <p className="text-xs font-black text-white/30 uppercase tracking-[0.4em] mb-4">Collection</p>
+          <h1 className="text-5xl md:text-8xl font-black text-white mb-8 tracking-tighter leading-none">{playlist.name}</h1>
+          
+          <div className="flex items-center gap-6">
+            <motion.button 
+              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+              onClick={handlePlayAll}
+              disabled={playlist.songs.length === 0}
+              className="px-8 py-4 bg-white text-black rounded-full font-black uppercase tracking-widest text-[12px] shadow-2xl flex items-center gap-3 disabled:opacity-30 transition-all"
+            >
+              <FiPlay className="fill-current" /> Play All
+            </motion.button>
+            
+            <button 
+              onClick={handleDelete}
+              className="w-14 h-14 rounded-full glass-btn flex items-center justify-center text-white/30 hover:text-red-400 transition-all"
+            >
+              <FiTrash2 size={24} />
+            </button>
+            
+            <p className="text-sm font-bold text-white/20 uppercase tracking-widest">{playlist.songs.length} Tracks • 2024</p>
           </div>
         </div>
       </div>
 
-      {/* Action Bar */}
-      <div className="flex items-center gap-6 py-4 mb-6">
-        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handlePlayAll}
-          disabled={playlist.songs.length === 0}
-          className="w-14 h-14 bg-accent hover:bg-accent-hover text-black rounded-full flex items-center justify-center disabled:opacity-50 disabled:hover:scale-100 transition-all shadow-xl">
-          <FiPlay className="text-xl ml-1" fill="black" strokeWidth={0} />
-        </motion.button>
-        <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={handleDelete}
-          className="text-text-secondary hover:text-white transition-colors" title="Delete playlist">
-          <FiTrash2 className="text-2xl" />
-        </motion.button>
-        <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
-          className="text-text-secondary hover:text-white transition-colors">
-          <FiMoreHorizontal className="text-3xl" />
-        </motion.button>
+      {/* Track List */}
+      <div className="px-4 md:px-10 mt-12">
+        {playlist.songs.length > 0 ? (
+          <div className="flex flex-col">
+            <div className="grid grid-cols-[50px_1fr_80px_40px] px-6 py-4 text-[11px] font-black uppercase tracking-[0.3em] text-white/10 border-b border-white/5 mb-6">
+              <span>#</span>
+              <span>Track Title</span>
+              <span className="hidden md:block">Duration</span>
+              <span className="text-center"><FiClock size={14} className="mx-auto" /></span>
+            </div>
+            
+            <div className="flex flex-col gap-1">
+              {playlist.songs.map((song, i) => (
+                <SongRow 
+                  key={song.videoId} 
+                  song={song} 
+                  songs={playlist.songs} 
+                  index={i} 
+                  showIndex
+                  onRemove={(videoId) => removeFromPlaylist(id, videoId)} 
+                />
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-32 bg-white/[0.02] rounded-[40px] border border-dashed border-white/10">
+            <p className="text-white/40 font-black text-2xl tracking-tight mb-8">This collection is currently empty</p>
+            <button 
+              onClick={() => navigate('/search')}
+              className="px-8 py-3 rounded-full border border-white/10 text-white/60 font-bold hover:bg-white hover:text-black transition-all"
+            >
+              Find Music
+            </button>
+          </div>
+        )}
       </div>
-
-      {/* Songs */}
-      {playlist.songs.length > 0 ? (
-        <div className="flex flex-col">
-          {/* Header row */}
-          <div className="flex items-center px-4 py-2 text-text-secondary text-sm border-b border-white/10 mb-4 sticky top-16 bg-surface-raised/95 backdrop-blur z-20">
-            <div className="w-5 text-center mr-4">#</div>
-            <div className="flex-1">Title</div>
-            <div className="w-12 text-center">⏱</div>
-          </div>
-          <div className="flex flex-col gap-1">
-            {playlist.songs.map((song, i) => (
-              <SongRow key={song.videoId} song={song} songs={playlist.songs} index={i} showIndex
-                onRemove={(videoId) => removeFromPlaylist(id, videoId)} />
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="text-center py-20 border-t border-white/10 mt-6">
-          <p className="text-white font-bold text-xl">Let's find something for your playlist</p>
-          <button onClick={() => navigate('/search')} className="mt-4 px-6 py-2 bg-white text-black font-bold rounded-full hover:scale-105 transition-transform">
-            Find songs
-          </button>
-        </div>
-      )}
     </div>
   )
 }

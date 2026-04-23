@@ -1,11 +1,27 @@
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, memo, useCallback } from 'react'
 import { FiPlay, FiPlus, FiMusic } from 'react-icons/fi'
-import { usePlayer } from '../../context/PlayerContext.jsx'
-import { enrichSongMetadata } from '../../utils/api.js'
+import { usePlayer, usePlayerTime } from '../../context/PlayerContext.jsx'
+import { enrichSongMetadata, generateGradientUrl } from '../../utils/api.js'
 
-export default function SongCard({ 
+const SongCardProgress = memo(({ isCurrent, lastProgress }) => {
+  const { currentTime, duration } = usePlayerTime()
+  const progress = isCurrent && duration > 0 ? (currentTime / duration) * 100 : (lastProgress || 0)
+  
+  return (
+    <div className="absolute bottom-0 left-0 w-full h-[2px] bg-black/40 overflow-hidden">
+      <motion.div 
+        className="h-full bg-lavender shadow-[0_0_8px_rgba(167,139,250,0.6)]"
+        initial={{ width: 0 }}
+        animate={{ width: `${progress}%` }}
+        transition={{ duration: 0.5 }}
+      />
+    </div>
+  )
+})
+
+const SongCard = memo(({ 
   song: initialSong, 
   songs = [], 
   index = 0, 
@@ -13,16 +29,15 @@ export default function SongCard({
   isChart = false,
   showProgress = false,
   isNew = false,
-  rank = null,
-  isLarge = false
-}) {
+  rank = null
+}) => {
   const navigate = useNavigate()
-  const { playSong, currentSong, isPlaying, setIsSidebarExpanded, setSongToAdd, currentTime, duration } = usePlayer()
+  const { playSong, currentSong, isPlaying, setIsSidebarExpanded, setSongToAdd } = usePlayer()
   const [song, setSong] = useState(initialSong)
   const [isEnriching, setIsEnriching] = useState(false)
+  const [imgError, setImgError] = useState(false)
   
   useEffect(() => {
-    // Only enrich if it's not already enriched and it's a song (not an artist card)
     if (!initialSong.isEnriched && initialSong.title && !isArtist && !isChart) {
       setIsEnriching(true)
       enrichSongMetadata(initialSong).then(enriched => {
@@ -36,25 +51,13 @@ export default function SongCard({
 
   const isCurrent = currentSong?.videoId === song.videoId
   const isActive = isCurrent && isPlaying
-  const progress = isCurrent ? (currentTime / duration) * 100 : (song.lastProgress || 0)
-
-  // Frontend safety filter for Shorts
-  const lowerTitle = (song.title || "").toLowerCase()
-  if (lowerTitle.includes("shorts") || lowerTitle.includes("#shorts") || ["trailer", "teaser", "reaction"].some(word => lowerTitle.includes(word))) {
-    return null
-  }
 
   const handleClick = () => {
-    if (isChart) {
-      navigate(`/charts/${encodeURIComponent(song.title || song.id)}`)
-      return
-    }
-
+    if (isChart) return // Charts navigation can be added later
     if (isArtist) {
       navigate(`/artist/${encodeURIComponent(song.title || song.name)}`)
       return
     }
-    
     if (song.videoId) {
       playSong(song, songs.length > 0 ? songs : [song], index)
     }
@@ -66,124 +69,82 @@ export default function SongCard({
     setIsSidebarExpanded(true)
   }
 
-  const displayImage = song.albumArt || song.thumbnail
+  const displayImage = imgError 
+    ? generateGradientUrl(song.title || song.name || 'Music') 
+    : (song.albumArt || song.thumbnail || generateGradientUrl(song.title || song.name || 'Music'))
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 30 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ 
-        delay: index * 0.03, 
-        duration: 0.8, 
-        ease: [0.4, 0, 0.2, 1] 
-      }}
+    <div 
       onClick={handleClick}
       className={`
         w-[160px] md:w-full
-        p-3 md:p-4 rounded-[28px] 
-        bg-[#111]
-        border border-white/5
-        hover:border-lavender/30
-        hover:scale-[1.02]
-        ${isActive ? 'active-playing-border' : ''}
-        transition-all duration-300 ease-out
-        cursor-pointer group flex-shrink-0 relative active:scale-95
-        snap-start will-change-transform overflow-hidden
+        p-3 rounded-2xl 
+        glass-card group cursor-pointer relative active:scale-[0.98] transition-all
+        ${isActive ? 'border-lavender/30 ring-1 ring-lavender/20' : ''}
       `}
     >
-      {/* 💎 Subtle Glow on Hover only */}
-      <div className="absolute inset-0 bg-lavender/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+      <div className="shimmer-sweep" />
 
-      <div className={`relative aspect-square mb-4 overflow-hidden shadow-2xl ${isArtist ? 'rounded-full' : 'rounded-[20px]'} bg-white/5`}>
+      <div className={`relative aspect-square mb-3 overflow-hidden shadow-xl ${isArtist ? 'rounded-full' : 'rounded-xl'} bg-white/[0.03]`}>
         {isEnriching ? (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-5 h-5 border-2 border-lavender/20 border-t-lavender rounded-full animate-spin" />
-          </div>
-        ) : displayImage ? (
+          <div className="absolute inset-0 flex items-center justify-center skeleton-shimmer" />
+        ) : (
           <img 
             src={displayImage} 
             alt={song.title} 
-            className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 will-change-transform"
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
             loading="lazy"
+            onError={() => setImgError(true)}
           />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <FiMusic className="text-2xl text-white/10" />
-          </div>
         )}
         
-        {/* Hover Overlays */}
-        <div className="absolute inset-0 bg-lavender/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-        
-        {/* Play Button Overlay */}
         {!isArtist && (
-          <div className={`absolute inset-0 flex items-center justify-center transition-all duration-500 ${
+          <div className={`absolute inset-0 flex items-center justify-center transition-all duration-300 ${
             isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
           }`}>
-            <div className={`w-12 h-12 md:w-14 md:h-14 rounded-full bg-lavender flex items-center justify-center shadow-[0_8px_25px_rgba(167,139,250,0.4)] transition-transform duration-500 ${
-              isActive ? 'scale-100' : 'scale-75 group-hover:scale-100'
-            }`}>
-              <FiPlay className="text-black text-xl md:text-2xl fill-current ml-1" />
+            <div className="w-12 h-12 rounded-full flex items-center justify-center bg-white text-black shadow-2xl scale-90 group-hover:scale-100 transition-transform">
+              <FiPlay className="text-xl fill-current ml-1" />
             </div>
           </div>
         )}
 
-        {/* Progress Bar (Recently Played) */}
         {showProgress && !isArtist && (
-          <div className="absolute bottom-0 left-0 w-full h-1 bg-black/40 overflow-hidden">
-            <motion.div 
-              className="h-full bg-lavender shadow-[0_0_8px_rgba(167,139,250,0.8)]"
-              initial={{ width: 0 }}
-              animate={{ width: `${progress}%` }}
-              transition={{ duration: 0.5 }}
-            />
-          </div>
+          <SongCardProgress isCurrent={isCurrent} lastProgress={song.lastProgress} />
         )}
 
-        {/* NEW Badge */}
         {isNew && (
-          <div className="absolute top-3 left-3 px-2 py-0.5 bg-lavender text-black text-[9px] font-black tracking-widest rounded-full shadow-[0_0_15px_rgba(167,139,250,0.6)] animate-pulse">
+          <div className="absolute top-2 left-2 px-2 py-0.5 text-[8px] font-black tracking-widest rounded-md bg-lavender text-white">
             NEW
           </div>
         )}
 
-        {/* Rank Badge */}
         {rank && (
-          <div className="absolute top-3 right-3 w-7 h-7 bg-black/60 backdrop-blur-md border border-lavender/20 flex items-center justify-center rounded-lg text-[12px] font-black text-white shadow-lg">
+          <div className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded-lg text-[10px] font-black text-white bg-black/60 border border-white/10">
             {rank}
           </div>
         )}
       </div>
 
-      <div className="flex flex-col gap-1.5 px-0.5 relative z-10">
+      <div className="flex flex-col gap-1 px-1">
         <div className="flex items-start justify-between gap-2">
-          <h3 className={`text-[13px] md:text-[15px] font-black truncate leading-tight flex-1 ${isActive ? 'text-lavender' : 'text-white'}`}>
-            {song.title || song.name || 'Unknown Title'}
+          <h3 className={`text-[13px] md:text-[14px] font-bold truncate leading-tight flex-1 ${isActive ? 'text-lavender' : 'text-white/90'}`}>
+            {song.title || song.name || 'Title'}
           </h3>
           {!isArtist && (
             <button 
               onClick={handlePlus}
-              className="w-6 h-6 flex items-center justify-center rounded-full bg-white/5 hover:bg-lavender/20 text-white/30 hover:text-lavender transition-all active:scale-90 opacity-0 group-hover:opacity-100"
+              className="text-white/20 hover:text-white transition-colors p-1"
             >
-              <FiPlus className="text-sm" />
+              <FiPlus size={14} />
             </button>
           )}
         </div>
-        <p className={`text-[11px] md:text-[12px] text-white/40 font-bold truncate leading-tight tracking-wide ${isArtist ? 'text-center uppercase tracking-[0.1em] text-lavender/60' : ''}`}>
-          {song.artist || song.channelTitle || (isArtist ? 'Artist' : 'Unknown Artist')}
+        <p className={`text-[11px] text-white/30 font-bold truncate tracking-widest uppercase ${isArtist ? 'text-center' : ''}`}>
+          {song.artist || song.channelTitle || (isArtist ? 'Artist' : 'Unknown')}
         </p>
-        {song.albumName && !isArtist && (
-          <p className="text-[9px] text-lavender/30 font-bold truncate uppercase tracking-tighter">
-            {song.albumName}
-          </p>
-        )}
       </div>
-
-      {/* Active Glow */}
-      {isActive && (
-        <div className="absolute -inset-[1px] rounded-[32px] border border-lavender/60 shadow-[0_0_30px_rgba(167,139,250,0.25)] pointer-events-none z-0" />
-      )}
-    </motion.div>
+    </div>
   )
-}
+})
+
+export default SongCard
