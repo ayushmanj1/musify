@@ -1,10 +1,10 @@
 import { motion } from 'framer-motion'
-import { FiPlay, FiHeart, FiMoreHorizontal, FiPlus, FiTrash2 } from 'react-icons/fi'
+import { FiPlay, FiHeart, FiMoreHorizontal, FiPlus, FiTrash2, FiDownload } from 'react-icons/fi'
 import { usePlayer } from '../../context/PlayerContext.jsx'
 import { useState, useRef, useEffect, memo } from 'react'
 
 const SongRow = memo(({ song, songs = [], index = 0, showIndex = false, onRemove = null, compact = false }) => {
-  const { playSong, currentSong, isPlaying, toggleSavedSong, isSongSaved, playlists, addToPlaylist, addToQueue } = usePlayer()
+  const { playSong, currentSong, isPlaying, toggleSavedSong, isSongSaved, playlists, addToPlaylist, addToQueue, downloadSong } = usePlayer()
   const [showMenu, setShowMenu] = useState(false)
   const menuRef = useRef(null)
   const isActive = currentSong?.videoId === song.videoId
@@ -113,6 +113,12 @@ const SongRow = memo(({ song, songs = [], index = 0, showIndex = false, onRemove
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-sm font-bold text-white/70 hover:text-white transition-all"
             >
               <FiPlus /> Add to Queue
+            </button>
+            <button 
+              onClick={(e) => { e.stopPropagation(); downloadSong(song); setShowMenu(false) }}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-sm font-bold text-white/70 hover:text-white transition-all"
+            >
+              <FiDownload /> Download Song
             </button>
             
             <div className="h-px bg-white/5 my-2 mx-2" />

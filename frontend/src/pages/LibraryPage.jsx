@@ -193,3 +193,15 @@ function LibraryContent() {
     </div>
   )
 }
+
+function EmptyState({ icon, title, subtitle }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-32 text-center">
+      <div className="w-24 h-24 rounded-full bg-white/[0.03] flex items-center justify-center text-4xl mb-6 shadow-2xl border border-white/[0.05]">
+        {icon}
+      </div>
+      <h3 className="text-2xl font-black text-white mb-2 tracking-tight">{title}</h3>
+      <p className="text-white/30 font-bold max-w-xs mx-auto leading-relaxed uppercase text-[10px] tracking-[0.2em]">{subtitle}</p>
+    </div>
+  )
+}

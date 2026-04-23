@@ -432,6 +432,36 @@ export function PlayerProvider({ children }) {
     setRecentlyPlayed(prev => prev.filter(s => !(s.videoId === videoId && s.playedAt === playedAt)))
   }, [])
 
+  const downloadSong = useCallback(async (song) => {
+    if (!song) return
+    
+    // 1. Add to saved songs automatically (as requested: "visible in liked button tab")
+    setSavedSongs(prev => {
+      const exists = prev.some(s => s.videoId === song.videoId)
+      if (exists) return prev
+      return [song, ...prev]
+    })
+
+    const id = toast.loading(`Preparing "${song.title}" for download...`)
+    
+    try {
+      const downloadUrl = `/api/download?videoId=${song.videoId}&title=${encodeURIComponent(song.title)}`
+      
+      // Trigger browser download
+      const link = document.createElement('a')
+      link.href = downloadUrl
+      link.download = `${song.title}.mp3`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+      toast.success('Download started!', { id })
+    } catch (error) {
+      console.error('Download failed:', error)
+      toast.error('Failed to start download', { id })
+    }
+  }, [])
+
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
   const [activeSidebarTab, setActiveSidebarTab] = useState('playlists') // 'playlists' or 'history'
   const [isFullScreenPlayer, setIsFullScreenPlayer] = useState(false)
@@ -454,7 +484,7 @@ export function PlayerProvider({ children }) {
     isSearchOpen, setIsSearchOpen,
     playSong, togglePlay, seekTo, setPlayerVolume, playNext, playPrevious, addToQueue,
     createPlaylist, addToPlaylist, removeFromPlaylist, deletePlaylist,
-    toggleSavedSong, isSongSaved, removeFromHistory,
+    toggleSavedSong, isSongSaved, removeFromHistory, downloadSong,
     shuffle, setShuffle, repeat, setRepeat,
     isGuestMode, setIsGuestMode,
   }), [
@@ -468,7 +498,7 @@ export function PlayerProvider({ children }) {
     isSearchOpen,
     playSong, togglePlay, seekTo, setPlayerVolume, playNext, playPrevious, addToQueue,
     createPlaylist, addToPlaylist, removeFromPlaylist, deletePlaylist,
-    toggleSavedSong, isSongSaved, removeFromHistory,
+    toggleSavedSong, isSongSaved, removeFromHistory, downloadSong,
     shuffle, repeat, isGuestMode
   ])
 

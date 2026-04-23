@@ -4,7 +4,7 @@ import {
   FiPlay, FiPause, FiSkipForward, FiSkipBack, 
   FiVolume2, FiVolumeX, FiHeart, FiList, 
   FiPlus, FiChevronDown, FiShuffle, FiRepeat, 
-  FiShare2, FiMoreVertical 
+  FiShare2, FiMoreVertical, FiDownload 
 } from 'react-icons/fi'
 import { usePlayer, usePlayerTime } from '../../context/PlayerContext.jsx'
 
@@ -58,7 +58,7 @@ export default function Player() {
     setSongToAdd, setIsSidebarExpanded,
     isSuggestionsOpen, setIsSuggestionsOpen, recommendations, isRecLoading, playSong,
     shuffle, setShuffle, repeat, setRepeat,
-    toggleSavedSong, isSongSaved
+    toggleSavedSong, isSongSaved, downloadSong
   } = usePlayer()
 
   const playerRef = useRef(null)
@@ -191,6 +191,10 @@ export default function Player() {
                 >
                   <FiHeart size={24} className={isSongSaved(currentSong.videoId) ? 'fill-current' : ''} />
                   <span className="text-[10px] font-black uppercase tracking-widest">{isSongSaved(currentSong.videoId) ? 'Liked' : 'Like'}</span>
+                </button>
+                <button onClick={() => downloadSong(currentSong)} className="flex flex-col items-center gap-2 hover:text-lavender transition-all">
+                  <FiDownload size={24} />
+                  <span className="text-[10px] font-black uppercase tracking-widest">Download</span>
                 </button>
                 <button onClick={() => { setSongToAdd(currentSong); setIsSidebarExpanded(true); }} className="flex flex-col items-center gap-2 hover:text-lavender transition-all"><FiPlus size={24} /><span className="text-[10px] font-black uppercase tracking-widest">Add</span></button>
                 <button className="flex flex-col items-center gap-2 hover:text-lavender transition-all"><FiShare2 size={24} /><span className="text-[10px] font-black uppercase tracking-widest">Share</span></button>
