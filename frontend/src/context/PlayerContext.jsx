@@ -48,6 +48,9 @@ export function PlayerProvider({ children }) {
   const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false)
   const [shuffle, setShuffle] = useState(false)
   const [repeat, setRepeat] = useState('none') // 'none', 'one', 'all'
+  const [isGuestMode, setIsGuestMode] = useState(() => {
+    return localStorage.getItem('isGuestMode') === 'true'
+  })
 
   const playerRef = useRef(null)
   const playerReady = useRef(false)
@@ -74,6 +77,10 @@ export function PlayerProvider({ children }) {
   useEffect(() => {
     localStorage.setItem('savedSongs', JSON.stringify(savedSongs))
   }, [savedSongs])
+
+  useEffect(() => {
+    localStorage.setItem('isGuestMode', isGuestMode)
+  }, [isGuestMode])
 
   // Initialize YouTube IFrame API
   useEffect(() => {
@@ -449,6 +456,7 @@ export function PlayerProvider({ children }) {
     createPlaylist, addToPlaylist, removeFromPlaylist, deletePlaylist,
     toggleSavedSong, isSongSaved, removeFromHistory,
     shuffle, setShuffle, repeat, setRepeat,
+    isGuestMode, setIsGuestMode,
   }), [
     currentSong, isPlaying, volume, queue, queueIndex,
     recentlyPlayed, playlists, savedSongs,
@@ -461,7 +469,7 @@ export function PlayerProvider({ children }) {
     playSong, togglePlay, seekTo, setPlayerVolume, playNext, playPrevious, addToQueue,
     createPlaylist, addToPlaylist, removeFromPlaylist, deletePlaylist,
     toggleSavedSong, isSongSaved, removeFromHistory,
-    shuffle, repeat
+    shuffle, repeat, isGuestMode
   ])
 
   return (

@@ -8,14 +8,7 @@ import { SignedIn, SignedOut, RedirectToSignIn } from '@clerk/clerk-react'
 
 export default function LibraryPage() {
   return (
-    <>
-      <SignedIn>
-        <LibraryContent />
-      </SignedIn>
-      <SignedOut>
-        <RedirectToSignIn />
-      </SignedOut>
-    </>
+    <LibraryContent />
   )
 }
 
