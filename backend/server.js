@@ -4,7 +4,6 @@ import dotenv from 'dotenv'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import ytSearch from 'yt-search'
-import ytdl from '@distube/ytdl-core'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -170,28 +169,6 @@ app.get('/api/charts/:id', async (req, res) => {
 
   setCache(cacheKey, result)
   res.json(result)
-})
-
-// Download Route
-app.get('/api/download', async (req, res) => {
-  const { videoId, title } = req.query
-  if (!videoId) return res.status(400).send('Video ID is required')
-
-  try {
-    const fileName = title ? `${title.replace(/[^\w\s]/gi, '')}.mp3` : `${videoId}.mp3`
-    
-    res.header('Content-Disposition', `attachment; filename="${fileName}"`)
-    res.header('Content-Type', 'audio/mpeg')
-
-    ytdl(`https://www.youtube.com/watch?v=${videoId}`, {
-      filter: 'audioonly',
-      quality: 'highestaudio',
-    }).pipe(res)
-    
-  } catch (err) {
-    console.error('Download error:', err)
-    res.status(500).send('Failed to download audio')
-  }
 })
 
 // Serve static files
