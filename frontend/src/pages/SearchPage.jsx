@@ -40,16 +40,7 @@ export default function SearchPage() {
 
   return (
     <div className="pt-6 px-4 md:px-8">
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-8"
-      >
-        <h1 className="text-3xl font-bold text-white/90 mb-2 tracking-tight">
-          {query ? `Results for "${query}"` : 'Browse all'}
-        </h1>
-        {query && <p className="text-sm text-white/35 font-medium">Top results for your search</p>}
-      </motion.div>
+      <div className="h-6" /> {/* Spacer */}
 
       {loading ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
