@@ -199,9 +199,8 @@ export default function Player() {
   }
 
   const handleRepeatToggle = () => {
-    if (repeat === 'none') setRepeat('all')
-    else if (repeat === 'all') setRepeat('one')
-    else setRepeat('none')
+    // Simplify to just toggle between 'none' and 'one' (loop song forever)
+    setRepeat(repeat === 'none' ? 'one' : 'none')
   }
 
   return (
@@ -210,6 +209,7 @@ export default function Player() {
         {!isFullScreenPlayer && (
           <div className="fixed bottom-20 md:bottom-6 left-0 right-0 flex justify-center px-4 z-[60] pointer-events-none">
             <motion.div 
+              layoutId="player-main-wrapper"
               initial={{ y: 50, opacity: 0, scale: 0.95 }}
               animate={{ y: 0, opacity: 1, scale: 1 }}
               exit={{ y: 50, opacity: 0, scale: 0.95 }}
@@ -229,7 +229,7 @@ export default function Player() {
               }}
               whileHover={{ y: -2, scale: 1.01 }}
               whileTap={{ scale: 0.98 }}
-              className="w-full max-w-[420px] h-[60px] rounded-full flex items-center px-2 cursor-pointer pointer-events-auto shadow-[0_10px_40px_rgba(0,0,0,0.5)] relative overflow-hidden"
+              className="w-full max-w-[420px] h-[60px] rounded-full flex items-center px-2 cursor-pointer pointer-events-auto shadow-[0_10px_40px_rgba(0,0,0,0.5)] relative overflow-hidden will-change-transform transform-gpu"
               style={{ 
                 background: 'rgba(20, 20, 25, 0.75)', 
                 backdropFilter: 'blur(30px) saturate(200%)',
@@ -280,9 +280,10 @@ export default function Player() {
       <AnimatePresence>
         {isFullScreenPlayer && (
           <motion.div 
-            initial={{ y: '100%', opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: '100%', opacity: 0 }}
+            layoutId="player-main-wrapper"
+            initial={{ opacity: 0, borderRadius: '40px' }}
+            animate={{ opacity: 1, borderRadius: '0px' }}
+            exit={{ opacity: 0, borderRadius: '40px' }}
             transition={{ type: 'spring', damping: 25, stiffness: 300, mass: 0.5 }}
             drag="y"
             dragConstraints={{ top: 0, bottom: 0 }}
@@ -308,19 +309,11 @@ export default function Player() {
               <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-[#060608]/80 to-[#060608]" />
             </motion.div>
 
-            <div className="relative z-10 flex items-center justify-between p-5 md:p-10">
-              <button 
-                onClick={() => {
-                  haptics.light()
-                  setIsFullScreenPlayer(false)
-                }} 
-                className="w-10 h-10 md:w-12 md:h-12 rounded-full glass-btn flex items-center justify-center text-white/50 active:scale-90 transition-transform"
-              >
-                <FiChevronDown size={24} />
-              </button>
-              
+            {/* Header Area (Removed useless arrows) */}
+            <div className="relative z-10 flex items-center justify-between p-4 md:p-8">
+              {/* Invisible spacer to maintain layout */}
+              <div className="w-10 h-10 md:w-12 md:h-12" />
               <div className="flex-1" />
-
               <div className="w-10 h-10 md:w-12 md:h-12" />
             </div>
 
@@ -406,7 +399,7 @@ export default function Player() {
 
               <PlaybackProgress seekTo={seekTo} formatTime={formatTime} />
 
-              <div className="w-full max-w-[480px] mx-auto flex items-center justify-center gap-5 md:gap-8 px-6 py-4 md:px-8 md:py-5 rounded-[45px] shadow-[0_40px_100px_rgba(0,0,0,0.7)] mb-10 transition-all border border-white/10" style={{ background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(50px) saturate(200%)' }}>
+              <div className="w-full max-w-[480px] mx-auto flex items-center justify-center gap-5 md:gap-8 px-6 py-4 md:px-8 md:py-5 rounded-full shadow-[0_40px_100px_rgba(0,0,0,0.7)] mb-10 transition-all border border-white/10" style={{ background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(50px) saturate(200%)' }}>
                 <button 
                   onClick={() => {
                     haptics.success()
@@ -463,11 +456,10 @@ export default function Player() {
                     haptics.light()
                     handleRepeatToggle()
                   }} 
-                  className={`relative text-lg transition-all active:scale-90 ${repeat !== 'none' ? 'text-lavender' : 'text-white/20 hover:text-white/60'}`}
+                  className={`relative text-lg transition-all active:scale-90 ${repeat === 'one' ? 'text-lavender' : 'text-white/20 hover:text-white/60'}`}
                 >
                   <FiRepeat />
                   {repeat === 'one' && <span className="absolute -top-1 -right-1 w-3 h-3 bg-lavender text-white text-[7px] font-black rounded-full flex items-center justify-center">1</span>}
-                  {repeat === 'all' && <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 bg-lavender rounded-full shadow-[0_0_8px_rgba(167,139,250,1)]" />}
                 </button>
 
                 <button 
@@ -505,10 +497,11 @@ export default function Player() {
               className="fixed inset-0 z-[110] bg-black/40 backdrop-blur-sm"
             />
             <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              initial={{ scale: 0, opacity: 0, y: 100, x: 100 }}
+              animate={{ scale: 1, opacity: 1, y: 0, x: 0 }}
+              exit={{ scale: 0, opacity: 0, y: 100, x: 100 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              style={{ transformOrigin: 'calc(100% - 60px) calc(100% - 150px)' }}
               className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[92%] max-w-[420px] h-[580px] z-[120] rounded-[40px] overflow-hidden flex flex-col bg-[#0c0c0e]/95 backdrop-blur-xl border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.8)] will-change-transform"
             >
               <div className="px-8 pb-6 pt-8 flex items-center justify-between border-b border-white/5">
