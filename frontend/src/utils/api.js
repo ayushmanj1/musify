@@ -84,6 +84,41 @@ export function getSuggestions(query) {
     .slice(0, 5)
 }
 
+// iTunes Enrichment Cache
+const itunesCache = new Map()
+
+export async function enrichSongMetadata(song) {
+  if (!song || !song.title) return song
+  
+  const cacheKey = `${song.title}-${song.artist || ''}`.toLowerCase().trim()
+  if (itunesCache.has(cacheKey)) {
+    return { ...song, ...itunesCache.get(cacheKey) }
+  }
+
+  try {
+    const searchTerm = encodeURIComponent(`${song.title} ${song.artist || ''}`)
+    const response = await axios.get(`https://itunes.apple.com/search?term=${searchTerm}&entity=song&limit=1`)
+    
+    if (response.data.results && response.data.results[0]) {
+      const result = response.data.results[0]
+      const enrichment = {
+        albumArt: result.artworkUrl100.replace('100x100bb', '600x600bb'),
+        itunesArtist: result.artistName,
+        itunesTitle: result.trackName,
+        albumName: result.collectionName,
+        isEnriched: true
+      }
+      
+      itunesCache.set(cacheKey, enrichment)
+      return { ...song, ...enrichment }
+    }
+  } catch (error) {
+    console.error('iTunes Enrichment error:', error)
+  }
+  
+  return song
+}
+
 export async function getRecommendations(videoId, artist, title) {
   try {
     const { data } = await api.get('/recommendations', {

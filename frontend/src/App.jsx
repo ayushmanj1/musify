@@ -30,7 +30,7 @@ export default function App() {
           <Sidebar />
         </div>
 
-        <div className="flex-1 flex flex-col min-w-0 relative z-10 bg-[#121212] rounded-none md:rounded-xl overflow-hidden">
+        <div className="flex-1 flex flex-col min-w-0 relative z-10 bg-black/60 backdrop-blur-sm rounded-none md:rounded-2xl overflow-hidden border-x border-t border-white/5">
           <div className="flex-1 overflow-y-auto relative hide-scrollbar">
             <TopBar />
             <div className="pb-32 md:pb-24">

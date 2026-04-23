@@ -1,5 +1,5 @@
 export function Skeleton({ className = '', variant = 'rect' }) {
-  const baseClass = 'skeleton'
+  const baseClass = 'skeleton-shimmer'
   
   if (variant === 'circle') {
     return <div className={`${baseClass} rounded-full ${className}`} />
@@ -10,10 +10,10 @@ export function Skeleton({ className = '', variant = 'rect' }) {
 
 export function SongCardSkeleton() {
   return (
-    <div className="glass rounded-2xl p-3 animate-pulse">
-      <Skeleton className="w-full aspect-square rounded-xl mb-3" />
-      <Skeleton className="h-4 w-3/4 mb-2" />
-      <Skeleton className="h-3 w-1/2" />
+    <div className="bg-[#111] rounded-[28px] p-3 w-[150px] md:w-[185px] border border-white/5">
+      <Skeleton className="w-full aspect-square rounded-[20px] mb-3" />
+      <Skeleton className="h-4 w-3/4 mb-2 rounded-md" />
+      <Skeleton className="h-3 w-1/2 rounded-md" />
     </div>
   )
 }

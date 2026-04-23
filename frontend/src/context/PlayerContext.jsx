@@ -39,6 +39,8 @@ export function PlayerProvider({ children }) {
   const [recommendations, setRecommendations] = useState([])
   const [isRecLoading, setIsRecLoading] = useState(false)
   const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false)
+  const [shuffle, setShuffle] = useState(false)
+  const [repeat, setRepeat] = useState('none') // 'none', 'one', 'all'
 
   const playerRef = useRef(null)
   const playerReady = useRef(false)
@@ -231,13 +233,30 @@ export function PlayerProvider({ children }) {
     }
   }, [currentSong, fetchRecommendations])
 
+  // Periodically update progress in history
+  useEffect(() => {
+    if (currentSong && isPlaying && duration > 0) {
+      const interval = setInterval(() => {
+        setRecentlyPlayed(prev => {
+          if (prev.length === 0) return prev
+          return prev.map(s => 
+            s.videoId === currentSong.videoId 
+              ? { ...s, lastProgress: (currentTime / duration) * 100 } 
+              : s
+          )
+        })
+      }, 5000)
+      return () => clearInterval(interval)
+    }
+  }, [currentSong, isPlaying, currentTime, duration])
+
   const playSong = useCallback(async (song, songQueue = null, index = 0) => {
     if (!song) return
     console.log(`[Context] playSong called for: ${song.title} (${song.videoId})`)
 
-    // Seamless Transition: Fade Out
+    // Seamless Transition: Fade Out (~300ms)
     if (currentSong && isPlaying) {
-      await fadeVolume(0, 1000)
+      await fadeVolume(0, 300)
     }
 
     setCurrentSong(song)
@@ -250,19 +269,20 @@ export function PlayerProvider({ children }) {
 
     // Add to recently played (History)
     setRecentlyPlayed(prev => {
-      const lastSong = prev[0]
-      const songWithTimestamp = { ...song, playedAt: new Date().toISOString() }
-      if (lastSong && lastSong.videoId === song.videoId) {
-        return [songWithTimestamp, ...prev.slice(1)]
+      const filtered = prev.filter(s => s.videoId !== song.videoId)
+      const songWithTimestamp = { 
+        ...song, 
+        playedAt: new Date().toISOString(),
+        lastProgress: 0 
       }
-      return [songWithTimestamp, ...prev].slice(0, 100)
+      return [songWithTimestamp, ...filtered].slice(0, 100)
     })
 
     if (playerReady.current && playerRef.current) {
       playerRef.current.loadVideoById(song.videoId)
-      // Seamless Transition: Fade In
+      // Seamless Transition: Fade In (~300ms)
       playerRef.current.setVolume(0)
-      setTimeout(() => fadeVolume(volume, 1000), 500)
+      setTimeout(() => fadeVolume(volume, 300), 100)
     }
   }, [volume, currentSong, isPlaying, fadeVolume, fetchRecommendations])
 
@@ -399,7 +419,7 @@ export function PlayerProvider({ children }) {
 
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
   const [activeSidebarTab, setActiveSidebarTab] = useState('playlists') // 'playlists' or 'history'
-  const [isRightPanelOpen, setIsRightPanelOpen] = useState(false)
+  const [isFullScreenPlayer, setIsFullScreenPlayer] = useState(false)
   const [songToAdd, setSongToAdd] = useState(null)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
 
@@ -409,12 +429,13 @@ export function PlayerProvider({ children }) {
     recommendations, isRecLoading, isSuggestionsOpen, setIsSuggestionsOpen,
     isSidebarExpanded, setIsSidebarExpanded,
     activeSidebarTab, setActiveSidebarTab,
-    isRightPanelOpen, setIsRightPanelOpen,
+    isFullScreenPlayer, setIsFullScreenPlayer,
     songToAdd, setSongToAdd,
     isSearchOpen, setIsSearchOpen,
     playSong, togglePlay, seekTo, setPlayerVolume, playNext, playPrevious, addToQueue,
     createPlaylist, addToPlaylist, removeFromPlaylist, deletePlaylist,
     toggleSavedSong, isSongSaved, removeFromHistory,
+    shuffle, setShuffle, repeat, setRepeat,
   }
 
   return (

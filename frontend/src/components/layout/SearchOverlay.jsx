@@ -5,13 +5,39 @@ import { useNavigate } from 'react-router-dom'
 import { usePlayer } from '../../context/PlayerContext.jsx'
 import { searchSongs } from '../../utils/api.js'
 
-const SUGGESTED_CATEGORIES = [
-  { name: 'Hindi Hits', color: 'bg-orange-500' },
-  { name: 'Punjabi Pop', color: 'bg-blue-500' },
-  { name: 'English Top 40', color: 'bg-purple-500' },
-  { name: 'Haryanvi Vibes', color: 'bg-green-500' },
-  { name: 'Lofi & Chill', color: 'bg-indigo-500' },
-  { name: 'Romantic Melodies', color: 'bg-red-500' },
+const BROWSE_CATEGORIES = [
+  // ROW 1
+  { name: 'Podcasts', color: 'bg-[#E13300]', img: 'https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=300' },
+  { name: 'Audiobooks', color: 'bg-[#27856A]', img: 'https://images.unsplash.com/photo-1495446815901-a7297e633e8d?w=300' },
+  { name: 'Made For You', color: 'bg-[#1E3264]', img: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300' },
+  { name: 'New releases', color: 'bg-[#E8115B]', img: 'https://images.unsplash.com/photo-1514525253344-981c1caa8cd3?w=300' },
+  { name: 'Hip-Hop', color: 'bg-[#BC5900]', img: 'https://images.unsplash.com/photo-1571609832126-9932b17f5672?w=300' },
+  { name: 'Pop', color: 'bg-[#148A08]', img: 'https://images.unsplash.com/photo-1526218626217-dc65a29bb444?w=300' },
+  { name: 'Country', color: 'bg-[#D84000]', img: 'https://images.unsplash.com/photo-1541913051-111444633e1b?w=300' },
+  // ROW 2
+  { name: 'Latin', color: 'bg-[#E1118C]', img: 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=300' },
+  { name: 'Charts', color: 'bg-[#8D67AB]', img: 'https://images.unsplash.com/photo-1459749411177-042180ce673c?w=300' },
+  { name: 'Live Events', color: 'bg-[#7358FF]', img: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=300' },
+  { name: 'Rock', color: 'bg-[#E91429]', img: 'https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=300' },
+  { name: 'Dance/Electronic', color: 'bg-[#D84000]', img: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=300' },
+  { name: 'Mood', color: 'bg-[#E1118C]', img: 'https://images.unsplash.com/photo-1499415479124-43c32433a620?w=300' },
+  { name: 'Indie', color: 'bg-[#E91429]', img: 'https://images.unsplash.com/photo-1453090927415-5f45085b6a0d?w=300' },
+  // ROW 3
+  { name: 'Workout', color: 'bg-[#777777]', img: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=300' },
+  { name: 'K-Pop', color: 'bg-[#148A08]', img: 'https://images.unsplash.com/photo-1524368535928-5b5e00ddc76b?w=300' },
+  { name: 'Chill', color: 'bg-[#D84000]', img: 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=300' },
+  { name: 'Sleep', color: 'bg-[#1E3264]', img: 'https://images.unsplash.com/photo-1541480601022-2305c0f0248b?w=300' },
+  { name: 'Party', color: 'bg-[#AF2896]', img: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=300' },
+  { name: 'At Home', color: 'bg-[#477BA7]', img: 'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?w=300' },
+  { name: 'Decades', color: 'bg-[#BA5D07]', img: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300' },
+  // ROW 4
+  { name: 'Romance', color: 'bg-[#8C1932]', img: 'https://images.unsplash.com/photo-1518621736915-f3b1c41bfd00?w=300' },
+  { name: 'Jazz', color: 'bg-[#777777]', img: 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=300' },
+  { name: 'Metal', color: 'bg-[#E91429]', img: 'https://images.unsplash.com/photo-1528645238318-22cc06010c28?w=300' },
+  { name: 'Trending', color: 'bg-[#E13300]', img: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=300' },
+  { name: 'Wellness', color: 'bg-[#A0C3D2]', img: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=300' },
+  { name: 'Anime', color: 'bg-[#E4115B]', img: 'https://images.unsplash.com/photo-1578632292335-df3abbb0d586?w=300' },
+  { name: 'Gaming', color: 'bg-[#8D67AB]', img: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=300' },
 ]
 
 export default function SearchOverlay() {
@@ -34,7 +60,7 @@ export default function SearchOverlay() {
         setLoading(true)
         try {
           const data = await searchSongs(query)
-          setResults(data.slice(0, 8))
+          setResults(data.slice(0, 12))
         } catch (err) {
           console.error(err)
         }
@@ -59,11 +85,6 @@ export default function SearchOverlay() {
     handleClose()
   }
 
-  const handleSelectSong = (song) => {
-    playSong(song)
-    handleClose()
-  }
-
   return (
     <AnimatePresence>
       {isSearchOpen && (
@@ -71,20 +92,19 @@ export default function SearchOverlay() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-2xl flex flex-col"
+          className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-3xl flex flex-col"
         >
-          {/* Header & Search Bar */}
-          <div className="p-8 md:p-12 flex flex-col items-center max-w-5xl mx-auto w-full">
-            <div className="flex items-center gap-6 w-full relative">
+          {/* Header & Search Bar - Anchored to Top */}
+          <div className="p-8 md:px-12 md:py-10 flex flex-col items-center w-full bg-gradient-to-b from-black/60 to-transparent">
+            <div className="flex items-center gap-6 w-full max-w-7xl relative">
               <div className="flex-1 relative group">
-                {/* Glow Background */}
-                <div className="absolute -inset-1 bg-gradient-to-r from-[#1DB954]/40 to-blue-500/40 rounded-full blur-2xl opacity-0 group-focus-within:opacity-100 transition-all duration-700" />
+                <div className="absolute -inset-1 bg-lavender/20 rounded-full blur-3xl opacity-0 group-focus-within:opacity-100 transition-all duration-1000" />
                 
                 <motion.div 
                   layout
-                  className="relative flex items-center bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-full px-8 py-5 focus-within:bg-white/[0.08] focus-within:border-white/20 transition-all shadow-[0_30px_100px_rgba(0,0,0,0.5)] group-focus-within:scale-[1.02]"
+                  className="relative flex items-center bg-white/[0.05] backdrop-blur-3xl border border-white/10 rounded-full px-8 py-4 focus-within:bg-white/[0.1] focus-within:border-lavender/30 transition-all shadow-2xl group-focus-within:scale-[1.01]"
                 >
-                  <FiSearch className="text-white/20 text-2xl mr-5 group-focus-within:text-[#1DB954] group-focus-within:scale-110 transition-all duration-500" />
+                  <FiSearch className="text-white/30 text-2xl mr-5 group-focus-within:text-lavender transition-all" />
                   <input
                     ref={inputRef}
                     type="text"
@@ -92,131 +112,98 @@ export default function SearchOverlay() {
                     onChange={(e) => setQuery(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSearch(query)}
                     placeholder="What do you want to listen to?"
-                    className="w-full bg-transparent border-none outline-none text-xl md:text-3xl font-black text-white placeholder:text-white/10 tracking-tight"
+                    className="w-full bg-transparent border-none outline-none text-xl md:text-2xl font-bold text-white placeholder:text-white/20 tracking-tight"
                   />
                   
-                  <AnimatePresence>
-                    {query && (
-                      <motion.button 
-                        initial={{ opacity: 0, scale: 0.5 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.5 }}
-                        onClick={() => setQuery('')} 
-                        className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all ml-4"
-                      >
-                        <FiX size={20} />
-                      </motion.button>
-                    )}
-                  </AnimatePresence>
+                  {query && (
+                    <button onClick={() => setQuery('')} className="text-white/20 hover:text-white transition-all ml-4">
+                      <FiX size={20} />
+                    </button>
+                  )}
                 </motion.div>
               </div>
 
               <button 
                 onClick={handleClose}
-                className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 border border-white/5 transition-all active:scale-90 flex-shrink-0"
-                title="Close (Esc)"
+                className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-lavender hover:bg-white/10 border border-white/5 transition-all active:scale-90"
               >
-                <FiX size={32} />
+                <FiX size={28} />
               </button>
             </div>
           </div>
 
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto hide-scrollbar px-6 md:px-8 pb-32">
-            <div className="max-w-5xl mx-auto w-full">
+          {/* Content Area */}
+          <div className="flex-1 overflow-y-auto hide-scrollbar px-6 md:px-12 pb-32">
+            <div className="max-w-7xl mx-auto w-full">
               {query.length < 2 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mt-8 animate-fade-in">
-                  {/* Recent Searches / Suggested Categories */}
-                  <div>
-                    <h3 className="text-xl font-black text-white mb-6 flex items-center gap-2">
-                      <FiTrendingUp className="text-[#1DB954]" />
-                      Browse Categories
-                    </h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      {SUGGESTED_CATEGORIES.map((cat, i) => (
-                        <motion.div
-                          key={cat.name}
-                          initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ delay: i * 0.05 }}
-                          onClick={() => handleSearch(cat.name)}
-                          className={`${cat.color} aspect-[16/9] rounded-2xl p-4 cursor-pointer hover:scale-[1.05] transition-all relative overflow-hidden group shadow-lg`}
-                        >
-                          <span className="text-lg font-black text-white relative z-10 leading-tight">{cat.name}</span>
-                          <FiMusic className="absolute -bottom-2 -right-2 text-white/20 text-6xl rotate-12 group-hover:scale-110 transition-transform" />
-                        </motion.div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Top Artists */}
-                  <div>
-                    <h3 className="text-xl font-black text-white mb-6 flex items-center gap-2">
-                      <FiClock className="text-[#1DB954]" />
-                      Recommended for You
-                    </h3>
-                    <div className="flex flex-col gap-2">
-                      {['Karan Aujla', 'Arijit Singh', 'The Weeknd', 'Sidhu Moose Wala'].map((artist, i) => (
-                        <motion.div
-                          key={artist}
-                          initial={{ opacity: 0, x: 20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: i * 0.05 }}
-                          onClick={() => handleSearch(artist)}
-                          className="flex items-center gap-4 p-3 rounded-2xl hover:bg-white/5 cursor-pointer transition-all border border-transparent hover:border-white/5 group"
-                        >
-                          <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-[#1DB954]/20 transition-colors">
-                            <span className="text-white font-bold">{artist[0]}</span>
-                          </div>
-                          <span className="text-lg font-bold text-white/80 group-hover:text-white transition-colors">{artist}</span>
-                        </motion.div>
-                      ))}
-                    </div>
+                <div className="mt-4">
+                  <h3 className="text-2xl font-black text-white mb-8 tracking-tighter">Browse all</h3>
+                  
+                  {/* The Screenshot Grid - Strictly 7 Columns */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-6">
+                    {BROWSE_CATEGORIES.map((cat, i) => (
+                      <motion.div
+                        key={cat.name}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: i * 0.02 }}
+                        onClick={() => handleSearch(cat.name)}
+                        className={`${cat.color} aspect-square rounded-[12px] p-4 cursor-pointer relative overflow-hidden group shadow-lg transition-transform hover:scale-105 active:scale-95`}
+                      >
+                        {/* Shimmer on Hover */}
+                        <div className="shimmer-sweep" />
+                        
+                        {/* Text - Top Left */}
+                        <span className="text-lg md:text-xl font-black text-white relative z-10 leading-tight tracking-tight">
+                          {cat.name}
+                        </span>
+                        
+                        {/* Tilted Image - Bottom Right */}
+                        <div className="absolute -bottom-2 -right-4 w-20 h-20 md:w-24 md:h-24 shadow-2xl rotate-[25deg] group-hover:rotate-[20deg] transition-transform duration-500 rounded-lg overflow-hidden border border-black/10">
+                          <img src={cat.img} alt="" className="w-full h-full object-cover" />
+                        </div>
+                      </motion.div>
+                    ))}
                   </div>
                 </div>
               ) : (
-                <div className="mt-8">
+                <div className="mt-4">
+                  {/* Results Section (Lavender-centric) */}
                   <div className="flex items-center justify-between mb-8">
-                    <h3 className="text-[12px] font-black text-white/30 uppercase tracking-[4px]">Results for "{query}"</h3>
-                    <div className="h-px flex-1 bg-white/5 ml-6" />
+                    <h3 className="text-sm font-black text-white/40 uppercase tracking-[4px]">Top Matches</h3>
                   </div>
+                  
                   {loading ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {[1, 2, 3, 4, 5, 6].map(i => (
-                        <div key={i} className="h-[88px] w-full bg-white/[0.02] rounded-[24px] animate-pulse border border-white/5" />
+                        <div key={i} className="h-24 w-full bg-white/[0.03] rounded-[24px] animate-pulse border border-white/5" />
                       ))}
                     </div>
                   ) : results.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {results.map((song, i) => (
                         <motion.div
                           key={song.videoId}
-                          initial={{ opacity: 0, y: 20 }}
+                          initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: i * 0.05 }}
-                          onClick={() => handleSelectSong(song)}
-                          className="flex items-center gap-5 p-4 rounded-[28px] bg-white/[0.02] border border-white/5 hover:border-[#1DB954]/50 hover:bg-white/[0.08] cursor-pointer transition-all duration-500 group relative overflow-hidden"
+                          onClick={() => { playSong(song); handleClose(); }}
+                          className="flex items-center gap-5 p-4 rounded-[32px] bg-white/[0.03] border border-white/10 hover:border-lavender/40 hover:bg-white/[0.08] cursor-pointer transition-all duration-500 group relative overflow-hidden"
                         >
-                          {/* Inner Glow on Hover */}
-                          <div className="absolute inset-0 bg-gradient-to-br from-[#1DB954]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-                          
-                          <div className="relative w-14 h-14 rounded-2xl overflow-hidden shadow-2xl flex-shrink-0 group-hover:scale-105 transition-transform duration-500">
+                          <div className="shimmer-sweep" />
+                          <div className="relative w-16 h-16 rounded-2xl overflow-hidden shadow-2xl flex-shrink-0 group-hover:scale-105 transition-transform duration-700">
                             <img src={song.thumbnail} alt="" className="w-full h-full object-cover" />
                           </div>
-                          <div className="min-w-0 flex-1 relative">
-                            <p className="text-[17px] font-bold text-white truncate leading-tight mb-1 group-hover:text-[#1DB954] transition-colors">{song.title}</p>
-                            <p className="text-[13px] text-white/40 font-medium truncate tracking-wide">{song.artist}</p>
-                          </div>
-                          <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500 translate-x-4 group-hover:translate-x-0">
-                            <FiMusic className="text-[#1DB954] text-sm" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[17px] font-black text-white truncate leading-tight group-hover:text-lavender transition-colors">{song.title}</p>
+                            <p className="text-[13px] text-white/40 font-bold truncate mt-1">{song.artist}</p>
                           </div>
                         </motion.div>
                       ))}
                     </div>
                   ) : (
                     <div className="py-20 text-center">
-                      <p className="text-6xl mb-6">🔍</p>
-                      <p className="text-white/40 text-lg font-medium">No results found for your search.</p>
+                      <p className="text-white/40 text-xl font-black uppercase tracking-[5px]">No results found</p>
                     </div>
                   )}
                 </div>
