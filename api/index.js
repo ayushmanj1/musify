@@ -414,12 +414,62 @@ app.get('/api/stream', async (req, res) => {
     const streamUrl = streamInfo.url
     const mimeType = streamInfo.mime || 'audio/webm'
 
-    // ─── Vercel Serverless Optimization ───
-    // We CANNOT pipe the stream here because Vercel Serverless Functions have a strict
-    // 10-second timeout. Piping a 3-minute song would cause the function to be killed mid-stream.
-    // Instead, we immediately redirect the client to the direct Google CDN URL.
-    // The client's browser handles the download, Range requests, and playback natively.
-    res.redirect(302, streamInfo.url)
+    // Handle range requests for seeking
+    const range = req.headers.range
+    const fetchOptions = range ? { headers: { Range: range } } : {}
+
+    const response = await fetch(streamInfo.url, fetchOptions)
+
+    if (!response.ok) {
+      throw new Error(`Upstream returned ${response.status}`)
+    }
+
+    res.status(response.status)
+
+    // Copy necessary headers
+    if (response.headers.get('content-range')) {
+      res.setHeader('Content-Range', response.headers.get('content-range'))
+    }
+    if (response.headers.get('content-length')) {
+      res.setHeader('Content-Length', response.headers.get('content-length'))
+    }
+    const upstreamType = response.headers.get('content-type') || ''
+    res.setHeader('Content-Type', upstreamType.startsWith('audio') ? upstreamType : mimeType)
+    res.setHeader('Cache-Control', 'public, max-age=3600')
+    res.setHeader('Accept-Ranges', 'bytes')
+
+    if (!response.body) {
+      return res.status(500).json({ error: 'Empty stream from upstream' })
+    }
+
+    // Pump stream to client
+    const reader = response.body.getReader()
+    
+    // Crucial for mobile (Safari): Cancel upstream download if client aborts the request
+    req.on('close', () => {
+      reader.cancel().catch(() => {})
+    })
+
+    const pump = async () => {
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) { 
+            if (!res.writableEnded) res.end()
+            break 
+          }
+          if (res.writableEnded) {
+            reader.cancel().catch(() => {})
+            break
+          }
+          res.write(Buffer.from(value))
+        }
+      } catch (e) {
+        console.error('Pump error:', e)
+        if (!res.writableEnded) res.end()
+      }
+    }
+    pump()
 
   } catch (err) {
     console.error('Stream endpoint error:', err.message)
