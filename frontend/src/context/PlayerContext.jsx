@@ -215,14 +215,19 @@ export function PlayerProvider({ children }) {
         try {
           const url = new URL(audio.src, window.location.origin)
           url.searchParams.set('retry', Date.now())
+          audio.oncanplay = null
           audio.src = url.toString()
           audio.load()
-          audio.play().catch(() => {})
+          audio.oncanplay = () => {
+            audio.oncanplay = null
+            audio.play().catch(() => {})
+          }
         } catch(e) {
           console.error('Retry failed', e)
         }
       } else {
         toast.error('Playback error. Skipping...')
+        retryCountRef.current = 0
         setTimeout(() => {
           if (playNextRef.current) playNextRef.current()
         }, 1500)
@@ -352,13 +357,31 @@ export function PlayerProvider({ children }) {
 
     // Set source to stream endpoint
     console.log(`[Audio] Loading: ${song.title}`)
+    
+    // Remove any previous canplay listener to prevent duplicates
+    audio.oncanplay = null
+    
     audio.src = `/api/stream?id=${song.videoId}`
     audio.load()
-    audio.play().catch(err => {
-      console.warn('[Audio] Autoplay blocked:', err.message)
-      setIsPlaying(false)
-      setIsAudioLoading(false)
-    })
+    
+    // Wait for buffer to be ready before playing (fixes mobile)
+    audio.oncanplay = () => {
+      audio.oncanplay = null // Fire only once
+      console.log('[Audio] Buffer ready, playing...')
+      audio.play().catch(err => {
+        console.warn('[Audio] Play failed:', err.message)
+        setIsPlaying(false)
+        setIsAudioLoading(false)
+      })
+    }
+    
+    // Fallback: if canplay doesn't fire within 8s, try playing anyway
+    setTimeout(() => {
+      if (audio.paused && audio.src && audio.readyState < 3) {
+        console.log('[Audio] Fallback play attempt')
+        audio.play().catch(() => {})
+      }
+    }, 8000)
   }, [])
 
   // ─── Preload Next Track ───
