@@ -19,6 +19,11 @@
       "YOUTUBE_DL_SKIP_PYTHON_CHECK": "1"
     }
   },
+  "functions": {
+    "api/index.js": {
+      "includeFiles": "node_modules/youtube-dl-exec/bin/yt-dlp*"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",
