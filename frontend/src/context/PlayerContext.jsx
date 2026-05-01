@@ -57,6 +57,10 @@ export function PlayerProvider({ children }) {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isAudioLoading, setIsAudioLoading] = useState(false)
 
+  // Equalizer state
+  const [eqBands, setEqBands] = useState([0, 0, 0, 0, 0])
+  const eqFiltersRef = useRef(null)
+
   // Crossfade state
   const [crossfadeEnabled, setCrossfadeEnabled] = useState(() => {
     try { return JSON.parse(localStorage.getItem('crossfadeEnabled') || 'true') } catch { return true }
@@ -119,6 +123,7 @@ export function PlayerProvider({ children }) {
   // ─── Audio Element Setup ───
   useEffect(() => {
     const audio = audioRef.current
+    audio.crossOrigin = 'anonymous'
     crossfadeManager.init(audio)
     
     audio.volume = volume / 100
@@ -218,9 +223,14 @@ export function PlayerProvider({ children }) {
           audio.oncanplay = null
           audio.src = url.toString()
           audio.load()
-          audio.oncanplay = () => {
-            audio.oncanplay = null
-            audio.play().catch(() => {})
+          const p = audio.play()
+          if (p !== undefined) {
+            p.catch(() => {
+              audio.oncanplay = () => {
+                audio.oncanplay = null
+                audio.play().catch(() => {})
+              }
+            })
           }
         } catch(e) {
           console.error('Retry failed', e)
@@ -252,6 +262,48 @@ export function PlayerProvider({ children }) {
       audio.removeEventListener('pause', onPause)
       audio.removeEventListener('ended', onEnded)
       audio.removeEventListener('error', onError)
+    }
+  }, [])
+
+  // ─── Web Audio API Initialization ───
+  const initWebAudio = useCallback(() => {
+    if (eqFiltersRef.current || !audioRef.current) return
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext
+      const actx = new AudioContext()
+      
+      const source = actx.createMediaElementSource(audioRef.current)
+      
+      const freqs = [60, 250, 1000, 4000, 16000]
+      const filters = freqs.map((f, i) => {
+        const filter = actx.createBiquadFilter()
+        filter.type = 'peaking'
+        filter.frequency.value = f
+        filter.Q.value = 1
+        filter.gain.value = eqBands[i]
+        return filter
+      })
+
+      source.connect(filters[0])
+      for(let i = 0; i < filters.length - 1; i++) {
+        filters[i].connect(filters[i+1])
+      }
+      filters[filters.length - 1].connect(actx.destination)
+
+      eqFiltersRef.current = filters
+    } catch (err) {
+      console.warn('Web Audio API setup failed', err)
+    }
+  }, [eqBands])
+
+  const onEQChange = useCallback((index, value) => {
+    setEqBands(prev => {
+      const next = [...prev]
+      next[index] = value
+      return next
+    })
+    if (eqFiltersRef.current) {
+      eqFiltersRef.current[index].gain.value = value
     }
   }, [])
 
@@ -344,44 +396,40 @@ export function PlayerProvider({ children }) {
     }
 
     setCurrentSong(song)
+    initWebAudio()
     setCurrentTime(0)
     setDuration(0)
     setIsAudioLoading(true)
     setIsPlaying(true)
-    retryCountRef.current = 0 // Reset retries on new song
+    retryCountRef.current = 0
 
     if (songQueue) {
       setQueue(songQueue)
       setQueueIndex(index)
     }
 
-    // Set source to stream endpoint
-    console.log(`[Audio] Loading: ${song.title}`)
-    
-    // Remove any previous canplay listener to prevent duplicates
+    // Clean up any previous canplay handler
     audio.oncanplay = null
-    
+
+    console.log(`[Audio] Loading: ${song.title}`)
     audio.src = `/api/stream?id=${song.videoId}`
     audio.load()
-    
-    // Wait for buffer to be ready before playing (fixes mobile)
-    audio.oncanplay = () => {
-      audio.oncanplay = null // Fire only once
-      console.log('[Audio] Buffer ready, playing...')
-      audio.play().catch(err => {
-        console.warn('[Audio] Play failed:', err.message)
-        setIsPlaying(false)
-        setIsAudioLoading(false)
+
+    // Try playing immediately (works on desktop)
+    const playPromise = audio.play()
+    if (playPromise !== undefined) {
+      playPromise.catch(err => {
+        console.warn('[Audio] Immediate play failed, waiting for buffer...', err.message)
+        // On mobile: wait for the audio to buffer, then play
+        audio.oncanplay = () => {
+          audio.oncanplay = null
+          audio.play().catch(() => {
+            setIsPlaying(false)
+            setIsAudioLoading(false)
+          })
+        }
       })
     }
-    
-    // Fallback: if canplay doesn't fire within 8s, try playing anyway
-    setTimeout(() => {
-      if (audio.paused && audio.src && audio.readyState < 3) {
-        console.log('[Audio] Fallback play attempt')
-        audio.play().catch(() => {})
-      }
-    }, 8000)
   }, [])
 
   // ─── Preload Next Track ───
@@ -525,6 +573,7 @@ export function PlayerProvider({ children }) {
     playNext, playPrevious, addToQueue,
     toggleSavedSong, isSongSaved,
     shuffle, setShuffle, repeat, setRepeat,
+    eqBands, onEQChange,
   }), [
     currentSong, isPlaying, volume, queue, queueIndex,
     savedSongs, recommendations, isRecLoading, isSuggestionsOpen,
@@ -532,7 +581,8 @@ export function PlayerProvider({ children }) {
     playSong, togglePlay, seekTo, setPlayerVolume,
     playNext, playPrevious, addToQueue,
     toggleSavedSong, isSongSaved,
-    shuffle, repeat
+    shuffle, repeat, sleepTimer, sleepTimerRemaining,
+    crossfadeEnabled, crossfadeDuration, eqBands, onEQChange
   ])
 
   return (

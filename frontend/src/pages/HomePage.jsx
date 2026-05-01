@@ -33,41 +33,42 @@ function QuickTile({ name, img, onClick }) {
       onClick={onClick}
       style={{
         display: 'flex', alignItems: 'center', gap: 10,
-        background: 'var(--bg-card)', borderRadius: 'var(--radius-base)',
+        background: '#282828', borderRadius: 4,
         height: 56, padding: 0, border: 'none', cursor: 'pointer',
         overflow: 'hidden', width: '100%', color: 'var(--text-primary)',
         touchAction: 'manipulation',
       }}
     >
-      <img src={img} alt={name} width={56} height={56} loading="lazy"
+      <img src={img} alt={name} width={36} height={36} loading="lazy"
         style={{ borderRadius: '4px 0 0 4px', flexShrink: 0 }} />
-      <span className="truncate" style={{ fontSize: 13, fontWeight: 600, paddingRight: 8 }}>
+      <span style={{ fontSize: 11, fontWeight: 600, paddingRight: 8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
         {name}
       </span>
     </button>
   )
 }
 
-/* ─── Square Card (156×156) ─── */
+/* ─── Square Card (110×110) ─── */
 function SquareCard({ song, onClick }) {
   return (
     <button onClick={onClick} style={{
-      width: 156, background: 'none', border: 'none', padding: 0,
+      width: 110, background: 'none', border: 'none', padding: 0,
       cursor: 'pointer', textAlign: 'left', touchAction: 'manipulation',
+      contentVisibility: 'auto', containIntrinsicSize: '110px 110px',
     }}>
       <img
         src={song.thumbnail} alt={song.title}
-        width={156} height={156} loading="lazy"
-        style={{ borderRadius: 'var(--radius-card)', width: 156, height: 156 }}
+        width={110} height={110} loading="lazy"
+        style={{ borderRadius: 'var(--radius-card)', width: 110, height: 110, objectFit: 'cover' }}
       />
       <p className="truncate" style={{
-        fontSize: 13, fontWeight: 600, color: 'var(--text-primary)',
-        marginTop: 8, lineHeight: 1.3, width: 156,
+        fontSize: 11, fontWeight: 600, color: 'var(--text-primary)',
+        marginTop: 8, lineHeight: 1.3, width: 110, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
       }}>
         {song.title}
       </p>
       <p className="truncate" style={{
-        fontSize: 11, color: 'var(--text-secondary)', marginTop: 2, width: 156,
+        fontSize: 10, color: '#B3B3B3', marginTop: 2, width: 110, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
       }}>
         {song.artist}
       </p>
@@ -75,21 +76,22 @@ function SquareCard({ song, onClick }) {
   )
 }
 
-/* ─── Circle Artist Card (120px) ─── */
+/* ─── Circle Artist Card (90px) ─── */
 function ArtistCircle({ name, img, onClick }) {
   return (
     <button onClick={onClick} style={{
-      width: 120, background: 'none', border: 'none', padding: 0,
+      width: 90, background: 'none', border: 'none', padding: 0,
       cursor: 'pointer', textAlign: 'center', touchAction: 'manipulation',
+      contentVisibility: 'auto', containIntrinsicSize: '90px 90px',
     }}>
       <img
         src={img} alt={name}
-        width={120} height={120} loading="lazy"
-        style={{ borderRadius: '50%', width: 120, height: 120 }}
+        width={90} height={90} loading="lazy"
+        style={{ borderRadius: '50%', width: 90, height: 90, objectFit: 'cover' }}
       />
       <p className="truncate" style={{
-        fontSize: 12, fontWeight: 600, color: 'var(--text-primary)',
-        marginTop: 8, width: 120,
+        fontSize: 11, fontWeight: 600, color: 'var(--text-primary)',
+        marginTop: 8, width: 90, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
       }}>
         {name}
       </p>
@@ -115,9 +117,9 @@ function SkeletonRow() {
   return (
     <div style={{ padding: '0 16px' }}>
       <div className="skeleton" style={{ width: 140, height: 20, marginBottom: 12 }} />
-      <div className="h-scroll">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="skeleton" style={{ width: 156, height: 156, borderRadius: 'var(--radius-card)' }} />
+      <div className="h-scroll" style={{ padding: 0 }}>
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className="skeleton" style={{ width: 110, height: 110, borderRadius: 'var(--radius-card)' }} />
         ))}
       </div>
     </div>
@@ -176,9 +178,9 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* ─── Quick Access Grid (2 columns) ─── */}
+      {/* ─── Quick Access Grid (3 columns) ─── */}
       <div style={{
-        display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8,
+        display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8,
         padding: '0 16px', marginBottom: 28,
       }}>
         {TOP_ARTISTS.map((a, i) => (
@@ -191,7 +193,7 @@ export default function HomePage() {
       {loading ? <SkeletonRow /> : madeForYou.length > 0 && (
         <div style={{ marginBottom: 28 }}>
           <SectionHeader title="Made for you" />
-          <div className="h-scroll" style={{ paddingLeft: 16 }}>
+          <div className="h-scroll">
             {madeForYou.slice(0, 8).map((song, i) => (
               <SquareCard key={song.videoId} song={song}
                 onClick={() => handlePlaySong(song, madeForYou, i)} />
@@ -204,7 +206,7 @@ export default function HomePage() {
       {loading ? <SkeletonRow /> : trending.length > 0 && (
         <div style={{ marginBottom: 28 }}>
           <SectionHeader title="Hot right now" />
-          <div className="h-scroll" style={{ paddingLeft: 16 }}>
+          <div className="h-scroll">
             {trending.slice(0, 8).map((song, i) => (
               <SquareCard key={song.videoId} song={song}
                 onClick={() => handlePlaySong(song, trending, i)} />
@@ -216,7 +218,7 @@ export default function HomePage() {
       {/* ─── Popular Artists ─── */}
       <div style={{ marginBottom: 28 }}>
         <SectionHeader title="Popular artists" />
-        <div className="h-scroll" style={{ paddingLeft: 16 }}>
+        <div className="h-scroll">
           {TOP_ARTISTS.map((a, i) => (
             <ArtistCircle key={i} name={a.name} img={a.img}
               onClick={() => handleArtistClick(a.name)} />
