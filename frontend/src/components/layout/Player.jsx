@@ -10,7 +10,7 @@ import { shareSong, copySongLink } from '../../utils/share.js'
 import {
   FiPlay, FiPause, FiSkipBack, FiSkipForward,
   FiHeart, FiShuffle, FiRepeat, FiChevronDown,
-  FiVolume2, FiShare2, FiMonitor,
+  FiVolume2, FiShare2, FiMonitor, FiClock,
 } from 'react-icons/fi'
 
 /* ─── Time Formatter ─── */
@@ -65,11 +65,14 @@ export default function Player() {
     isFullScreenPlayer, setIsFullScreenPlayer,
     shuffle, setShuffle, repeat, setRepeat,
     toggleSavedSong, isSongSaved, isAudioLoading,
+    sleepTimer, sleepTimerRemaining, startSleepTimer, cancelSleepTimer,
+    recommendations, playSong,
   } = usePlayer()
 
   const { currentTime, duration } = usePlayerTime()
   const [isSeeking, setIsSeeking] = useState(false)
   const [seekValue, setSeekValue] = useState(0)
+  const [showTimerSheet, setShowTimerSheet] = useState(false)
   const progressRef = useRef(null)
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0
@@ -204,6 +207,9 @@ export default function Player() {
             flex: 1, display: 'flex', flexDirection: 'column',
             maxWidth: 390, width: '100%', margin: '0 auto',
             padding: '0 24px',
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            paddingBottom: 'calc(var(--safe-bottom) + 24px)',
           }}>
             {/* ─── Top Bar ─── */}
             <div style={{
@@ -223,7 +229,15 @@ export default function Player() {
               <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: 1 }}>
                 Playing from Liked Songs
               </span>
-              <div style={{ width: 28 }} /> {/* spacer */}
+              <button
+                onClick={() => setShowTimerSheet(true)}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: sleepTimer?.active ? 'var(--accent)' : '#fff', padding: 4, touchAction: 'manipulation',
+                }}
+              >
+                <FiClock size={24} />
+              </button>
             </div>
 
             {/* ─── Album Art ─── */}
@@ -404,7 +418,110 @@ export default function Player() {
                 <FiShare2 size={18} />
               </button>
             </div>
+            {/* ─── Up Next Section ─── */}
+            {recommendations && recommendations.length > 0 && (
+              <div style={{ marginTop: 24, paddingTop: 24, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>Up Next</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {recommendations.map((rec, i) => (
+                    <div
+                      key={rec.videoId + i}
+                      onClick={() => playSong(rec)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 12,
+                        cursor: 'pointer', touchAction: 'manipulation',
+                        padding: '8px 0',
+                      }}
+                    >
+                      <img
+                        src={rec.thumbnail || `https://i.ytimg.com/vi/${rec.videoId}/mqdefault.jpg`}
+                        alt="" width={48} height={48}
+                        style={{ borderRadius: 'var(--radius-base)', objectFit: 'cover' }}
+                      />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p className="truncate" style={{ fontSize: 15, fontWeight: 500 }}>
+                          {rec.title}
+                        </p>
+                        <p className="truncate" style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>
+                          {rec.artist || rec.channelTitle}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
+          
+          {/* ─── Sleep Timer Bottom Sheet ─── */}
+          {showTimerSheet && (
+            <div style={{
+              position: 'fixed', inset: 0, zIndex: 110,
+              display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+            }}>
+              <div
+                style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)' }}
+                onClick={() => setShowTimerSheet(false)}
+              />
+              <div style={{
+                position: 'relative', background: '#282828',
+                borderTopLeftRadius: 24, borderTopRightRadius: 24,
+                padding: '24px 0', paddingBottom: 'max(24px, var(--safe-bottom))',
+                width: '100%', maxWidth: 390, margin: '0 auto',
+                animation: 'slideUp 0.3s cubic-bezier(0.32,0.72,0,1)'
+              }}>
+                <h3 style={{ textAlign: 'center', fontSize: 18, fontWeight: 700, marginBottom: 16 }}>
+                  Stop audio in
+                </h3>
+                {sleepTimer?.active && (
+                  <p style={{ textAlign: 'center', color: 'var(--accent)', fontSize: 13, marginBottom: 16 }}>
+                    {sleepTimer.stopAfterCurrent ? 'End of track' : `${Math.ceil(sleepTimerRemaining / 60000)} minutes remaining`}
+                  </p>
+                )}
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  {[
+                    { label: '5 minutes', value: 5 },
+                    { label: '10 minutes', value: 10 },
+                    { label: '15 minutes', value: 15 },
+                    { label: '30 minutes', value: 30 },
+                    { label: '45 minutes', value: 45 },
+                    { label: '1 hour', value: 60 },
+                    { label: 'End of track', value: 'track' },
+                  ].map(opt => (
+                    <button
+                      key={opt.label}
+                      onClick={() => {
+                        startSleepTimer(opt.value)
+                        setShowTimerSheet(false)
+                      }}
+                      style={{
+                        padding: '16px 24px', background: 'none', border: 'none',
+                        color: '#fff', fontSize: 16, textAlign: 'left',
+                        cursor: 'pointer', touchAction: 'manipulation',
+                      }}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                  {sleepTimer?.active && (
+                    <button
+                      onClick={() => {
+                        cancelSleepTimer()
+                        setShowTimerSheet(false)
+                      }}
+                      style={{
+                        padding: '16px 24px', background: 'none', border: 'none',
+                        color: 'var(--accent)', fontSize: 16, textAlign: 'left',
+                        cursor: 'pointer', touchAction: 'manipulation',
+                      }}
+                    >
+                      Turn off timer
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </>

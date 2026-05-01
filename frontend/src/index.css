@@ -69,6 +69,11 @@ body {
 .hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .hide-scrollbar::-webkit-scrollbar { display: none; }
 
+/* ─── Global Scroll Behavior ─── */
+* {
+  -webkit-overflow-scrolling: touch;
+}
+
 /* ─── Horizontal Scroller ─── */
 .h-scroll {
   display: flex;
@@ -164,4 +169,29 @@ input {
 
 input::placeholder {
   color: var(--text-muted);
+}
+
+/* ─── Skeleton Loading Animation ─── */
+.skeleton-bg {
+  background: linear-gradient(90deg, var(--bg-card) 25%, var(--surface-highlight) 50%, var(--bg-card) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+}
+
+/* ─── Touch Optimization (Buttons) ─── */
+button, a {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+button:active, 
+.song-row:active,
+.song-card:active {
+  transform: scale(0.96);
+  opacity: 0.85;
+  transition: transform 0.1s ease-out, opacity 0.1s ease-out;
+}
+
+button, .song-row, .song-card {
+  transition: transform 0.2s ease-out, opacity 0.2s ease-out;
 }

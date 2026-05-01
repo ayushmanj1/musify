@@ -9,13 +9,16 @@
  * - No backdrop-filter blur
  */
 
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FiSearch } from 'react-icons/fi'
+import { FiSearch, FiSettings } from 'react-icons/fi'
 import { usePlayer } from '../../context/PlayerContext.jsx'
+import SettingsModal from './SettingsModal.jsx'
 
 export default function TopBar() {
   const navigate = useNavigate()
   const { setIsSearchOpen } = usePlayer()
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   return (
     <div style={{
@@ -84,7 +87,19 @@ export default function TopBar() {
         >
           <FiSearch size={16} />
         </button>
+        {/* Settings button */}
+        <button
+          onClick={() => setIsSettingsOpen(true)}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer', padding: 8,
+            color: 'rgba(255,255,255,0.7)', touchAction: 'manipulation',
+          }}
+        >
+          <FiSettings size={20} />
+        </button>
       </div>
+
+      {isSettingsOpen && <SettingsModal onClose={() => setIsSettingsOpen(false)} />}
     </div>
   )
 }

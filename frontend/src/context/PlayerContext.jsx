@@ -15,6 +15,7 @@
 import { createContext, useContext, useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import toast from 'react-hot-toast'
 import { getRecommendations } from '../utils/api.js'
+import { crossfadeManager } from '../utils/crossfade.js'
 
 const PlayerContext = createContext(null)
 const PlayerTimeContext = createContext(null)
@@ -56,10 +57,29 @@ export function PlayerProvider({ children }) {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isAudioLoading, setIsAudioLoading] = useState(false)
 
+  // Crossfade state
+  const [crossfadeEnabled, setCrossfadeEnabled] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('crossfadeEnabled') || 'true') } catch { return true }
+  })
+  const [crossfadeDuration, setCrossfadeDuration] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('crossfadeDuration') || '6') } catch { return 6 }
+  })
+
+  // Sleep Timer state
+  const [sleepTimer, setSleepTimer] = useState({
+    active: false,
+    endTime: null,
+    stopAfterCurrent: false
+  })
+  const [sleepTimerRemaining, setSleepTimerRemaining] = useState(null)
+
   // HTML Audio element — also exposed globally for time polling
   const audioRef = useRef(new Audio())
   if (typeof window !== 'undefined') window.__musifyAudio = audioRef.current
   const timeUpdateRef = useRef(null)
+  
+  // Invisible preloader
+  const preloaderRef = useRef(new Audio())
 
   // Refs to avoid stale closures
   const queueRef = useRef([])
@@ -67,26 +87,66 @@ export function PlayerProvider({ children }) {
   const recommendationsRef = useRef([])
   const shuffleRef = useRef(false)
   const repeatRef = useRef('none')
+  const sleepTimerRef = useRef(sleepTimer)
+  const playNextRef = useRef(null)
+  const playSongRef = useRef(null)
+  const volumeRef = useRef(volume)
+  const retryCountRef = useRef(0)
 
   useEffect(() => { queueRef.current = queue }, [queue])
   useEffect(() => { queueIndexRef.current = queueIndex }, [queueIndex])
   useEffect(() => { recommendationsRef.current = recommendations }, [recommendations])
   useEffect(() => { shuffleRef.current = shuffle }, [shuffle])
   useEffect(() => { repeatRef.current = repeat }, [repeat])
+  useEffect(() => { sleepTimerRef.current = sleepTimer }, [sleepTimer])
+  useEffect(() => { volumeRef.current = volume }, [volume])
 
-  // Persist saved songs
+  // Persist saved songs and settings
   useEffect(() => {
     localStorage.setItem('savedSongs', JSON.stringify(savedSongs))
   }, [savedSongs])
 
+  useEffect(() => {
+    localStorage.setItem('crossfadeEnabled', JSON.stringify(crossfadeEnabled))
+    crossfadeManager.setEnabled(crossfadeEnabled)
+  }, [crossfadeEnabled])
+
+  useEffect(() => {
+    localStorage.setItem('crossfadeDuration', JSON.stringify(crossfadeDuration))
+    crossfadeManager.setDuration(crossfadeDuration)
+  }, [crossfadeDuration])
+
   // ─── Audio Element Setup ───
   useEffect(() => {
     const audio = audioRef.current
+    crossfadeManager.init(audio)
+    
     audio.volume = volume / 100
     audio.preload = 'auto'
 
     const onTimeUpdate = () => {
       setCurrentTime(audio.currentTime)
+
+      // Crossfade logic
+      const hasNext = (queueIndexRef.current + 1 < queueRef.current.length) || (recommendationsRef.current.length > 0)
+      
+      const triggerNext = () => {
+        if (queueIndexRef.current + 1 < queueRef.current.length) {
+          if (playNextRef.current) playNextRef.current(true) // Pass true for isAutoCrossfade
+        } else if (recommendationsRef.current.length > 0) {
+          const nextSong = recommendationsRef.current[0]
+          setRecommendations(prev => prev.slice(1))
+          if (playSongRef.current) playSongRef.current(nextSong, null, 0, true) // Pass true
+        }
+      }
+
+      crossfadeManager.checkCrossfade(
+        audio.currentTime,
+        audio.duration || 0,
+        volumeRef.current / 100,
+        hasNext,
+        triggerNext
+      )
     }
 
     const onLoadedMetadata = () => {
@@ -94,11 +154,13 @@ export function PlayerProvider({ children }) {
     }
 
     const onPlaying = () => {
+      console.log('[Audio] Playing started')
       setIsPlaying(true)
       setIsAudioLoading(false)
     }
 
     const onWaiting = () => {
+      console.log('[Audio] Buffering...')
       setIsAudioLoading(true)
     }
 
@@ -106,6 +168,13 @@ export function PlayerProvider({ children }) {
     const onPause = () => setIsPlaying(false)
 
     const onEnded = () => {
+      // Sleep Timer: End of track
+      if (sleepTimerRef.current.active && sleepTimerRef.current.stopAfterCurrent) {
+        setIsPlaying(false)
+        setSleepTimer({ active: false, endTime: null, stopAfterCurrent: false })
+        return
+      }
+
       // Repeat one
       if (repeatRef.current === 'one') {
         audio.currentTime = 0
@@ -117,14 +186,14 @@ export function PlayerProvider({ children }) {
       if (shuffleRef.current && recommendationsRef.current.length > 0) {
         const nextSong = recommendationsRef.current[0]
         setRecommendations(prev => prev.slice(1))
-        playSong(nextSong)
+        if (playSongRef.current) playSongRef.current(nextSong)
         return
       }
 
       // Next in queue
       const nextIdx = queueIndexRef.current + 1
       if (nextIdx < queueRef.current.length) {
-        playNext()
+        if (playNextRef.current) playNextRef.current()
         return
       }
 
@@ -132,16 +201,32 @@ export function PlayerProvider({ children }) {
       if (recommendationsRef.current.length > 0) {
         const nextSong = recommendationsRef.current[0]
         setRecommendations(prev => prev.slice(1))
-        playSong(nextSong)
+        if (playSongRef.current) playSongRef.current(nextSong)
       } else {
         setIsPlaying(false)
       }
     }
 
     const onError = () => {
-      console.error('[Audio] Playback error')
-      toast.error('Playback error. Skipping...')
-      setTimeout(() => playNext(), 1500)
+      console.error('[Audio] Playback error', audio.error)
+      if (retryCountRef.current < 2) {
+        retryCountRef.current++
+        console.log(`[Audio] Retrying... (${retryCountRef.current}/2)`)
+        try {
+          const url = new URL(audio.src, window.location.origin)
+          url.searchParams.set('retry', Date.now())
+          audio.src = url.toString()
+          audio.load()
+          audio.play().catch(() => {})
+        } catch(e) {
+          console.error('Retry failed', e)
+        }
+      } else {
+        toast.error('Playback error. Skipping...')
+        setTimeout(() => {
+          if (playNextRef.current) playNextRef.current()
+        }, 1500)
+      }
     }
 
     audio.addEventListener('timeupdate', onTimeUpdate)
@@ -169,6 +254,27 @@ export function PlayerProvider({ children }) {
   useEffect(() => {
     audioRef.current.volume = volume / 100
   }, [volume])
+
+  // ─── Sleep Timer Interval ───
+  useEffect(() => {
+    if (!sleepTimer.active || sleepTimer.stopAfterCurrent) return
+
+    const interval = setInterval(() => {
+      if (!sleepTimer.endTime) return
+      
+      const remaining = sleepTimer.endTime - Date.now()
+      if (remaining <= 0) {
+        audioRef.current.pause()
+        setIsPlaying(false)
+        setSleepTimer({ active: false, endTime: null, stopAfterCurrent: false })
+        setSleepTimerRemaining(null)
+      } else {
+        setSleepTimerRemaining(remaining)
+      }
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [sleepTimer])
 
   // ─── Media Session API ───
   useEffect(() => {
@@ -223,15 +329,21 @@ export function PlayerProvider({ children }) {
   }, [currentSong, fetchRecommendations])
 
   // ─── Play Song ───
-  const playSong = useCallback((song, songQueue = null, index = 0) => {
+  const playSong = useCallback((song, songQueue = null, index = 0, isAutoCrossfade = false) => {
     if (!song) return
     const audio = audioRef.current
+
+    // Cancel any ongoing crossfade when manually playing a song
+    if (!isAutoCrossfade) {
+      crossfadeManager.cancelCrossfade(volumeRef.current / 100)
+    }
 
     setCurrentSong(song)
     setCurrentTime(0)
     setDuration(0)
     setIsAudioLoading(true)
     setIsPlaying(true)
+    retryCountRef.current = 0 // Reset retries on new song
 
     if (songQueue) {
       setQueue(songQueue)
@@ -239,6 +351,7 @@ export function PlayerProvider({ children }) {
     }
 
     // Set source to stream endpoint
+    console.log(`[Audio] Loading: ${song.title}`)
     audio.src = `/api/stream?id=${song.videoId}`
     audio.load()
     audio.play().catch(err => {
@@ -247,6 +360,26 @@ export function PlayerProvider({ children }) {
       setIsAudioLoading(false)
     })
   }, [])
+
+  // ─── Preload Next Track ───
+  useEffect(() => {
+    const preloader = preloaderRef.current
+    preloader.preload = 'auto'
+    preloader.volume = 0
+    
+    let nextSongId = null
+    if (queue.length > 0 && queueIndex + 1 < queue.length) {
+      nextSongId = queue[queueIndex + 1].videoId
+    } else if (recommendations.length > 0) {
+      nextSongId = recommendations[0].videoId
+    }
+
+    if (nextSongId) {
+      console.log(`[Audio] Preloading next track ID: ${nextSongId}`)
+      preloader.src = `/api/stream?id=${nextSongId}`
+      preloader.load()
+    }
+  }, [queue, queueIndex, recommendations])
 
   const togglePlay = useCallback(() => {
     const audio = audioRef.current
@@ -275,27 +408,50 @@ export function PlayerProvider({ children }) {
     audioRef.current.volume = vol / 100
   }, [])
 
-  const playNext = useCallback(() => {
+  const playNext = useCallback((isAutoCrossfade = false) => {
     if (queue.length === 0) return
     const nextIndex = queueIndex + 1
     if (nextIndex < queue.length) {
       setQueueIndex(nextIndex)
-      playSong(queue[nextIndex], queue, nextIndex)
+      playSong(queue[nextIndex], queue, nextIndex, isAutoCrossfade)
     }
   }, [queue, queueIndex, playSong])
 
-  const playPrevious = useCallback(() => {
+  useEffect(() => { playNextRef.current = playNext }, [playNext])
+  useEffect(() => { playSongRef.current = playSong }, [playSong])
+
+  const playPrevious = useCallback((isAutoCrossfade = false) => {
     if (queue.length === 0) return
     const prevIndex = queueIndex - 1
     if (prevIndex >= 0) {
       setQueueIndex(prevIndex)
-      playSong(queue[prevIndex], queue, prevIndex)
+      playSong(queue[prevIndex], queue, prevIndex, isAutoCrossfade)
     }
   }, [queue, queueIndex, playSong])
 
   const addToQueue = useCallback((song) => {
     setQueue(prev => [...prev, song])
     toast.success(`Added to queue`)
+  }, [])
+
+  // ─── Sleep Timer Actions ───
+  const startSleepTimer = useCallback((minutes) => {
+    if (minutes === 'track') {
+      setSleepTimer({ active: true, endTime: null, stopAfterCurrent: true })
+      setSleepTimerRemaining(null)
+      toast.success('Timer set for end of track')
+    } else {
+      const endTime = Date.now() + minutes * 60000
+      setSleepTimer({ active: true, endTime, stopAfterCurrent: false })
+      setSleepTimerRemaining(minutes * 60000)
+      toast.success(`Timer set for ${minutes} minutes`)
+    }
+  }, [])
+
+  const cancelSleepTimer = useCallback(() => {
+    setSleepTimer({ active: false, endTime: null, stopAfterCurrent: false })
+    setSleepTimerRemaining(null)
+    toast.success('Timer cancelled')
   }, [])
 
   // ─── Saved (Liked) Songs ───
@@ -339,6 +495,9 @@ export function PlayerProvider({ children }) {
     isSuggestionsOpen, setIsSuggestionsOpen,
     isFullScreenPlayer, setIsFullScreenPlayer,
     isSearchOpen, setIsSearchOpen, isAudioLoading,
+    sleepTimer, sleepTimerRemaining, startSleepTimer, cancelSleepTimer,
+    crossfadeEnabled, setCrossfadeEnabled,
+    crossfadeDuration, setCrossfadeDuration,
     playSong, togglePlay, seekTo, setPlayerVolume,
     playNext, playPrevious, addToQueue,
     toggleSavedSong, isSongSaved,
