@@ -56,8 +56,9 @@ export function PlayerProvider({ children }) {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isAudioLoading, setIsAudioLoading] = useState(false)
 
-  // HTML Audio element
+  // HTML Audio element — also exposed globally for time polling
   const audioRef = useRef(new Audio())
+  if (typeof window !== 'undefined') window.__musifyAudio = audioRef.current
   const timeUpdateRef = useRef(null)
 
   // Refs to avoid stale closures

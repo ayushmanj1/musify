@@ -1,196 +1,167 @@
-/**
- * MUSIFY v2.0 — Global Styles
- * ─────────────────────────────────────────────
- * CHANGES:
- * - Font: DM Sans (replaced Outfit/Inter)
- * - Background: static dark gradient #0a0a0f → #12121a
- * - Accent: Electric violet #7C3AED, highlight cyan #22D3EE
- * - Removed ALL backdrop-filter blur from cards
- * - Glass cards: rgba(255,255,255,0.06) + border only
- * - Blur ONLY on bottom nav bar
- * - GPU-safe CSS animations (transform + opacity only)
- * - Skeleton pulse keyframe
- * - Mobile perf: overscroll-behavior, contain, touch-action
- * - 100dvh viewport
- */
+/* ═══════════════════════════════════════════════════════
+   MUSIFY — Spotify Clone Design Tokens + Global Styles
+   ═══════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
-@import "tailwindcss";
-
-@theme {
-  --color-violet: #7C3AED;
-  --color-violet-dim: rgba(124, 58, 237, 0.15);
-  --color-cyan: #22D3EE;
-  --color-bg-primary: #0a0a0f;
-  --color-bg-secondary: #12121a;
-  --radius-card: 12px;
+/* ─── Design Tokens ─── */
+:root {
+  --bg-primary: #121212;
+  --bg-elevated: #1A1A1A;
+  --bg-card: #282828;
+  --surface-highlight: #333333;
+  --accent: #00C9FF;
+  --accent-hover: #00A8D6;
+  --text-primary: #FFFFFF;
+  --text-secondary: #B3B3B3;
+  --text-muted: #6A6A6A;
+  --font: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --radius-base: 4px;
+  --radius-pill: 500px;
+  --radius-card: 8px;
+  --bottom-nav-h: 72px;
+  --mini-player-h: 64px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-* {
+/* ─── Reset ─── */
+*, *::before, *::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-}
-
-:root {
-  --violet: #7C3AED;
-  --violet-light: #8B5CF6;
-  --violet-dim: rgba(124, 58, 237, 0.15);
-  --cyan: #22D3EE;
-  --bg-primary: #0a0a0f;
-  --bg-secondary: #12121a;
-  --card-radius: 12px;
-  --text-main: #ffffff;
-  --glass-bg: rgba(255, 255, 255, 0.06);
-  --glass-border: rgba(255, 255, 255, 0.09);
-}
-
-html, body, #root {
-  height: 100dvh;
-  width: 100dvw;
-  overflow: hidden;
-  overflow-x: hidden !important;
-  background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
-  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-  color: var(--text-main);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* ─── Glass Card (NO blur — border only) ─────────────────────────── */
-.glass-card {
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--card-radius);
-  transition: background 0.2s ease, border-color 0.2s ease;
-}
-
-.glass-card:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.14);
-}
-
-/* ─── Glass Button (NO blur) ─────────────────────────────────────── */
-.glass-btn {
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  transition: background 0.15s ease, border-color 0.15s ease;
-}
-
-.glass-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.16);
-}
-
-/* ─── Bottom Nav Bar — ONLY element with blur ────────────────────── */
-.bottom-nav-blur {
-  background: rgba(10, 10, 15, 0.7);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-/* ─── Tap Feedback ───────────────────────────────────────────────── */
-button, a, [role="button"] {
-  touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
 
-button:active, a:active, [role="button"]:active {
-  transform: scale(0.96);
+/* ─── Body — pure black surround on PC ─── */
+body {
+  background: #000000;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  font-family: var(--font);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+}
+
+/* ─── App Container — 390px max, centered ─── */
+#app-container {
+  width: 100%;
+  max-width: 390px;
+  min-height: 100dvh;
+  margin: 0 auto;
+  background: var(--bg-primary);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Mobile: full screen, no surround */
+@media (max-width: 480px) {
+  #app-container {
+    max-width: 100%;
+    width: 100dvw;
+  }
+}
+
+/* ─── Scrollbar Hide ─── */
+.hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+
+/* ─── Horizontal Scroller ─── */
+.h-scroll {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px;
+}
+.h-scroll::-webkit-scrollbar { display: none; }
+.h-scroll > * { scroll-snap-align: start; flex-shrink: 0; }
+
+/* ─── Animations ─── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes miniPlayerEnter {
+  from { transform: translateY(80px); }
+  to { transform: translateY(0); }
+}
+
+@keyframes heartPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+
+/* ─── Skeleton Loader ─── */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-elevated) 25%, var(--bg-card) 50%, var(--bg-elevated) 75%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: var(--radius-base);
+}
+
+/* ─── Interactive States ─── */
+button, a, [role="button"] {
+  touch-action: manipulation;
+  cursor: pointer;
+  user-select: none;
+}
+
+button:active, [role="button"]:active {
+  transform: scale(0.95);
   transition: transform 80ms ease;
 }
 
-/* ─── Page Transition ────────────────────────────────────────────── */
-.page-enter {
-  opacity: 0;
-  transform: translateY(8px);
+/* ─── Song Row Performance ─── */
+.song-row {
+  contain: layout style paint;
+  will-change: auto;
 }
 
-.page-enter-active {
-  opacity: 1;
-  transform: translateY(0);
-  transition: opacity 200ms ease-out, transform 200ms ease-out;
-}
-
-/* ─── Skeleton Pulse ─────────────────────────────────────────────── */
-@keyframes skeleton-pulse {
-  0%, 100% { background-color: rgba(255, 255, 255, 0.05); }
-  50% { background-color: rgba(255, 255, 255, 0.1); }
-}
-
-.skeleton-pulse {
-  animation: skeleton-pulse 1.8s ease-in-out infinite;
-  border-radius: 8px;
-}
-
-/* ─── Marquee for long song names ────────────────────────────────── */
-@keyframes marquee-scroll {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-}
-
-.marquee-container {
+/* ─── Typography Helpers ─── */
+.truncate {
   overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.marquee-text {
-  display: inline-block;
-  animation: marquee-scroll 8s linear infinite;
+/* ─── Image defaults ─── */
+img {
+  display: block;
+  object-fit: cover;
 }
 
-/* ─── Heart fill animation (clip-path) ───────────────────────────── */
-@keyframes heart-fill {
-  0% { clip-path: inset(100% 0 0 0); }
-  100% { clip-path: inset(0 0 0 0); }
+/* ─── Input Reset ─── */
+input {
+  font-family: var(--font);
+  border: none;
+  outline: none;
+  background: none;
+  color: var(--text-primary);
 }
 
-.heart-animate {
-  animation: heart-fill 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-/* ─── Section Heading ────────────────────────────────────────────── */
-.section-heading {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.3em;
-  color: var(--text-main);
-  opacity: 0.25;
-  text-transform: uppercase;
-  margin-bottom: 16px;
-}
-
-/* ─── Scrollbar / Utilities ──────────────────────────────────────── */
-::-webkit-scrollbar {
-  width: 0px;
-  height: 0px;
-}
-
-.hide-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-.hide-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-
-/* ─── Scroll & Touch Performance ─────────────────────────────────── */
-.scroll-container {
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-}
-
-.song-item {
-  contain: layout style;
-}
-
-/* ─── Now Playing Bar + Bottom Nav — will-change only on these ───── */
-.now-playing-bar {
-  will-change: transform;
-}
-
-.bottom-nav {
-  will-change: transform;
+input::placeholder {
+  color: var(--text-muted);
 }

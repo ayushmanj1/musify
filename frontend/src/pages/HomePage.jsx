@@ -1,93 +1,227 @@
 /**
- * MUSIFY v2.0 — HomePage
- * ─────────────────────────────────────────────
- * CHANGES:
- * - Removed recently played / history section
- * - Static dark gradient background (no animated gradients)
- * - Hero: simplified, DM Sans, violet accent
- * - Sections: Trending Hits, Top Artists, New Releases, Charts
- * - All sections use horizontal 64px song items
- * - No backdrop-filter blur anywhere
+ * MUSIFY — Home Screen
+ * Time-based greeting, quick-access grid, horizontal scroll sections
  */
 
 import { useState, useEffect } from 'react'
-import { getTrending } from '../utils/api.js'
-import HomeRow from '../components/ui/HomeRow.jsx'
+import { useNavigate } from 'react-router-dom'
+import { usePlayer } from '../context/PlayerContext.jsx'
+import { searchSongs, getTrending } from '../utils/api.js'
 
+/* ─── Greeting based on time ─── */
+function getGreeting() {
+  const h = new Date().getHours()
+  if (h < 12) return 'Good morning'
+  if (h < 18) return 'Good afternoon'
+  return 'Good evening'
+}
+
+/* ─── Top Artists Data ─── */
+const TOP_ARTISTS = [
+  { name: 'The Weeknd', img: 'https://i.ytimg.com/vi/4NRXx6U8ABQ/mqdefault.jpg' },
+  { name: 'Dua Lipa', img: 'https://i.ytimg.com/vi/WHuBW3qKm9g/mqdefault.jpg' },
+  { name: 'Arijit Singh', img: 'https://i.ytimg.com/vi/SxTYjptEzZs/mqdefault.jpg' },
+  { name: 'Drake', img: 'https://i.ytimg.com/vi/uxpDa-c-4Mc/mqdefault.jpg' },
+  { name: 'Taylor Swift', img: 'https://i.ytimg.com/vi/ic8j13piAhQ/mqdefault.jpg' },
+  { name: 'Post Malone', img: 'https://i.ytimg.com/vi/SC4xMk98Pdc/mqdefault.jpg' },
+]
+
+/* ─── Quick Access Tile ─── */
+function QuickTile({ name, img, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        background: 'var(--bg-card)', borderRadius: 'var(--radius-base)',
+        height: 56, padding: 0, border: 'none', cursor: 'pointer',
+        overflow: 'hidden', width: '100%', color: 'var(--text-primary)',
+        touchAction: 'manipulation',
+      }}
+    >
+      <img src={img} alt={name} width={56} height={56} loading="lazy"
+        style={{ borderRadius: '4px 0 0 4px', flexShrink: 0 }} />
+      <span className="truncate" style={{ fontSize: 13, fontWeight: 600, paddingRight: 8 }}>
+        {name}
+      </span>
+    </button>
+  )
+}
+
+/* ─── Square Card (156×156) ─── */
+function SquareCard({ song, onClick }) {
+  return (
+    <button onClick={onClick} style={{
+      width: 156, background: 'none', border: 'none', padding: 0,
+      cursor: 'pointer', textAlign: 'left', touchAction: 'manipulation',
+    }}>
+      <img
+        src={song.thumbnail} alt={song.title}
+        width={156} height={156} loading="lazy"
+        style={{ borderRadius: 'var(--radius-card)', width: 156, height: 156 }}
+      />
+      <p className="truncate" style={{
+        fontSize: 13, fontWeight: 600, color: 'var(--text-primary)',
+        marginTop: 8, lineHeight: 1.3, width: 156,
+      }}>
+        {song.title}
+      </p>
+      <p className="truncate" style={{
+        fontSize: 11, color: 'var(--text-secondary)', marginTop: 2, width: 156,
+      }}>
+        {song.artist}
+      </p>
+    </button>
+  )
+}
+
+/* ─── Circle Artist Card (120px) ─── */
+function ArtistCircle({ name, img, onClick }) {
+  return (
+    <button onClick={onClick} style={{
+      width: 120, background: 'none', border: 'none', padding: 0,
+      cursor: 'pointer', textAlign: 'center', touchAction: 'manipulation',
+    }}>
+      <img
+        src={img} alt={name}
+        width={120} height={120} loading="lazy"
+        style={{ borderRadius: '50%', width: 120, height: 120 }}
+      />
+      <p className="truncate" style={{
+        fontSize: 12, fontWeight: 600, color: 'var(--text-primary)',
+        marginTop: 8, width: 120,
+      }}>
+        {name}
+      </p>
+    </button>
+  )
+}
+
+/* ─── Section Header ─── */
+function SectionHeader({ title }) {
+  return (
+    <div style={{
+      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      padding: '0 16px', marginBottom: 12,
+    }}>
+      <h2 style={{ fontSize: 20, fontWeight: 700 }}>{title}</h2>
+      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Show all</span>
+    </div>
+  )
+}
+
+/* ─── Skeleton Row ─── */
+function SkeletonRow() {
+  return (
+    <div style={{ padding: '0 16px' }}>
+      <div className="skeleton" style={{ width: 140, height: 20, marginBottom: 12 }} />
+      <div className="h-scroll">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="skeleton" style={{ width: 156, height: 156, borderRadius: 'var(--radius-card)' }} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/* ═══ HOME PAGE ═══ */
 export default function HomePage() {
-  const [trendingSongs, setTrendingSongs] = useState([])
+  const navigate = useNavigate()
+  const { playSong } = usePlayer()
+  const [trending, setTrending] = useState([])
+  const [madeForYou, setMadeForYou] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    async function load() {
-      setLoading(true)
+    const load = async () => {
       try {
-        const data = await getTrending()
-        const filtered = data.filter(song => {
-          const title = (song.title || '').toLowerCase()
-          const artist = (song.artist || song.channelTitle || '').toLowerCase()
-          return !title.includes('bhojpuri') && !artist.includes('bhojpuri')
-        })
-        setTrendingSongs(filtered)
-      } catch (err) { console.error(err) }
-      setLoading(false)
+        const [trendData, mfyData] = await Promise.all([
+          getTrending(),
+          searchSongs('chill vibes music 2024')
+        ])
+        setTrending(trendData || [])
+        setMadeForYou(mfyData || [])
+      } catch (e) {
+        console.error('Home load error:', e)
+      } finally {
+        setLoading(false)
+      }
     }
     load()
   }, [])
 
-  const artistCards = [
-    { title: 'The Weeknd', artist: 'Artist', thumbnail: 'https://i.ytimg.com/vi/4NRXx6U8ABQ/mqdefault.jpg', isArtist: true },
-    { title: 'Dua Lipa', artist: 'Artist', thumbnail: 'https://i.ytimg.com/vi/oygrmJFKYZY/mqdefault.jpg', isArtist: true },
-    { title: 'Karan Aujla', artist: 'Artist', thumbnail: 'https://i.ytimg.com/vi/YmPjPKLPRH4/mqdefault.jpg', isArtist: true },
-    { title: 'Arijit Singh', artist: 'Artist', thumbnail: 'https://i.ytimg.com/vi/5Eqb_-j3FDA/mqdefault.jpg', isArtist: true },
-    { title: 'Post Malone', artist: 'Artist', thumbnail: 'https://i.ytimg.com/vi/UceaB4D0jpo/mqdefault.jpg', isArtist: true },
-  ]
+  const handlePlaySong = (song, list, idx) => {
+    playSong(song, list, idx)
+  }
 
-  const chartCards = [
-    { title: 'Global Top 50', artist: 'The biggest hits worldwide', thumbnail: 'https://i.ytimg.com/vi/kJQP7kiw5Fk/mqdefault.jpg' },
-    { title: 'Viral Hits India', artist: 'Hottest tracks in India', thumbnail: 'https://i.ytimg.com/vi/5Eqb_-j3FDA/mqdefault.jpg' },
-    { title: 'Hot 100 USA', artist: 'Most played in the USA', thumbnail: 'https://i.ytimg.com/vi/4NRXx6U8ABQ/mqdefault.jpg' },
-    { title: 'Bollywood Mix', artist: 'Top Bollywood tracks', thumbnail: 'https://i.ytimg.com/vi/YmPjPKLPRH4/mqdefault.jpg' },
-  ]
+  const handleArtistClick = (name) => {
+    navigate(`/artist/${encodeURIComponent(name)}`)
+  }
 
   return (
-    <div style={{ minHeight: '100vh', paddingBottom: 120 }}>
-      {/* Hero */}
-      <section style={{
-        position: 'relative', width: '100%', padding: '60px 24px 40px',
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        textAlign: 'center', overflow: 'hidden',
+    <div style={{ paddingBottom: 24 }}>
+      {/* ─── Top Bar: Greeting + Avatar ─── */}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: '48px 16px 16px',
       }}>
-        {/* Subtle glow */}
+        <h1 style={{ fontSize: 22, fontWeight: 700 }}>{getGreeting()}</h1>
         <div style={{
-          position: 'absolute', top: '-30%', left: '20%', width: '60%', height: '80%',
-          background: 'radial-gradient(circle, rgba(124,58,237,0.08) 0%, transparent 70%)',
-          pointerEvents: 'none',
-        }} />
-
-        <h1 style={{
-          fontSize: 'clamp(48px, 12vw, 96px)',
-          fontWeight: 900, color: '#fff',
-          letterSpacing: '-0.04em', lineHeight: 1,
-          marginBottom: 8, position: 'relative', zIndex: 1,
+          width: 32, height: 32, borderRadius: '50%',
+          background: 'var(--surface-highlight)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 14, fontWeight: 700, color: 'var(--text-secondary)',
         }}>
-          MUSIFY<span style={{ color: '#7C3AED' }}>.</span>
-        </h1>
-        <p style={{
-          fontSize: 11, fontWeight: 700, letterSpacing: '0.5em',
-          textTransform: 'uppercase', color: 'rgba(124,58,237,0.6)',
-          position: 'relative', zIndex: 1,
-        }}>
-          Your Vibe, Your Sound
-        </p>
-      </section>
+          M
+        </div>
+      </div>
 
-      {/* Content */}
-      <div style={{ padding: '0 16px', maxWidth: 800, margin: '0 auto' }}>
-        <HomeRow title="Trending Hits" items={trendingSongs.slice(0, 10)} loading={loading} />
-        <HomeRow title="Top Artists" items={artistCards} isArtist={true} />
-        <HomeRow title="New Releases" items={trendingSongs.slice(10, 20)} loading={loading} />
-        <HomeRow title="Charts For You" items={chartCards} isChart={true} />
+      {/* ─── Quick Access Grid (2 columns) ─── */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8,
+        padding: '0 16px', marginBottom: 28,
+      }}>
+        {TOP_ARTISTS.map((a, i) => (
+          <QuickTile key={i} name={a.name} img={a.img}
+            onClick={() => handleArtistClick(a.name)} />
+        ))}
+      </div>
+
+      {/* ─── Made For You ─── */}
+      {loading ? <SkeletonRow /> : madeForYou.length > 0 && (
+        <div style={{ marginBottom: 28 }}>
+          <SectionHeader title="Made for you" />
+          <div className="h-scroll" style={{ paddingLeft: 16 }}>
+            {madeForYou.slice(0, 8).map((song, i) => (
+              <SquareCard key={song.videoId} song={song}
+                onClick={() => handlePlaySong(song, madeForYou, i)} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ─── Hot Right Now (Trending) ─── */}
+      {loading ? <SkeletonRow /> : trending.length > 0 && (
+        <div style={{ marginBottom: 28 }}>
+          <SectionHeader title="Hot right now" />
+          <div className="h-scroll" style={{ paddingLeft: 16 }}>
+            {trending.slice(0, 8).map((song, i) => (
+              <SquareCard key={song.videoId} song={song}
+                onClick={() => handlePlaySong(song, trending, i)} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ─── Popular Artists ─── */}
+      <div style={{ marginBottom: 28 }}>
+        <SectionHeader title="Popular artists" />
+        <div className="h-scroll" style={{ paddingLeft: 16 }}>
+          {TOP_ARTISTS.map((a, i) => (
+            <ArtistCircle key={i} name={a.name} img={a.img}
+              onClick={() => handleArtistClick(a.name)} />
+          ))}
+        </div>
       </div>
     </div>
   )
