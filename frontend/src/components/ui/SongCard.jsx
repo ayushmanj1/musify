@@ -1,49 +1,39 @@
-import { motion } from 'framer-motion'
+/**
+ * MUSIFY v2.0 — SongCard (Horizontal Item)
+ * ─────────────────────────────────────────────
+ * CHANGES:
+ * - Horizontal layout: 64px tall, thumbnail (40px) + title + artist
+ * - No backdrop-filter blur
+ * - border-radius: 12px
+ * - No heavy shadows — uses border instead of box-shadow
+ * - contain: layout style for scroll performance
+ * - All img tags: loading="lazy" with explicit width/height
+ * - Thumbnails: mqdefault.jpg (320px), object-fit: cover
+ * - touch-action: manipulation
+ */
+
+import { memo, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useState, useEffect, memo, useCallback } from 'react'
-import { FiPlay, FiMusic } from 'react-icons/fi'
-import { usePlayer, usePlayerTime } from '../../context/PlayerContext.jsx'
+import { FiPlay } from 'react-icons/fi'
+import { usePlayer } from '../../context/PlayerContext.jsx'
 import { enrichSongMetadata, generateGradientUrl } from '../../utils/api.js'
 
-const SongCardProgress = memo(({ isCurrent, lastProgress }) => {
-  const { currentTime, duration } = usePlayerTime()
-  const progress = isCurrent && duration > 0 ? (currentTime / duration) * 100 : (lastProgress || 0)
-  
-  return (
-    <div className="absolute bottom-0 left-0 w-full h-[2px] bg-black/40 overflow-hidden">
-      <motion.div 
-        className="h-full bg-lavender shadow-[0_0_8px_rgba(167,139,250,0.6)]"
-        initial={{ width: 0 }}
-        animate={{ width: `${progress}%` }}
-        transition={{ duration: 0.5 }}
-      />
-    </div>
-  )
-})
-
-const SongCard = memo(({ 
-  song: initialSong, 
-  songs = [], 
-  index = 0, 
-  isArtist = false, 
+const SongCard = memo(({
+  song: initialSong,
+  songs = [],
+  index = 0,
+  isArtist = false,
   isChart = false,
-  showProgress = false,
-  isNew = false,
-  rank = null
+  showDuration = true,
 }) => {
   const navigate = useNavigate()
   const { playSong, currentSong, isPlaying } = usePlayer()
   const [song, setSong] = useState(initialSong)
-  const [isEnriching, setIsEnriching] = useState(false)
   const [imgError, setImgError] = useState(false)
-  
+
   useEffect(() => {
     if (!initialSong.isEnriched && initialSong.title && !isArtist && !isChart) {
-      setIsEnriching(true)
-      enrichSongMetadata(initialSong).then(enriched => {
-        setSong(enriched)
-        setIsEnriching(false)
-      })
+      enrichSongMetadata(initialSong).then(enriched => setSong(enriched))
     } else {
       setSong(initialSong)
     }
@@ -54,11 +44,11 @@ const SongCard = memo(({
 
   const handleClick = () => {
     if (isChart) {
-      navigate('/search', { state: { query: song.title + " songs" } })
+      navigate('/search', { state: { query: song.title + ' songs' } })
       return
     }
     if (isArtist) {
-      navigate(`/search`, { state: { query: song.title || song.name } }) // Route to search for artist songs instead of broken artist page
+      navigate('/search', { state: { query: song.title || song.name } })
       return
     }
     if (song.videoId) {
@@ -66,74 +56,102 @@ const SongCard = memo(({
     }
   }
 
-
-
-  const displayImage = imgError 
-    ? generateGradientUrl(song.title || song.name || 'Music') 
+  const displayImage = imgError
+    ? generateGradientUrl(song.title || song.name || 'Music')
     : (song.albumArt || song.thumbnail || generateGradientUrl(song.title || song.name || 'Music'))
 
   return (
-    <div 
+    <div
       onClick={handleClick}
-      className={`
-        w-[160px] md:w-full
-        p-3 rounded-2xl 
-        glass-card group cursor-pointer relative active:scale-[0.98] transition-all
-        ${isActive ? 'border-lavender/30 ring-1 ring-lavender/20' : ''}
-      `}
+      className="song-item"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        height: 64,
+        padding: '0 12px',
+        borderRadius: 12,
+        background: isCurrent ? 'rgba(124,58,237,0.08)' : 'rgba(255,255,255,0.03)',
+        border: `1px solid ${isCurrent ? 'rgba(124,58,237,0.2)' : 'rgba(255,255,255,0.04)'}`,
+        cursor: 'pointer',
+        transition: 'background 0.15s, border-color 0.15s',
+        touchAction: 'manipulation',
+        contain: 'layout style',
+      }}
+      onMouseEnter={(e) => {
+        if (!isCurrent) e.currentTarget.style.background = 'rgba(255,255,255,0.06)'
+      }}
+      onMouseLeave={(e) => {
+        if (!isCurrent) e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
+      }}
     >
-      <div className="shimmer-sweep" />
-
-      <div className={`relative aspect-square mb-3 overflow-hidden shadow-xl ${isArtist ? 'rounded-full' : 'rounded-xl'} bg-white/[0.03]`}>
-        {isEnriching ? (
-          <div className="absolute inset-0 flex items-center justify-center skeleton-shimmer" />
-        ) : (
-          <img 
-            src={displayImage} 
-            alt={song.title} 
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-            loading="lazy"
-            onError={() => setImgError(true)}
-          />
-        )}
-        
-        {!isArtist && (
-          <div className={`absolute inset-0 flex items-center justify-center transition-all duration-300 ${
-            isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-          }`}>
-            <div className="w-12 h-12 rounded-full flex items-center justify-center bg-white text-black shadow-2xl scale-90 group-hover:scale-100 transition-transform">
-              <FiPlay className="text-xl fill-current ml-1" />
+      {/* Thumbnail */}
+      <div style={{
+        width: 40, height: 40, borderRadius: isArtist ? '50%' : 8,
+        overflow: 'hidden', flexShrink: 0, position: 'relative',
+      }}>
+        <img
+          src={displayImage}
+          alt=""
+          width={40}
+          height={40}
+          loading="lazy"
+          onError={() => setImgError(true)}
+          style={{ width: 40, height: 40, objectFit: 'cover', display: 'block' }}
+        />
+        {isActive && (
+          <div style={{
+            position: 'absolute', inset: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(0,0,0,0.5)',
+          }}>
+            <div style={{ display: 'flex', gap: 2, alignItems: 'flex-end', height: 14 }}>
+              {[1, 2, 3].map(i => (
+                <div
+                  key={i}
+                  style={{
+                    width: 2, borderRadius: 1, background: '#7C3AED',
+                    animation: `eq-bar 0.6s ease-in-out ${i * 0.1}s infinite alternate`,
+                  }}
+                />
+              ))}
             </div>
           </div>
         )}
-
-        {showProgress && !isArtist && (
-          <SongCardProgress isCurrent={isCurrent} lastProgress={song.lastProgress} />
-        )}
-
-        {isNew && (
-          <div className="absolute top-2 left-2 px-2 py-0.5 text-[8px] font-black tracking-widest rounded-md bg-lavender text-white">
-            NEW
-          </div>
-        )}
-
-        {rank && (
-          <div className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded-lg text-[10px] font-black text-white bg-black/60 border border-white/10">
-            {rank}
-          </div>
-        )}
       </div>
 
-      <div className="flex flex-col gap-1 px-1">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className={`text-[13px] md:text-[14px] font-bold truncate leading-tight flex-1 ${isActive ? 'text-lavender' : 'text-white/90'}`}>
-            {song.title || song.name || 'Title'}
-          </h3>
-        </div>
-        <p className={`text-[11px] text-white/30 font-bold truncate tracking-widest uppercase ${isArtist ? 'text-center' : ''}`}>
+      {/* Text */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{
+          fontSize: 14, fontWeight: 600,
+          color: isCurrent ? '#7C3AED' : '#fff',
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          lineHeight: 1.3,
+        }}>
+          {song.title || song.name || 'Unknown'}
+        </p>
+        <p style={{
+          fontSize: 11, fontWeight: 500,
+          color: 'rgba(255,255,255,0.35)',
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>
           {song.artist || song.channelTitle || (isArtist ? 'Artist' : 'Unknown')}
         </p>
       </div>
+
+      {/* Duration */}
+      {showDuration && song.duration && !isArtist && (
+        <span style={{ fontSize: 11, fontWeight: 500, color: 'rgba(255,255,255,0.2)', flexShrink: 0 }}>
+          {song.duration}
+        </span>
+      )}
+
+      <style>{`
+        @keyframes eq-bar {
+          0% { height: 4px; }
+          100% { height: 14px; }
+        }
+      `}</style>
     </div>
   )
 })

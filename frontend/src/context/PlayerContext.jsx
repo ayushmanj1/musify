@@ -1,3 +1,17 @@
+/**
+ * MUSIFY v2.0 — PlayerContext
+ * ─────────────────────────────────────────────
+ * CHANGES:
+ * - Switched from YouTube IFrame API to HTML <audio> with /api/stream
+ * - Removed playlist feature entirely
+ * - Removed history/recentlyPlayed tracking
+ * - Removed searchHistory tracking
+ * - Removed Clerk/guest mode dependency
+ * - Kept: savedSongs (liked), queue, recommendations, shuffle, repeat
+ * - Simplified crossfade to a quick volume ramp
+ * - Media Session API for lock screen controls
+ */
+
 import { createContext, useContext, useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import toast from 'react-hot-toast'
 import { getRecommendations } from '../utils/api.js'
@@ -25,43 +39,28 @@ export function PlayerProvider({ children }) {
   const [volume, setVolume] = useState(80)
   const [queue, setQueue] = useState([])
   const [queueIndex, setQueueIndex] = useState(-1)
-  const [recentlyPlayed, setRecentlyPlayed] = useState(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem('recentlyPlayed') || '[]')
-      return Array.isArray(saved) ? saved : []
-    } catch { return [] }
-  })
 
-  const [searchHistory, setSearchHistory] = useState(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem('searchHistory') || '[]')
-      return Array.isArray(saved) ? saved : []
-    } catch { return [] }
-  })
-  
   const [savedSongs, setSavedSongs] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('savedSongs') || '[]')
       return Array.isArray(saved) ? saved : []
     } catch { return [] }
   })
+
   const [recommendations, setRecommendations] = useState([])
   const [isRecLoading, setIsRecLoading] = useState(false)
   const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false)
   const [shuffle, setShuffle] = useState(false)
-  const [repeat, setRepeat] = useState('none') // 'none', 'one', 'all'
-  const [isGuestMode, setIsGuestMode] = useState(() => {
-    return localStorage.getItem('isGuestMode') === 'true'
-  })
-  const [deferredPrompt, setDeferredPrompt] = useState(null)
+  const [repeat, setRepeat] = useState('none')
+  const [isFullScreenPlayer, setIsFullScreenPlayer] = useState(false)
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [isAudioLoading, setIsAudioLoading] = useState(false)
 
-  const playerRef = useRef(null)
-  const playerReady = useRef(false)
-  const timeUpdateInterval = useRef(null)
-  const silentAudioRef = useRef(new Audio('data:audio/wav;base64,UklGRigAAABXQVZFRm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAHAA'))
-  silentAudioRef.current.loop = true
+  // HTML Audio element
+  const audioRef = useRef(new Audio())
+  const timeUpdateRef = useRef(null)
 
-  // Refs for state to avoid stale closures in event listeners
+  // Refs to avoid stale closures
   const queueRef = useRef([])
   const queueIndexRef = useRef(-1)
   const recommendationsRef = useRef([])
@@ -74,364 +73,205 @@ export function PlayerProvider({ children }) {
   useEffect(() => { shuffleRef.current = shuffle }, [shuffle])
   useEffect(() => { repeatRef.current = repeat }, [repeat])
 
-  // Persist to localStorage
-  useEffect(() => {
-    localStorage.setItem('recentlyPlayed', JSON.stringify(recentlyPlayed))
-  }, [recentlyPlayed])
-
-
-
+  // Persist saved songs
   useEffect(() => {
     localStorage.setItem('savedSongs', JSON.stringify(savedSongs))
   }, [savedSongs])
 
+  // ─── Audio Element Setup ───
   useEffect(() => {
-    localStorage.setItem('searchHistory', JSON.stringify(searchHistory))
-  }, [searchHistory])
+    const audio = audioRef.current
+    audio.volume = volume / 100
+    audio.preload = 'auto'
 
-  useEffect(() => {
-    localStorage.setItem('isGuestMode', isGuestMode)
-  }, [isGuestMode])
-
-  // PWA Install Prompt
-  useEffect(() => {
-    const handler = (e) => {
-      e.preventDefault()
-      setDeferredPrompt(e)
+    const onTimeUpdate = () => {
+      setCurrentTime(audio.currentTime)
     }
-    window.addEventListener('beforeinstallprompt', handler)
-    return () => window.removeEventListener('beforeinstallprompt', handler)
+
+    const onLoadedMetadata = () => {
+      setDuration(audio.duration || 0)
+    }
+
+    const onPlaying = () => {
+      setIsPlaying(true)
+      setIsAudioLoading(false)
+    }
+
+    const onWaiting = () => {
+      setIsAudioLoading(true)
+    }
+
+    const onPlay = () => setIsPlaying(true)
+    const onPause = () => setIsPlaying(false)
+
+    const onEnded = () => {
+      // Repeat one
+      if (repeatRef.current === 'one') {
+        audio.currentTime = 0
+        audio.play().catch(() => {})
+        return
+      }
+
+      // Shuffle: play from recommendations
+      if (shuffleRef.current && recommendationsRef.current.length > 0) {
+        const nextSong = recommendationsRef.current[0]
+        setRecommendations(prev => prev.slice(1))
+        playSong(nextSong)
+        return
+      }
+
+      // Next in queue
+      const nextIdx = queueIndexRef.current + 1
+      if (nextIdx < queueRef.current.length) {
+        playNext()
+        return
+      }
+
+      // Autoplay from recommendations
+      if (recommendationsRef.current.length > 0) {
+        const nextSong = recommendationsRef.current[0]
+        setRecommendations(prev => prev.slice(1))
+        playSong(nextSong)
+      } else {
+        setIsPlaying(false)
+      }
+    }
+
+    const onError = () => {
+      console.error('[Audio] Playback error')
+      toast.error('Playback error. Skipping...')
+      setTimeout(() => playNext(), 1500)
+    }
+
+    audio.addEventListener('timeupdate', onTimeUpdate)
+    audio.addEventListener('loadedmetadata', onLoadedMetadata)
+    audio.addEventListener('playing', onPlaying)
+    audio.addEventListener('waiting', onWaiting)
+    audio.addEventListener('play', onPlay)
+    audio.addEventListener('pause', onPause)
+    audio.addEventListener('ended', onEnded)
+    audio.addEventListener('error', onError)
+
+    return () => {
+      audio.removeEventListener('timeupdate', onTimeUpdate)
+      audio.removeEventListener('loadedmetadata', onLoadedMetadata)
+      audio.removeEventListener('playing', onPlaying)
+      audio.removeEventListener('waiting', onWaiting)
+      audio.removeEventListener('play', onPlay)
+      audio.removeEventListener('pause', onPause)
+      audio.removeEventListener('ended', onEnded)
+      audio.removeEventListener('error', onError)
+    }
   }, [])
 
-  const installApp = async () => {
-    if (!deferredPrompt) {
-      toast.error('App is already installed or not supported')
-      return
-    }
-    deferredPrompt.prompt()
-    const { outcome } = await deferredPrompt.userChoice
-    if (outcome === 'accepted') {
-      setDeferredPrompt(null)
-      toast.success('Installing Musify...')
-    }
-  }
+  // Update volume on audio element
+  useEffect(() => {
+    audioRef.current.volume = volume / 100
+  }, [volume])
 
-  // Media Session API (Lock Screen Controls)
+  // ─── Media Session API ───
   useEffect(() => {
     if ('mediaSession' in navigator && currentSong) {
       navigator.mediaSession.metadata = new MediaMetadata({
         title: currentSong.title,
         artist: currentSong.artist || currentSong.channelTitle,
-        album: 'Musify Premium',
+        album: 'Musify',
         artwork: [
-          { src: currentSong.thumbnail, sizes: '512x512', type: 'image/jpeg' }
+          { src: currentSong.thumbnail, sizes: '320x180', type: 'image/jpeg' }
         ]
       })
 
-      navigator.mediaSession.setActionHandler('play', () => {
-        haptics.light()
-        togglePlay()
-      })
-      navigator.mediaSession.setActionHandler('pause', () => {
-        haptics.light()
-        togglePlay()
-      })
-      navigator.mediaSession.setActionHandler('previoustrack', () => {
-        haptics.medium()
-        playPrevious()
-      })
-      navigator.mediaSession.setActionHandler('nexttrack', () => {
-        haptics.medium()
-        playNext()
-      })
-      
-      // Update position state
+      navigator.mediaSession.setActionHandler('play', () => togglePlay())
+      navigator.mediaSession.setActionHandler('pause', () => togglePlay())
+      navigator.mediaSession.setActionHandler('previoustrack', () => playPrevious())
+      navigator.mediaSession.setActionHandler('nexttrack', () => playNext())
+
       if (duration > 0) {
-        navigator.mediaSession.setPositionState({
-          duration: duration,
-          playbackRate: 1,
-          position: currentTime
-        })
+        try {
+          navigator.mediaSession.setPositionState({
+            duration: duration,
+            playbackRate: 1,
+            position: Math.min(currentTime, duration)
+          })
+        } catch (e) { /* ignore */ }
       }
     }
   }, [currentSong, duration, currentTime])
 
-  // Handle Playback State Changes (Background Sync)
   useEffect(() => {
-    if (isPlaying) {
-      silentAudioRef.current.play().catch(() => {})
-      if ('mediaSession' in navigator) {
-        navigator.mediaSession.playbackState = 'playing'
-      }
-    } else {
-      silentAudioRef.current.pause()
-      if ('mediaSession' in navigator) {
-        navigator.mediaSession.playbackState = 'paused'
-      }
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused'
     }
   }, [isPlaying])
 
-  // Initialize YouTube IFrame API
-  useEffect(() => {
-    const initYT = () => {
-      if (window.YT && window.YT.Player) {
-        createPlayer()
-      } else {
-        window.onYouTubeIframeAPIReady = createPlayer
-        if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
-          const tag = document.createElement('script')
-          tag.src = 'https://www.youtube.com/iframe_api'
-          document.body.appendChild(tag)
-        }
-      }
-    }
-
-    initYT()
-
-    return () => {
-      if (timeUpdateInterval.current) clearInterval(timeUpdateInterval.current)
-    }
-  }, [])
-
-
-
-  function createPlayer() {
-    playerRef.current = new window.YT.Player('yt-player', {
-      height: '0',
-      width: '0',
-      playerVars: {
-        autoplay: 0,
-        controls: 0,
-        disablekb: 1,
-        fs: 0,
-        modestbranding: 1,
-        rel: 0,
-        showinfo: 0,
-      },
-      events: {
-        onReady: () => {
-          console.log('[Player] YouTube Player Ready')
-          playerReady.current = true
-          playerRef.current.setVolume(volume)
-        },
-        onStateChange: (event) => {
-          const states = {
-            '-1': 'UNSTARTED',
-            '0': 'ENDED',
-            '1': 'PLAYING',
-            '2': 'PAUSED',
-            '3': 'BUFFERING',
-            '5': 'CUED'
-          }
-          console.log(`[Player] State Change: ${states[event.data] || event.data}`)
-
-          if (event.data === window.YT.PlayerState.ENDED) {
-            console.log('[Player] Song Ended. Checking for next track...')
-            
-            // 0. Check Repeat One
-            if (repeatRef.current === 'one') {
-              console.log('[Player] Repeat One enabled. Replaying...')
-              playerRef.current.seekTo(0)
-              playerRef.current.playVideo()
-              return
-            }
-
-            // 1. Check Shuffle (Suggestion Mode)
-            if (shuffleRef.current && recommendationsRef.current.length > 0) {
-              console.log('[Player] Shuffle/Suggestion Mode: Playing from Smart Suggestions')
-              const nextSong = recommendationsRef.current[0]
-              setRecommendations(prev => prev.slice(1))
-              playSong(nextSong)
-              return
-            }
-
-            // 2. Check manual queue
-            const nextInQueue = queueIndexRef.current + 1
-            if (nextInQueue < queueRef.current.length) {
-              console.log('[Player] Playing next from manual queue')
-              playNext()
-            } 
-            // 3. Autoplay suggestions (fallback)
-            else if (recommendationsRef.current.length > 0) {
-              console.log('[Player] Autoplay: Playing from Smart Suggestions')
-              const nextSong = recommendationsRef.current[0]
-              setRecommendations(prev => prev.slice(1))
-              playSong(nextSong)
-            } else {
-              console.log('[Player] No queue or suggestions. Retrying in 2s...')
-              setTimeout(() => {
-                if (recommendationsRef.current.length > 0) {
-                  const nextSong = recommendationsRef.current[0]
-                  setRecommendations(prev => prev.slice(1))
-                  playSong(nextSong)
-                } else {
-                  console.log('[Player] Still no suggestions. Stopping.')
-                  setIsPlaying(false)
-                }
-              }, 2000)
-            }
-          }
-          if (event.data === window.YT.PlayerState.PLAYING) {
-            setIsPlaying(true)
-            setDuration(playerRef.current.getDuration())
-            startTimeTracking()
-          }
-          if (event.data === window.YT.PlayerState.PAUSED) {
-            setIsPlaying(false)
-            stopTimeTracking()
-          }
-        },
-        onError: (err) => {
-          console.error('[Player] Error:', err.data)
-          toast.error('Playback error. Skipping...')
-          setTimeout(() => playNext(), 1500)
-        }
-      }
-    })
-  }
-
-  function startTimeTracking() {
-    stopTimeTracking()
-    timeUpdateInterval.current = setInterval(() => {
-      if (playerRef.current && playerRef.current.getCurrentTime) {
-        setCurrentTime(playerRef.current.getCurrentTime())
-        setDuration(playerRef.current.getDuration())
-      }
-    }, 500)
-  }
-
-  function stopTimeTracking() {
-    if (timeUpdateInterval.current) {
-      clearInterval(timeUpdateInterval.current)
-      timeUpdateInterval.current = null
-    }
-  }
-
-  const fadeInterval = useRef(null)
-
-  const fadeVolume = useCallback((targetVol, duration = 1500) => {
-    return new Promise((resolve) => {
-      if (fadeInterval.current) clearInterval(fadeInterval.current)
-      
-      const startVol = playerRef.current?.getVolume() || volume
-      const steps = 20
-      const stepTime = duration / steps
-      const volStep = (targetVol - startVol) / steps
-      let currentStep = 0
-
-      fadeInterval.current = setInterval(() => {
-        currentStep++
-        const newVol = startVol + (volStep * currentStep)
-        if (playerRef.current && playerReady.current) {
-          playerRef.current.setVolume(newVol)
-        }
-        
-        if (currentStep >= steps) {
-          clearInterval(fadeInterval.current)
-          fadeInterval.current = null
-          resolve()
-        }
-      }, stepTime)
-    })
-  }, [volume])
-
+  // ─── Fetch Recommendations ───
   const fetchRecommendations = useCallback(async (song) => {
     if (!song) return
-    console.log(`[Context] Fetching recs for: ${song.title}`)
     setIsRecLoading(true)
-    const recs = await getRecommendations(song.videoId, song.artist, song.title)
-    console.log(`[Context] Received ${recs.length} recommendations`)
-    setRecommendations(recs)
+    try {
+      const recs = await getRecommendations(song.videoId, song.artist, song.title)
+      setRecommendations(recs)
+    } catch (e) {
+      console.error('Recs error:', e)
+    }
     setIsRecLoading(false)
   }, [])
 
-  // Auto-fetch recommendations when song changes
   useEffect(() => {
-    if (currentSong) {
-      fetchRecommendations(currentSong)
-    }
+    if (currentSong) fetchRecommendations(currentSong)
   }, [currentSong, fetchRecommendations])
 
-  // Periodically update progress in history
-  useEffect(() => {
-    if (currentSong && isPlaying && duration > 0) {
-      const interval = setInterval(() => {
-        const time = playerRef.current?.getCurrentTime ? playerRef.current.getCurrentTime() : 0;
-        setRecentlyPlayed(prev => {
-          if (prev.length === 0) return prev
-          return prev.map(s => 
-            s.videoId === currentSong.videoId 
-              ? { ...s, lastProgress: (time / duration) * 100 } 
-              : s
-          )
-        })
-      }, 5000)
-      return () => clearInterval(interval)
-    }
-  }, [currentSong, isPlaying, duration])
-
-  const playSong = useCallback(async (song, songQueue = null, index = 0) => {
+  // ─── Play Song ───
+  const playSong = useCallback((song, songQueue = null, index = 0) => {
     if (!song) return
-    console.log(`[Context] playSong called for: ${song.title} (${song.videoId})`)
-
-    // Start silent audio wake lock synchronously on direct user interaction
-    silentAudioRef.current.play().catch(err => console.log('WakeLock failed:', err))
-
-    // Ultra-Smooth Crossfade: Fade Out (~1500ms)
-    if (currentSong && isPlaying) {
-      await fadeVolume(0, 1500)
-    }
+    const audio = audioRef.current
 
     setCurrentSong(song)
-    fetchRecommendations(song)
+    setCurrentTime(0)
+    setDuration(0)
+    setIsAudioLoading(true)
+    setIsPlaying(true)
 
     if (songQueue) {
       setQueue(songQueue)
       setQueueIndex(index)
     }
 
-    // Add to recently played (History)
-    setRecentlyPlayed(prev => {
-      const filtered = prev.filter(s => s.videoId !== song.videoId)
-      const songWithTimestamp = { 
-        ...song, 
-        playedAt: new Date().toISOString(),
-        lastProgress: 0 
-      }
-      return [songWithTimestamp, ...filtered].slice(0, 100)
+    // Set source to stream endpoint
+    audio.src = `/api/stream?id=${song.videoId}`
+    audio.load()
+    audio.play().catch(err => {
+      console.warn('[Audio] Autoplay blocked:', err.message)
+      setIsPlaying(false)
+      setIsAudioLoading(false)
     })
-
-    if (playerReady.current && playerRef.current) {
-      playerRef.current.loadVideoById(song.videoId)
-      // Ultra-Smooth Crossfade: Fade In (~1200ms)
-      playerRef.current.setVolume(0)
-      setTimeout(() => fadeVolume(volume, 1200), 200)
-    }
-  }, [volume, currentSong, isPlaying, fadeVolume, fetchRecommendations])
+  }, [])
 
   const togglePlay = useCallback(() => {
-    if (!playerRef.current || !playerReady.current) return
+    const audio = audioRef.current
+    if (!audio.src) return
     if (isPlaying) {
-      playerRef.current.pauseVideo()
-      silentAudioRef.current.pause()
+      audio.pause()
     } else {
-      playerRef.current.playVideo()
-      silentAudioRef.current.play().catch(() => {})
+      audio.play().catch(() => {})
     }
   }, [isPlaying])
 
   const seekTo = useCallback((time) => {
-    if (playerRef.current && playerReady.current) {
-      playerRef.current.seekTo(time, true)
-      setCurrentTime(time)
+    const audio = audioRef.current
+    audio.currentTime = time
+    setCurrentTime(time)
+    
+    // Always force play when seeking to fix the skip bug
+    if (audio.src) {
+      audio.play().catch(() => {})
+      setIsPlaying(true)
     }
   }, [])
 
   const setPlayerVolume = useCallback((vol) => {
     setVolume(vol)
-    if (playerRef.current && playerReady.current) {
-      playerRef.current.setVolume(vol)
-    }
+    audioRef.current.volume = vol / 100
   }, [])
 
   const playNext = useCallback(() => {
@@ -454,20 +294,18 @@ export function PlayerProvider({ children }) {
 
   const addToQueue = useCallback((song) => {
     setQueue(prev => [...prev, song])
-    toast.success(`Added "${song.title}" to queue`)
+    toast.success(`Added to queue`)
   }, [])
 
-
-
-  // Saved songs
+  // ─── Saved (Liked) Songs ───
   const toggleSavedSong = useCallback((song) => {
     setSavedSongs(prev => {
       const exists = prev.some(s => s.videoId === song.videoId)
       if (exists) {
-        toast.success('Removed from library')
+        toast.success('Removed from liked')
         return prev.filter(s => s.videoId !== song.videoId)
       } else {
-        toast.success('Saved to library')
+        toast.success('Added to liked')
         return [song, ...prev]
       }
     })
@@ -477,46 +315,17 @@ export function PlayerProvider({ children }) {
     return savedSongs.some(s => s.videoId === videoId)
   }, [savedSongs])
 
-  // Keyboard shortcuts
+  // ─── Keyboard Shortcuts ───
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
-      if (e.code === 'Space') {
-        e.preventDefault()
-        togglePlay()
-      }
-      if (e.code === 'ArrowRight' && e.ctrlKey) {
-        e.preventDefault()
-        playNext()
-      }
-      if (e.code === 'ArrowLeft' && e.ctrlKey) {
-        e.preventDefault()
-        playPrevious()
-      }
+      if (e.code === 'Space') { e.preventDefault(); togglePlay() }
+      if (e.code === 'ArrowRight' && e.ctrlKey) { e.preventDefault(); playNext() }
+      if (e.code === 'ArrowLeft' && e.ctrlKey) { e.preventDefault(); playPrevious() }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [togglePlay, playNext, playPrevious])
-
-  const removeFromHistory = useCallback((videoId, playedAt) => {
-    setRecentlyPlayed(prev => prev.filter(s => !(s.videoId === videoId && s.playedAt === playedAt)))
-  }, [])
-
-  const addSearchToHistory = useCallback((query) => {
-    if (!query || !query.trim()) return
-    setSearchHistory(prev => {
-      const filtered = prev.filter(q => q.toLowerCase() !== query.toLowerCase())
-      return [query.trim(), ...filtered].slice(0, 4)
-    })
-  }, [])
-
-  const removeSearchFromHistory = useCallback((query) => {
-    setSearchHistory(prev => prev.filter(q => q !== query))
-  }, [])
-
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
-  const [isFullScreenPlayer, setIsFullScreenPlayer] = useState(false)
-  const [isSearchOpen, setIsSearchOpen] = useState(false)
 
   const timeValue = useMemo(() => ({
     currentTime,
@@ -525,37 +334,28 @@ export function PlayerProvider({ children }) {
 
   const value = useMemo(() => ({
     currentSong, isPlaying, volume, queue, queueIndex,
-    recentlyPlayed, savedSongs, searchHistory,
-    recommendations, isRecLoading, installApp,
-    deferredPrompt,
-    isSuggestionsOpen,
-    setIsSuggestionsOpen,
-    isSidebarExpanded, setIsSidebarExpanded,
+    savedSongs, recommendations, isRecLoading,
+    isSuggestionsOpen, setIsSuggestionsOpen,
     isFullScreenPlayer, setIsFullScreenPlayer,
-    isSearchOpen, setIsSearchOpen,
-    playSong, togglePlay, seekTo, setPlayerVolume, playNext, playPrevious, addToQueue,
-    toggleSavedSong, isSongSaved, removeFromHistory,
-    addSearchToHistory, removeSearchFromHistory,
+    isSearchOpen, setIsSearchOpen, isAudioLoading,
+    playSong, togglePlay, seekTo, setPlayerVolume,
+    playNext, playPrevious, addToQueue,
+    toggleSavedSong, isSongSaved,
     shuffle, setShuffle, repeat, setRepeat,
-    isGuestMode, setIsGuestMode,
   }), [
     currentSong, isPlaying, volume, queue, queueIndex,
-    recentlyPlayed, savedSongs, searchHistory,
-    recommendations, isRecLoading, isSuggestionsOpen,
-    isSidebarExpanded,
-    isFullScreenPlayer,
-    isSearchOpen,
-    playSong, togglePlay, seekTo, setPlayerVolume, playNext, playPrevious, addToQueue,
-    toggleSavedSong, isSongSaved, removeFromHistory,
-    addSearchToHistory, removeSearchFromHistory,
-    shuffle, repeat, isGuestMode
+    savedSongs, recommendations, isRecLoading, isSuggestionsOpen,
+    isFullScreenPlayer, isSearchOpen, isAudioLoading,
+    playSong, togglePlay, seekTo, setPlayerVolume,
+    playNext, playPrevious, addToQueue,
+    toggleSavedSong, isSongSaved,
+    shuffle, repeat
   ])
 
   return (
     <PlayerTimeContext.Provider value={timeValue}>
       <PlayerContext.Provider value={value}>
         {children}
-        <div id="yt-player" style={{ position: 'fixed', top: -9999, left: -9999, width: 0, height: 0, pointerEvents: 'none', opacity: 0 }} />
       </PlayerContext.Provider>
     </PlayerTimeContext.Provider>
   )

@@ -1,13 +1,29 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap');
+/**
+ * MUSIFY v2.0 — Global Styles
+ * ─────────────────────────────────────────────
+ * CHANGES:
+ * - Font: DM Sans (replaced Outfit/Inter)
+ * - Background: static dark gradient #0a0a0f → #12121a
+ * - Accent: Electric violet #7C3AED, highlight cyan #22D3EE
+ * - Removed ALL backdrop-filter blur from cards
+ * - Glass cards: rgba(255,255,255,0.06) + border only
+ * - Blur ONLY on bottom nav bar
+ * - GPU-safe CSS animations (transform + opacity only)
+ * - Skeleton pulse keyframe
+ * - Mobile perf: overscroll-behavior, contain, touch-action
+ * - 100dvh viewport
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --color-lavender: #A78BFA;
-  --color-lavender-dim: rgba(167, 139, 250, 0.15);
-  --color-luxury-black: #060608;
-  --radius-card: 20px;
-  --animate-float: float 6s ease-in-out infinite;
-  --animate-shimmer: shimmer 2s infinite;
+  --color-violet: #7C3AED;
+  --color-violet-dim: rgba(124, 58, 237, 0.15);
+  --color-cyan: #22D3EE;
+  --color-bg-primary: #0a0a0f;
+  --color-bg-secondary: #12121a;
+  --radius-card: 12px;
 }
 
 * {
@@ -17,117 +33,135 @@
 }
 
 :root {
-  --lavender: #A78BFA;
-  --lavender-light: #C4B5FD;
-  --lavender-dim: rgba(167, 139, 250, 0.15);
-  --luxury-black: #000000;
-  --card-radius: 24px;
-  --bg-main: #000000;
+  --violet: #7C3AED;
+  --violet-light: #8B5CF6;
+  --violet-dim: rgba(124, 58, 237, 0.15);
+  --cyan: #22D3EE;
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #12121a;
+  --card-radius: 12px;
   --text-main: #ffffff;
-  --glass-bg: rgba(6, 6, 8, 0.7);
-  --glass-border: rgba(167, 139, 250, 0.1);
+  --glass-bg: rgba(255, 255, 255, 0.06);
+  --glass-border: rgba(255, 255, 255, 0.09);
 }
 
-html,
-body,
-#root {
-  height: 100%;
+html, body, #root {
+  height: 100dvh;
+  width: 100dvw;
   overflow: hidden;
   overflow-x: hidden !important;
-  background: #000000;
-  font-family: 'Outfit', 'Inter', sans-serif;
+  background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   color: var(--text-main);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* ─── Premium Gradients ─────────────────────────────────────────────── */
-.hero-gradient {
-  background: radial-gradient(circle at 50% 50%, rgba(167, 139, 250, 0.12), transparent 70%);
-}
-
-.premium-header-gradient {
-  background: linear-gradient(to bottom, rgba(167, 139, 250, 0.1), transparent);
-}
-
-/* ─── Glassmorphism ─────────────────────────────────────────────────── */
-.glass-panel {
-  background: var(--glass-bg);
-  backdrop-filter: blur(16px) saturate(160%);
-  -webkit-backdrop-filter: blur(16px) saturate(160%);
-  border: 1px solid var(--glass-border);
-}
-
+/* ─── Glass Card (NO blur — border only) ─────────────────────────── */
 .glass-card {
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
   border-radius: var(--card-radius);
-  transition: all 0.4s cubic-bezier(0.2, 0, 0.2, 1);
-}
-
-[data-theme="light"] .glass-card {
-  background: white;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  transition: background 0.2s ease, border-color 0.2s ease;
 }
 
 .glass-card:hover {
-  background: var(--glass-bg);
-  border-color: rgba(167, 139, 250, 0.2);
-  transform: translateY(-4px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
 }
 
+/* ─── Glass Button (NO blur) ─────────────────────────────────────── */
 .glass-btn {
   background: var(--glass-bg);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--glass-border);
-  transition: all 0.2s ease;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .glass-btn:hover {
-  background: var(--glass-bg);
-  border-color: rgba(167, 139, 250, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.16);
 }
 
-/* ─── Animations ────────────────────────────────────────────────────── */
-@keyframes float {
-
-  0%,
-  100% {
-    transform: translateY(0) scale(1);
-  }
-
-  50% {
-    transform: translateY(-20px) scale(1.05);
-  }
+/* ─── Bottom Nav Bar — ONLY element with blur ────────────────────── */
+.bottom-nav-blur {
+  background: rgba(10, 10, 15, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-@keyframes shimmer {
-  0% {
-    transform: translateX(-150%);
-  }
-
-  100% {
-    transform: translateX(150%);
-  }
+/* ─── Tap Feedback ───────────────────────────────────────────────── */
+button, a, [role="button"] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.shimmer-sweep {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(105deg, transparent 20%, rgba(255, 255, 255, 0.03) 50%, transparent 80%);
-  transform: translateX(-150%);
-  pointer-events: none;
+button:active, a:active, [role="button"]:active {
+  transform: scale(0.96);
+  transition: transform 80ms ease;
 }
 
-.group:hover .shimmer-sweep {
-  animation: shimmer 1.5s infinite;
+/* ─── Page Transition ────────────────────────────────────────────── */
+.page-enter {
+  opacity: 0;
+  transform: translateY(8px);
 }
 
-/* ─── Utilities ─────────────────────────────────────────────────────── */
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+}
+
+/* ─── Skeleton Pulse ─────────────────────────────────────────────── */
+@keyframes skeleton-pulse {
+  0%, 100% { background-color: rgba(255, 255, 255, 0.05); }
+  50% { background-color: rgba(255, 255, 255, 0.1); }
+}
+
+.skeleton-pulse {
+  animation: skeleton-pulse 1.8s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+/* ─── Marquee for long song names ────────────────────────────────── */
+@keyframes marquee-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.marquee-container {
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.marquee-text {
+  display: inline-block;
+  animation: marquee-scroll 8s linear infinite;
+}
+
+/* ─── Heart fill animation (clip-path) ───────────────────────────── */
+@keyframes heart-fill {
+  0% { clip-path: inset(100% 0 0 0); }
+  100% { clip-path: inset(0 0 0 0); }
+}
+
+.heart-animate {
+  animation: heart-fill 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* ─── Section Heading ────────────────────────────────────────────── */
+.section-heading {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  color: var(--text-main);
+  opacity: 0.25;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+/* ─── Scrollbar / Utilities ──────────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 0px;
   height: 0px;
@@ -138,24 +172,25 @@ body,
   scrollbar-width: none;
 }
 
-.section-heading {
-  font-size: 13px;
-  font-weight: 900;
-  letter-spacing: 0.4em;
-  color: var(--text-main);
-  opacity: 0.2;
-  text-transform: uppercase;
-  margin-bottom: 24px;
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
-/* ─── Mobile Performance ─────────────────────────────────────────────── */
-@media (max-width: 768px) {
-  .glass-panel {
-    backdrop-filter: blur(12px) saturate(140%);
-    -webkit-backdrop-filter: blur(12px) saturate(140%);
-  }
+/* ─── Scroll & Touch Performance ─────────────────────────────────── */
+.scroll-container {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
 
-  .glass-card:hover {
-    transform: none;
-  }
+.song-item {
+  contain: layout style;
+}
+
+/* ─── Now Playing Bar + Bottom Nav — will-change only on these ───── */
+.now-playing-bar {
+  will-change: transform;
+}
+
+.bottom-nav {
+  will-change: transform;
 }

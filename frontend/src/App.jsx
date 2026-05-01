@@ -1,116 +1,99 @@
-import { lazy, Suspense, useState } from 'react'
-import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom'
-import Sidebar from './components/layout/Sidebar.jsx'
+/**
+ * MUSIFY v2.0 — App Component
+ * ─────────────────────────────────────────────
+ * CHANGES:
+ * - Removed LockScreen entirely — app opens directly to Home
+ * - Removed Clerk SignedIn/SignedOut gating
+ * - Removed LandingPage route
+ * - Removed playlist and history routes
+ * - Removed YourEpisodesPage route
+ * - Kept: Home, Search, Library (Liked), Artist, Charts
+ * - Removed framer-motion page transitions (CSS-only now)
+ * - 3 nav items only: Home, Search, Liked
+ * - Simplified layout with no sidebar blur
+ */
+
+import { lazy, Suspense, useState, useEffect } from 'react'
+import { Routes, Route, useLocation, Navigate } from 'react-router-dom'
 import Player from './components/layout/Player.jsx'
-import TopBar from './components/layout/TopBar.jsx'
 import MobileNav from './components/layout/MobileNav.jsx'
 import SearchOverlay from './components/layout/SearchOverlay.jsx'
-
-import { motion, AnimatePresence } from 'framer-motion'
-import { haptics } from './utils/haptics.js'
 
 import HomePage from './pages/HomePage.jsx'
 import SearchPage from './pages/SearchPage.jsx'
 import LibraryPage from './pages/LibraryPage.jsx'
 
-const YourEpisodesPage = lazy(() => import('./pages/YourEpisodesPage.jsx'))
 const ArtistPage = lazy(() => import('./pages/ArtistPage.jsx'))
 const ChartsPage = lazy(() => import('./pages/ChartsPage.jsx'))
-const LandingPage = lazy(() => import('./pages/LandingPage.jsx'))
-import { SignedIn, SignedOut } from '@clerk/clerk-react'
-import { usePlayer } from './context/PlayerContext.jsx'
 
 function PageLoader() {
   return (
-    <div className="flex items-center justify-center h-64">
-      <div className="w-6 h-6 border-2 border-lavender/20 border-t-lavender rounded-full animate-spin" />
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '50vh' }}>
+      <div style={{ width: 24, height: 24, border: '2px solid rgba(124,58,237,0.2)', borderTopColor: '#7C3AED', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
 }
 
-import LockScreen from './components/layout/LockScreen.jsx'
-
 export default function App() {
-  const { isGuestMode } = usePlayer()
   const location = useLocation()
-  const [isUnlocked, setIsUnlocked] = useState(false)
 
   return (
     <Suspense fallback={<PageLoader />}>
-      <AnimatePresence mode="wait">
-        {!isUnlocked ? (
-          <LockScreen key="lockscreen" onUnlock={() => setIsUnlocked(true)} />
-        ) : (
-          <motion.div 
-            key="main-app"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
-          >
-            <SignedOut>
-              {!isGuestMode ? <LandingPage /> : <SignedInUI />}
-            </SignedOut>
-            
-            <SignedIn>
-              <SignedInUI />
-            </SignedIn>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <div
+        className="flex flex-col overflow-hidden text-white relative"
+        style={{
+          height: '100dvh',
+          width: '100dvw',
+          background: 'linear-gradient(180deg, #0a0a0f 0%, #12121a 100%)'
+        }}
+      >
+        {/* Main Content */}
+        <div className="flex-1 overflow-y-auto scroll-container hide-scrollbar relative">
+          <div className="pb-36">
+            <PageWrapper key={location.pathname}>
+              <Routes location={location}>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/search" element={<SearchPage />} />
+                <Route path="/library" element={<LibraryPage />} />
+                <Route path="/artist/:id" element={<ArtistPage />} />
+                <Route path="/charts/:id" element={<ChartsPage />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </PageWrapper>
+          </div>
+        </div>
+
+        {/* Player + Nav */}
+        <Player />
+        <MobileNav />
+        <SearchOverlay />
+      </div>
     </Suspense>
   )
 }
 
-function SignedInUI() {
-  const location = useLocation()
-  const navigate = useNavigate()
-  const { isSearchOpen } = usePlayer()
+// CSS-only page transition wrapper
+function PageWrapper({ children }) {
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setVisible(true))
+    return () => {
+      cancelAnimationFrame(raf)
+      setVisible(false)
+    }
+  }, [])
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden text-white relative" style={{ background: 'var(--luxury-black)' }}>
-      {/* Ambient glow orbs (Static to prevent lag) */}
-      <div className="fixed top-0 left-0 w-full h-full pointer-events-none z-0 overflow-hidden transform-gpu">
-        <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-[#A78BFA]/[0.02] rounded-full blur-[80px]" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] bg-[#7C3AED]/[0.02] rounded-full blur-[60px]" />
-      </div>
-
-      <div className="flex flex-1 min-h-0 relative z-10 p-1 md:p-2 gap-2">
-        <div className="hidden md:block">
-          <Sidebar />
-        </div>
-
-        <div className="flex-1 flex flex-col min-w-0 relative z-10 glass-panel rounded-none md:rounded-2xl overflow-hidden">
-          <div className="flex-1 overflow-y-auto relative hide-scrollbar scroll-smooth">
-            <TopBar />
-            <div className="pb-32 md:pb-24">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={location.pathname}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-                >
-                  <Routes location={location}>
-                    <Route path="/" element={<HomePage />} />
-                    <Route path="/search" element={<SearchPage />} />
-                    <Route path="/library" element={<LibraryPage />} />
-
-                    <Route path="/episodes" element={<YourEpisodesPage />} />
-                    <Route path="/artist/:id" element={<ArtistPage />} />
-                    <Route path="/charts/:id" element={<ChartsPage />} />
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                  </Routes>
-                </motion.div>
-              </AnimatePresence>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <Player />
-      <MobileNav />
-      <SearchOverlay />
+    <div
+      style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? 'translateY(0)' : 'translateY(8px)',
+        transition: 'opacity 200ms ease-out, transform 200ms ease-out',
+      }}
+    >
+      {children}
     </div>
   )
 }

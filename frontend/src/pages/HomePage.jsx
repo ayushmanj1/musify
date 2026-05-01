@@ -1,11 +1,20 @@
+/**
+ * MUSIFY v2.0 — HomePage
+ * ─────────────────────────────────────────────
+ * CHANGES:
+ * - Removed recently played / history section
+ * - Static dark gradient background (no animated gradients)
+ * - Hero: simplified, DM Sans, violet accent
+ * - Sections: Trending Hits, Top Artists, New Releases, Charts
+ * - All sections use horizontal 64px song items
+ * - No backdrop-filter blur anywhere
+ */
+
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
 import { getTrending } from '../utils/api.js'
-import { usePlayer } from '../context/PlayerContext.jsx'
 import HomeRow from '../components/ui/HomeRow.jsx'
 
 export default function HomePage() {
-  const { recentlyPlayed, playlists } = usePlayer()
   const [trendingSongs, setTrendingSongs] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -20,68 +29,65 @@ export default function HomePage() {
           return !title.includes('bhojpuri') && !artist.includes('bhojpuri')
         })
         setTrendingSongs(filtered)
-      } catch (err) {
-        console.error(err)
-      }
+      } catch (err) { console.error(err) }
       setLoading(false)
     }
     load()
   }, [])
 
   const artistCards = [
-    { title: 'The Weeknd', artist: 'Artist', thumbnail: 'https://images.unsplash.com/photo-1514525253361-bee8718a74a2?w=600&h=600&fit=crop', isArtist: true },
-    { title: 'Dua Lipa', artist: 'Artist', thumbnail: 'https://images.unsplash.com/photo-1520127877998-122c33e8eb38?w=600&h=600&fit=crop', isArtist: true },
-    { title: 'Karan Aujla', artist: 'Artist', thumbnail: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&h=600&fit=crop', isArtist: true },
-    { title: 'Arijit Singh', artist: 'Artist', thumbnail: 'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?w=600&h=600&fit=crop', isArtist: true },
-    { title: 'Post Malone', artist: 'Artist', thumbnail: 'https://images.unsplash.com/photo-1459749411177-042180ce673f?w=600&h=600&fit=crop', isArtist: true },
-    { title: 'Sidhu Moose Wala', artist: 'Artist', thumbnail: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&h=600&fit=crop', isArtist: true },
-    { title: 'Badshah', artist: 'Artist', thumbnail: 'https://images.unsplash.com/photo-1511367461989-f85a21fda167?w=600&h=600&fit=crop', isArtist: true },
+    { title: 'The Weeknd', artist: 'Artist', thumbnail: 'https://i.ytimg.com/vi/4NRXx6U8ABQ/mqdefault.jpg', isArtist: true },
+    { title: 'Dua Lipa', artist: 'Artist', thumbnail: 'https://i.ytimg.com/vi/oygrmJFKYZY/mqdefault.jpg', isArtist: true },
+    { title: 'Karan Aujla', artist: 'Artist', thumbnail: 'https://i.ytimg.com/vi/YmPjPKLPRH4/mqdefault.jpg', isArtist: true },
+    { title: 'Arijit Singh', artist: 'Artist', thumbnail: 'https://i.ytimg.com/vi/5Eqb_-j3FDA/mqdefault.jpg', isArtist: true },
+    { title: 'Post Malone', artist: 'Artist', thumbnail: 'https://i.ytimg.com/vi/UceaB4D0jpo/mqdefault.jpg', isArtist: true },
   ]
 
   const chartCards = [
-    { title: 'Global Top 50', artist: 'The biggest hits worldwide.', thumbnail: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=600&h=600&fit=crop' },
-    { title: 'Viral Hits India', artist: 'Hottest tracks in India.', thumbnail: 'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?w=600&h=600&fit=crop' },
-    { title: 'Hot 100 USA', artist: 'Most played in the USA.', thumbnail: 'https://images.unsplash.com/photo-1514525253361-bee8718a74a2?w=600&h=600&fit=crop' },
-    { title: 'Bollywood Mix', artist: 'Top Bollywood tracks.', thumbnail: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&h=600&fit=crop' },
-    { title: 'Indie India', artist: 'Best of Indian Indie.', thumbnail: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&h=600&fit=crop' },
-    { title: 'Viral Global', artist: 'Viral tracks globally.', thumbnail: 'https://images.unsplash.com/photo-1520127877998-122c33e8eb38?w=600&h=600&fit=crop' },
-    { title: 'UK Top 40', artist: 'Charts from the UK.', thumbnail: 'https://images.unsplash.com/photo-1459749411177-042180ce673f?w=600&h=600&fit=crop' },
+    { title: 'Global Top 50', artist: 'The biggest hits worldwide', thumbnail: 'https://i.ytimg.com/vi/kJQP7kiw5Fk/mqdefault.jpg' },
+    { title: 'Viral Hits India', artist: 'Hottest tracks in India', thumbnail: 'https://i.ytimg.com/vi/5Eqb_-j3FDA/mqdefault.jpg' },
+    { title: 'Hot 100 USA', artist: 'Most played in the USA', thumbnail: 'https://i.ytimg.com/vi/4NRXx6U8ABQ/mqdefault.jpg' },
+    { title: 'Bollywood Mix', artist: 'Top Bollywood tracks', thumbnail: 'https://i.ytimg.com/vi/YmPjPKLPRH4/mqdefault.jpg' },
   ]
 
   return (
-    <div className="pb-32 min-h-screen">
-      {/* PREMIUM HERO (Optimized) */}
-      <section className="relative w-full h-[240px] md:h-[340px] flex flex-col items-center justify-center overflow-hidden mb-6">
-        {/* Background Layer */}
-        <div className="absolute inset-0 bg-gradient-to-br from-lavender/20 via-lavender/5 to-transparent" />
-        <div className="absolute top-[-50%] left-[-10%] w-[120%] h-[200%] bg-[radial-gradient(circle_at_center,rgba(167,139,250,0.15),transparent_60%)] animate-pulse" />
-        
-        <motion.div 
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="relative z-10 text-center px-6"
-        >
-          <h1 className="text-[54px] md:text-[100px] font-black text-white tracking-tighter leading-none mb-3 drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
-            MUSIFY<span className="text-lavender">.</span>
-          </h1>
-          <p className="text-[11px] md:text-[13px] font-black text-lavender/80 tracking-[0.6em] uppercase drop-shadow-[0_0_10px_rgba(167,139,250,0.5)]">
-            Your Vibe, Your Sound
-          </p>
-        </motion.div>
+    <div style={{ minHeight: '100vh', paddingBottom: 120 }}>
+      {/* Hero */}
+      <section style={{
+        position: 'relative', width: '100%', padding: '60px 24px 40px',
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        textAlign: 'center', overflow: 'hidden',
+      }}>
+        {/* Subtle glow */}
+        <div style={{
+          position: 'absolute', top: '-30%', left: '20%', width: '60%', height: '80%',
+          background: 'radial-gradient(circle, rgba(124,58,237,0.08) 0%, transparent 70%)',
+          pointerEvents: 'none',
+        }} />
 
-        {/* Bottom Fade */}
-        <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-[var(--bg-main)] to-transparent" />
+        <h1 style={{
+          fontSize: 'clamp(48px, 12vw, 96px)',
+          fontWeight: 900, color: '#fff',
+          letterSpacing: '-0.04em', lineHeight: 1,
+          marginBottom: 8, position: 'relative', zIndex: 1,
+        }}>
+          MUSIFY<span style={{ color: '#7C3AED' }}>.</span>
+        </h1>
+        <p style={{
+          fontSize: 11, fontWeight: 700, letterSpacing: '0.5em',
+          textTransform: 'uppercase', color: 'rgba(124,58,237,0.6)',
+          position: 'relative', zIndex: 1,
+        }}>
+          Your Vibe, Your Sound
+        </p>
       </section>
 
-      <div className="px-4 md:px-10 max-w-[1600px] mx-auto flex flex-col gap-6 md:gap-12">
-        {recentlyPlayed.length > 0 && (
-          <HomeRow title="Recently Played" items={recentlyPlayed.slice(0, 7)} showProgress={true} />
-        )}
+      {/* Content */}
+      <div style={{ padding: '0 16px', maxWidth: 800, margin: '0 auto' }}>
+        <HomeRow title="Trending Hits" items={trendingSongs.slice(0, 10)} loading={loading} />
         <HomeRow title="Top Artists" items={artistCards} isArtist={true} />
-        <HomeRow title="Trending Hits" items={trendingSongs.slice(0, 14)} loading={loading} />
-        <HomeRow title="New Releases" items={trendingSongs.slice(14, 28)} loading={loading} isNew={true} />
-        <HomeRow title="Charts for You" items={chartCards} isChart={true} showRank={true} />
+        <HomeRow title="New Releases" items={trendingSongs.slice(10, 20)} loading={loading} />
+        <HomeRow title="Charts For You" items={chartCards} isChart={true} />
       </div>
     </div>
   )

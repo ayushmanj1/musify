@@ -1,71 +1,83 @@
+/**
+ * MUSIFY v2.0 — Entry Point
+ * ─────────────────────────────────────────────
+ * CHANGES:
+ * - Made Clerk optional (app works without key)
+ * - Updated theme colors to violet accent
+ * - Removed blur from toast styles
+ * - App opens directly to Home (no lock screen gate)
+ */
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
-import { ClerkProvider } from '@clerk/clerk-react'
-import { dark } from '@clerk/themes'
 import App from './App.jsx'
 import { PlayerProvider } from './context/PlayerContext.jsx'
 import './index.css'
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
-if (!PUBLISHABLE_KEY) {
-  throw new Error("Missing Publishable Key")
+function AppRoot() {
+  return (
+    <BrowserRouter>
+      <PlayerProvider>
+        <App />
+        <Toaster
+          position="bottom-center"
+          toastOptions={{
+            style: {
+              background: 'rgba(18, 18, 26, 0.95)',
+              color: '#fff',
+              border: '1px solid rgba(255, 255, 255, 0.09)',
+              borderRadius: '12px',
+              fontSize: '13px',
+              fontWeight: '600',
+              fontFamily: "'DM Sans', sans-serif",
+              padding: '10px 16px',
+            },
+            success: {
+              iconTheme: {
+                primary: '#7C3AED',
+                secondary: '#fff',
+              },
+            },
+          }}
+        />
+      </PlayerProvider>
+    </BrowserRouter>
+  )
+}
+
+// Conditionally wrap with Clerk if key is available
+function Root() {
+  if (PUBLISHABLE_KEY) {
+    // Dynamic import Clerk only when key exists
+    const { ClerkProvider } = require('@clerk/clerk-react')
+    const { dark } = require('@clerk/themes')
+    return (
+      <ClerkProvider
+        publishableKey={PUBLISHABLE_KEY}
+        appearance={{
+          baseTheme: dark,
+          variables: {
+            colorPrimary: '#7C3AED',
+            colorBackground: '#0a0a0f',
+            colorInputBackground: '#12121a',
+            colorInputText: '#FFFFFF',
+            borderRadius: '12px',
+          },
+        }}
+      >
+        <AppRoot />
+      </ClerkProvider>
+    )
+  }
+  return <AppRoot />
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <ClerkProvider 
-      publishableKey={PUBLISHABLE_KEY} 
-      appearance={{
-        baseTheme: dark,
-        variables: {
-          colorPrimary: '#A78BFA',
-          colorBackground: '#060608',
-          colorInputBackground: '#121214',
-          colorInputText: '#FFFFFF',
-          borderRadius: '16px',
-        },
-        elements: {
-          card: 'glass-panel shadow-2xl border border-white/5',
-          navbar: 'hidden',
-          headerTitle: 'text-2xl font-black tracking-tight',
-          headerSubtitle: 'text-white/40 font-medium',
-          socialButtonsBlockButton: 'glass-btn border-white/5 hover:bg-white/10 transition-all',
-          formButtonPrimary: 'bg-lavender text-black font-black uppercase tracking-widest text-[12px] hover:scale-[1.02] active:scale-[0.98] transition-all',
-          footerActionLink: 'text-lavender hover:text-lavender-light font-bold',
-        }
-      }}
-    >
-      <BrowserRouter>
-        <PlayerProvider>
-          <App />
-          <Toaster
-            position="bottom-right"
-            toastOptions={{
-              style: {
-                background: 'rgba(12, 12, 18, 0.8)',
-                color: '#fff',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-                backdropFilter: 'blur(30px) saturate(180%)',
-                WebkitBackdropFilter: 'blur(30px) saturate(180%)',
-                borderRadius: '20px',
-                fontSize: '14px',
-                fontWeight: '600',
-                padding: '12px 20px',
-                boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
-              },
-              success: {
-                iconTheme: {
-                  primary: '#A78BFA',
-                  secondary: '#fff',
-                },
-              },
-            }}
-          />
-        </PlayerProvider>
-      </BrowserRouter>
-    </ClerkProvider>
+    <AppRoot />
   </React.StrictMode>,
 )
