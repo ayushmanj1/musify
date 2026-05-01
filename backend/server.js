@@ -175,30 +175,30 @@ async function performSearch(query, limit = 20) {
   }
 }
 
-// ─── Stream URL Extractor (yt-dlp fallback) ───
-import youtubedl from 'youtube-dl-exec'
+// ─── Stream URL Extractor (Pure JS via ytdl-core-enhanced) ───
+import ytdl from 'ytdl-core-enhanced'
 
 async function getStreamUrl(videoId) {
   try {
-    // We use youtube-dl-exec because YouTube recently broke pure-JS extractors (returning 403s)
-    // Best audio format that browsers can play natively (m4a/aac or webm/opus)
-    // We explicitly avoid ec-3 and ac-3 (Dolby) because HTML5 <audio> cannot decode them
-    const info = await withRetry(() => youtubedl(`https://www.youtube.com/watch?v=${videoId}`, { 
-      dumpJson: true, 
-      noWarnings: true, 
-      cacheDir: '/tmp',
-      format: 'bestaudio[ext=m4a][acodec^=mp4a]/bestaudio[ext=webm][acodec=opus]/bestaudio[ext=m4a]/bestaudio' 
-    }), 2, 500)
+    // ytdl-core-enhanced has automatic poToken generation which bypasses 403 Forbidden
+    // without needing bulky external binaries like yt-dlp on Vercel.
+    const info = await withRetry(() => ytdl.getInfo(videoId), 2, 500)
     
-    if (!info || !info.url) {
-      throw new Error('yt-dlp failed to extract URL')
+    // Explicitly filter out Dolby codecs (ec-3, ac-3) as HTML5 <audio> on mobile cannot decode them
+    const format = ytdl.chooseFormat(info.formats, {
+      quality: 'highestaudio',
+      filter: f => f.hasAudio && !f.hasVideo && !f.audioCodec?.includes('ec-3') && !f.audioCodec?.includes('ac-3')
+    })
+
+    if (!format || !format.url) {
+      throw new Error('Failed to extract playable stream')
     }
     
-    console.log(`[Stream] ${videoId} → ${info.ext} @ ${Math.round((info.abr || 128))}kbps`)
-    const mime = info.ext === 'webm' ? 'audio/webm' : 'audio/mp4'
-    return { url: info.url, mime }
+    console.log(`[Stream] ${videoId} → ${format.container} @ ${Math.round((format.audioBitrate || 128))}kbps`)
+    const mime = format.mimeType || (format.container === 'webm' ? 'audio/webm' : 'audio/mp4')
+    return { url: format.url, mime }
   } catch (err) {
-    console.error(`[Stream] yt-dlp failed for ${videoId}:`, err.message)
+    console.error(`[Stream] Extractor failed for ${videoId}:`, err.message)
     throw new Error('No playable audio format found')
   }
 }
