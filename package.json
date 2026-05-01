@@ -2,6 +2,7 @@
   "name": "musify",
   "version": "2.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "concurrently \"cd backend && npm start\" \"cd frontend && npm run dev\"",
     "build": "cd frontend && npm install --legacy-peer-deps && npm run build",
