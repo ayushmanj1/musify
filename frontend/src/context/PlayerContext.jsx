@@ -123,7 +123,6 @@ export function PlayerProvider({ children }) {
   // ─── Audio Element Setup ───
   useEffect(() => {
     const audio = audioRef.current
-    audio.crossOrigin = 'anonymous'
     crossfadeManager.init(audio)
     
     audio.volume = volume / 100

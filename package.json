@@ -14,7 +14,9 @@
     "dotenv": "^16.4.5",
     "express": "^4.21.0",
     "lru-cache": "^11.0.0",
-    "youtube-sr": "^4.3.11"
+    "youtube-dl-exec": "^3.1.5",
+    "youtube-sr": "^4.3.11",
+    "youtubei.js": "^17.0.1"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
