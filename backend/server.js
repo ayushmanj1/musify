@@ -413,39 +413,62 @@ app.get('/api/stream', async (req, res) => {
     const streamUrl = streamInfo.url
     const mimeType = streamInfo.mime || 'audio/webm'
 
-    // Handle range requests for seeking
-    const range = req.headers.range
-    const fetchOptions = range ? { headers: { Range: range } } : {}
+    // Force 1MB chunk sizes to bypass Vercel 10s timeout
+    const CHUNK_SIZE = 1024 * 1024 // 1MB
+    let range = req.headers.range || 'bytes=0-'
+    
+    let start = 0
+    let end = undefined
+    
+    const parts = range.replace(/bytes=/, "").split("-")
+    start = parseInt(parts[0], 10)
+    if (parts[1]) {
+      end = parseInt(parts[1], 10)
+    }
 
-    const response = await fetch(streamUrl, fetchOptions)
+    // Temporarily fetch headers to get total file size
+    const headRes = await fetch(streamInfo.url, { method: 'HEAD' })
+    const totalSize = parseInt(headRes.headers.get('content-length') || '0', 10)
+
+    if (totalSize > 0) {
+      if (end === undefined || end >= totalSize) {
+        end = totalSize - 1
+      }
+      // Strictly enforce chunk size
+      if (end - start + 1 > CHUNK_SIZE) {
+        end = start + CHUNK_SIZE - 1
+      }
+    }
+
+    const fetchOptions = { headers: { Range: `bytes=${start}-${end !== undefined ? end : ''}` } }
+    const response = await fetch(streamInfo.url, fetchOptions)
 
     if (!response.ok) {
       throw new Error(`Upstream returned ${response.status}`)
     }
 
-    res.status(response.status)
+    res.status(206) // Always return Partial Content to force browser chunking
 
-    // Copy necessary headers
-    if (response.headers.get('content-range')) {
-      res.setHeader('Content-Range', response.headers.get('content-range'))
-    }
-    if (response.headers.get('content-length')) {
-      res.setHeader('Content-Length', response.headers.get('content-length'))
-    }
-    // Prefer our known MIME type — Google CDN sometimes returns text/plain
-    const upstreamType = response.headers.get('content-type') || ''
-    res.setHeader('Content-Type', upstreamType.startsWith('audio') ? upstreamType : mimeType)
-    res.setHeader('Cache-Control', 'public, max-age=3600')
+    // Set precise headers
     res.setHeader('Accept-Ranges', 'bytes')
+    res.setHeader('Content-Type', mimeType)
+    res.setHeader('Cache-Control', 'public, max-age=3600')
+    
+    if (totalSize > 0) {
+      res.setHeader('Content-Range', `bytes ${start}-${end}/${totalSize}`)
+      res.setHeader('Content-Length', end - start + 1)
+    } else {
+      // Fallback if we don't know total size
+      if (response.headers.get('content-range')) res.setHeader('Content-Range', response.headers.get('content-range'))
+      if (response.headers.get('content-length')) res.setHeader('Content-Length', response.headers.get('content-length'))
+    }
 
     if (!response.body) {
       return res.status(500).json({ error: 'Empty stream from upstream' })
     }
 
-    // Pump stream to client
     const reader = response.body.getReader()
     
-    // Crucial for mobile (Safari): Cancel upstream download if client aborts the request
     req.on('close', () => {
       reader.cancel().catch(() => {})
     })
