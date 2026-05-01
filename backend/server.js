@@ -175,37 +175,31 @@ async function performSearch(query, limit = 20) {
   }
 }
 
-// ─── Stream URL Extractor (youtubei.js ANDROID client) ───
+// ─── Stream URL Extractor (yt-dlp fallback) ───
+import youtubedl from 'youtube-dl-exec'
+
 async function getStreamUrl(videoId) {
-  const yt = await getYtAndroid()
-
-  const info = await withRetry(() => yt.getBasicInfo(videoId), 2, 300)
-
-  if (!info?.streaming_data) {
-    throw new Error('No streaming data available')
+  try {
+    // We use youtube-dl-exec because YouTube recently broke pure-JS extractors (returning 403s)
+    // Best audio format that browsers can play natively (m4a/aac or webm/opus)
+    // We explicitly avoid ec-3 and ac-3 (Dolby) because HTML5 <audio> cannot decode them
+    const info = await withRetry(() => youtubedl(`https://www.youtube.com/watch?v=${videoId}`, { 
+      dumpJson: true, 
+      noWarnings: true, 
+      format: 'bestaudio[ext=m4a][acodec^=mp4a]/bestaudio[ext=webm][acodec=opus]/bestaudio[ext=m4a]/bestaudio' 
+    }), 2, 500)
+    
+    if (!info || !info.url) {
+      throw new Error('yt-dlp failed to extract URL')
+    }
+    
+    console.log(`[Stream] ${videoId} → ${info.ext} @ ${Math.round((info.abr || 128))}kbps`)
+    const mime = info.ext === 'webm' ? 'audio/webm' : 'audio/mp4'
+    return { url: info.url, mime }
+  } catch (err) {
+    console.error(`[Stream] yt-dlp failed for ${videoId}:`, err.message)
+    throw new Error('No playable audio format found')
   }
-
-  const sd = info.streaming_data
-  // Get audio-only adaptive formats, sorted by bitrate (best first)
-  const audioFormats = (sd.adaptive_formats || [])
-    .filter(f => f.has_audio && !f.has_video)
-    .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))
-
-  if (audioFormats.length === 0) {
-    // Fallback to combined formats
-    const combined = (sd.formats || [])
-      .filter(f => f.has_audio)
-      .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))
-    if (combined.length === 0) throw new Error('No audio formats found')
-    const url = combined[0].url
-    if (!url) throw new Error('No URL in format')
-    return { url, mime: combined[0].mime_type || 'audio/mp4' }
-  }
-
-  const best = audioFormats[0]
-  const url = best.url
-  if (!url) throw new Error('No URL in audio format')
-  return { url, mime: best.mime_type || 'audio/webm' }
 }
 
 // ─── Stream Prefetcher ───
@@ -425,7 +419,11 @@ app.get('/api/stream', async (req, res) => {
 
     const response = await fetch(streamUrl, fetchOptions)
 
-    res.status(range ? 206 : 200)
+    if (!response.ok) {
+      throw new Error(`Upstream returned ${response.status}`)
+    }
+
+    res.status(response.status)
 
     // Copy necessary headers
     if (response.headers.get('content-range')) {
@@ -446,14 +444,28 @@ app.get('/api/stream', async (req, res) => {
 
     // Pump stream to client
     const reader = response.body.getReader()
+    
+    // Crucial for mobile (Safari): Cancel upstream download if client aborts the request
+    req.on('close', () => {
+      reader.cancel().catch(() => {})
+    })
+
     const pump = async () => {
       try {
         while (true) {
           const { done, value } = await reader.read()
-          if (done) { res.end(); break }
-          if (!res.writableEnded) res.write(Buffer.from(value))
+          if (done) { 
+            if (!res.writableEnded) res.end()
+            break 
+          }
+          if (res.writableEnded) {
+            reader.cancel().catch(() => {})
+            break
+          }
+          res.write(Buffer.from(value))
         }
       } catch (e) {
+        console.error('Pump error:', e)
         if (!res.writableEnded) res.end()
       }
     }
