@@ -186,6 +186,7 @@ async function getStreamUrl(videoId) {
     const info = await withRetry(() => youtubedl(`https://www.youtube.com/watch?v=${videoId}`, { 
       dumpJson: true, 
       noWarnings: true, 
+      cacheDir: '/tmp',
       format: 'bestaudio[ext=m4a][acodec^=mp4a]/bestaudio[ext=webm][acodec=opus]/bestaudio[ext=m4a]/bestaudio' 
     }), 2, 500)
     
