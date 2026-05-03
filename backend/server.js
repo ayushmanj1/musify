@@ -172,27 +172,38 @@ import youtubedl from 'youtube-dl-exec'
 
 async function getStreamUrl(videoId) {
   try {
-    // We use youtube-dl-exec because it extracts streams in ~2 seconds.
-    // Pure JS libraries take ~17 seconds to generate PoTokens, which times out Vercel Serverless.
+    // Attempt 1: Fast extraction with yt-dlp
     const info = await withRetry(() => youtubedl(`https://www.youtube.com/watch?v=${videoId}`, { 
       dumpJson: true, 
       noWarnings: true, 
-      cacheDir: os.tmpdir(), // Cross-platform temp dir
-      format: 'bestaudio/best', // Simplified format selection
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    }), 2, 500)
+      cacheDir: os.tmpdir(),
+      format: 'bestaudio/best',
+      userAgent: getRandomUA()
+    }), 1, 300)
     
-    if (!info || !info.url) {
-      throw new Error('yt-dlp failed to extract URL')
+    if (info && info.url) {
+      console.log(`[Stream] ${videoId} extracted via yt-dlp`)
+      const mime = info.ext === 'webm' ? 'audio/webm' : 'audio/mp4'
+      const size = info.filesize || info.filesize_approx || 0
+      return { url: info.url, mime, size }
     }
-    
-    console.log(`[Stream] ${videoId} → ${info.ext} @ ${Math.round((info.abr || 128))}kbps`)
-    const mime = info.ext === 'webm' ? 'audio/webm' : 'audio/mp4'
-    const size = info.filesize || info.filesize_approx || 0
-    return { url: info.url, mime, size }
   } catch (err) {
-    console.error(`[Stream] yt-dlp failed for ${videoId}:`, err.message)
-    throw new Error('No playable audio format found')
+    console.warn(`[Stream] yt-dlp failed for ${videoId}, trying youtubei.js...`)
+  }
+
+  try {
+    // Attempt 2: youtubei.js fallback (Android)
+    const yt = await getYtAndroid()
+    const info = await withRetry(() => yt.getBasicInfo(videoId, 'ANDROID'), 1, 300)
+    const format = info.streaming_data?.adaptive_formats?.find(f => f.has_audio && !f.has_video)
+    
+    if (format && format.url) {
+      console.log(`[Stream] ${videoId} extracted via youtubei.js (Android)`)
+      return { url: format.url, mime: format.mime_type, size: parseInt(format.content_length || '0') }
+    }
+  } catch (err) {
+    console.error(`[Stream] youtubei.js failed for ${videoId}:`, err.message)
+    throw new Error('All extraction methods failed')
   }
 }
 

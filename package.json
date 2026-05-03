@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently \"cd backend && npm start\" \"cd frontend && npm run dev\"",
-    "build": "cd frontend && npm install --legacy-peer-deps && npm run build",
+    "build": "npm install && cd frontend && npm install --legacy-peer-deps && npm run build",
     "vercel-build": "cd frontend && npm install --legacy-peer-deps && npm run build",
     "start": "node --max-old-space-size=256 backend/server.js"
   },
