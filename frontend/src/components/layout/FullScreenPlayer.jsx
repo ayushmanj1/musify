@@ -3,7 +3,7 @@ import { usePlayer } from '../../context/PlayerContext.jsx'
 import { 
   FiChevronDown, FiHeart, FiMoreHorizontal, 
   FiShuffle, FiSkipBack, FiPlay, FiPause, FiSkipForward, FiRepeat,
-  FiVolume2, FiVolumeX, FiClock, FiMinimize2, FiSliders, FiList
+  FiVolume2, FiVolumeX, FiClock, FiMinimize2, FiSliders, FiList, FiX
 } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 
@@ -25,13 +25,86 @@ const fakeLyrics = [
   "Drinking from a golden cup"
 ]
 
+function SongRow({ song, isPlaying, isCurrent, showAdd, onClick }) {
+  const { addToQueue } = usePlayer()
+  const [added, setAdded] = useState(false)
+
+  if (!song) return null
+
+  const hue = ((song.title?.charCodeAt(0) || 0) * 37) % 360;
+  const bg = song.color || `hsl(${hue}, 35%, 25%)`
+  const initial = song.title?.charAt(0).toUpperCase()
+
+  const handleAdd = (e) => {
+    e.stopPropagation()
+    if (added) return
+    addToQueue(song)
+    setAdded(true)
+    toast.success('Added to queue', { position: 'bottom-center' })
+  }
+
+  return (
+    <div 
+      onClick={onClick}
+      className={`premium-song-row ${isCurrent ? 'active' : ''}`}
+      style={{
+        display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 20px',
+        margin: '0 8px', borderRadius: '8px', cursor: 'pointer',
+        background: isCurrent ? 'rgba(139,92,246,0.1)' : 'transparent',
+        borderLeft: isCurrent ? '3px solid #8B5CF6' : '3px solid transparent',
+        transition: 'background 0.2s ease'
+      }}
+    >
+      <div style={{ position: 'relative', width: 44, height: 44, borderRadius: 6, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }} className="song-poster">
+        {song.thumbnail ? (
+          <img src={song.thumbnail} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        ) : song.emoji ? (
+          <span style={{ fontSize: '20px', lineHeight: '44px' }}>{song.emoji}</span>
+        ) : (
+          <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#fff' }}>{initial}</span>
+        )}
+        
+        {isCurrent && (
+          <div style={{ position: 'absolute', bottom: '4px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '2px', alignItems: 'flex-end' }}>
+            <div className="eq-bar" style={{ animationPlayState: isPlaying ? 'running' : 'paused' }} />
+            <div className="eq-bar" style={{ animationDelay: '150ms', animationPlayState: isPlaying ? 'running' : 'paused' }} />
+            <div className="eq-bar" style={{ animationDelay: '300ms', animationPlayState: isPlaying ? 'running' : 'paused' }} />
+          </div>
+        )}
+      </div>
+
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ margin: 0, fontSize: '13px', fontWeight: 500, color: '#fff' }} className="truncate">{song.title}</p>
+        <p style={{ margin: 0, fontSize: '12px', color: '#b3b3b3' }} className="truncate">{song.artist}</p>
+      </div>
+
+      <span style={{ fontSize: '12px', color: '#b3b3b3', opacity: 0.7, flexShrink: 0 }} className="row-duration">{fmt(song.duration)}</span>
+      
+      <div style={{ flexShrink: 0, width: 24, display: 'flex', justifyContent: 'flex-end' }}>
+        {showAdd ? (
+          <button onClick={handleAdd} style={{
+            width: 20, height: 20, borderRadius: '50%', border: added ? '1px solid #8B5CF6' : '1px solid #535353',
+            background: 'none', color: added ? '#8B5CF6' : '#b3b3b3', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', transition: 'all 0.2s'
+          }} className="add-btn">
+            {added ? '✓' : '+'}
+          </button>
+        ) : (
+          <FiMoreHorizontal size={14} color="#b3b3b3" className="row-dots" />
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function FullScreenPlayer() {
   const { 
     isFullScreenPlayer, setIsFullScreenPlayer,
     currentSong, isPlaying, togglePlay,
     playNext, playPrevious, toggleSavedSong, isSongSaved,
     shuffle, setShuffle, repeat, setRepeat,
-    sleepTimer, sleepTimerRemaining, startSleepTimer, cancelSleepTimer
+    sleepTimer, sleepTimerRemaining, startSleepTimer, cancelSleepTimer,
+    recommendations, playSong, queue, queueIndex
   } = usePlayer()
 
   const [visible, setVisible] = useState(isFullScreenPlayer)
@@ -45,8 +118,7 @@ export default function FullScreenPlayer() {
   const [volume, setVolume] = useState(1) // 0 to 1
   const [isSleepTimerOpen, setIsSleepTimerOpen] = useState(false)
   const [isFsQueueOpen, setIsFsQueueOpen] = useState(false)
-
-  const { recommendations, playSong } = usePlayer()
+  const [activeTab, setActiveTab] = useState('queue')
 
   useEffect(() => {
     setHintSeen(localStorage.getItem('lyricsHintSeen') === 'true')
@@ -78,11 +150,17 @@ export default function FullScreenPlayer() {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && isFullScreenPlayer) setIsFullScreenPlayer(false)
+      if (e.key === 'Escape') {
+        if (isFsQueueOpen) {
+          setIsFsQueueOpen(false)
+        } else if (isFullScreenPlayer) {
+          setIsFullScreenPlayer(false)
+        }
+      }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isFullScreenPlayer])
+  }, [isFullScreenPlayer, isFsQueueOpen])
 
   useEffect(() => {
     if (!isFullScreenPlayer || !isPlaying || !isFlipped) return
@@ -122,10 +200,8 @@ export default function FullScreenPlayer() {
     setIsFsQueueOpen(!isFsQueueOpen)
   }
 
-  if (!visible || !currentSong) return null
-
-  const saved = isSongSaved(currentSong.videoId)
-  const thumb = currentSong.thumbnail || `https://i.ytimg.com/vi/${currentSong.videoId}/maxresdefault.jpg`
+  if (!visible && !isFullScreenPlayer) return null
+  if (!currentSong) return null
 
   const getHue = (str) => {
     if (!str) return 260;
@@ -133,7 +209,14 @@ export default function FullScreenPlayer() {
     for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
     return Math.abs(hash % 360);
   }
+
   const hue = getHue(currentSong.videoId)
+  const thumb = currentSong.thumbnail || `https://i.ytimg.com/vi/${currentSong.videoId}/maxresdefault.jpg`
+  const saved = isSongSaved(currentSong.videoId)
+
+  const handleTabClick = (tab) => {
+    setActiveTab(tab)
+  }
 
   return (
     <div style={{
@@ -154,80 +237,78 @@ export default function FullScreenPlayer() {
       }} />
       <div style={{ position: 'absolute', inset: 0, zIndex: -1, background: 'rgba(0,0,0,0.35)' }} />
 
-      {/* Full Screen Queue Overlay */}
-      {isFsQueueOpen && (
-        <div style={{
-          position: 'absolute', inset: 0, zIndex: 1000,
-          background: 'rgba(15, 10, 25, 0.98)', 
-          backdropFilter: 'blur(40px)',
-          display: 'flex', flexDirection: 'column',
-          animation: 'fsQueueIn 0.35s cubic-bezier(0.4, 0, 0.2, 1)'
-        }}>
-          {/* Header */}
-          <div style={{ 
-            display: 'flex', alignItems: 'center', padding: '20px 24px',
-            borderBottom: '1px solid rgba(255,255,255,0.1)'
-          }}>
-            <button 
-              onClick={() => setIsFsQueueOpen(false)}
-              style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-            >
-              <FiChevronDown size={24} />
-            </button>
-            <h2 style={{ fontSize: '20px', fontWeight: 800, margin: '0 0 0 16px', color: '#fff' }}>Up Next</h2>
-          </div>
-
-          <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }} className="hide-scrollbar">
-            {recommendations.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {recommendations.slice(0, 20).map((song, i) => (
-                  <div 
-                    key={song.videoId || i} 
-                    onClick={() => { playSong(song, recommendations, i); setIsFsQueueOpen(false) }}
-                    style={{ 
-                      display: 'flex', alignItems: 'center', gap: '16px', padding: '10px', 
-                      borderRadius: '12px', cursor: 'pointer', transition: 'background 0.2s' 
-                    }}
-                    className="fs-queue-row-premium"
-                  >
-                    <div style={{ width: 56, height: 56, borderRadius: 8, background: `hsl(${getHue(song.videoId)}, 40%, 30%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      {song.thumbnail ? (
-                        <img src={song.thumbnail} style={{ width: '100%', height: '100%', borderRadius: 8, objectFit: 'cover' }} />
-                      ) : (
-                        <span style={{ fontSize: '24px' }}>{song.emoji || '♪'}</span>
-                      )}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontWeight: 700, fontSize: '16px', color: '#fff' }} className="truncate">{song.title}</p>
-                      <p style={{ margin: 0, color: '#b3b3b3', fontSize: '13px' }} className="truncate">{song.artist}</p>
-                    </div>
-                    <span style={{ color: '#b3b3b3', fontSize: '13px' }}>{song.duration}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', textAlign: 'center' }}>
-                <div style={{ 
-                  width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(139,92,246,0.1)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '24px'
-                }}>
-                  <FiList size={40} style={{ color: '#8B5CF6', opacity: 0.6 }} />
-                </div>
-                <h3 style={{ fontSize: '20px', fontWeight: 700, color: '#fff', margin: '0 0 8px 0' }}>Suggestions are cooking...</h3>
-                <p style={{ fontSize: '14px', color: '#b3b3b3', maxWidth: '240px', margin: 0, lineHeight: 1.5 }}>
-                  We're finding the perfect songs to play next. Hang tight!
-                </p>
-                <button 
-                  onClick={() => setIsFsQueueOpen(false)}
-                  style={{ marginTop: '32px', background: '#8B5CF6', color: '#fff', border: 'none', padding: '12px 32px', borderRadius: '24px', fontWeight: 700, cursor: 'pointer' }}
-                >
-                  Back to Player
-                </button>
-              </div>
-            )}
-          </div>
+      {/* Suggestions Panel (Fixed Fix 1) */}
+      <div style={{
+        position: 'absolute', top: '64px', right: '16px',
+        width: '340px', height: 'calc(100% - 80px)',
+        background: 'rgba(32,32,32,0.85)',
+        backdropFilter: 'blur(24px)',
+        borderRadius: '20px',
+        border: '1px solid rgba(255,255,255,0.1)',
+        display: 'flex', flexDirection: 'column',
+        zIndex: 10001,
+        transition: 'transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.25s ease',
+        transform: isFsQueueOpen ? 'translateX(0)' : 'translateX(120%)',
+        opacity: isFsQueueOpen ? 1 : 0,
+        pointerEvents: isFsQueueOpen ? 'auto' : 'none',
+        overflow: 'hidden'
+      }}>
+        {/* Panel Header */}
+        <div style={{ height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', borderBottom: '1px solid rgba(255,255,255,0.08)', background: 'rgba(0,0,0,0.2)' }}>
+          <span style={{ fontSize: '16px', fontWeight: 'bold' }}>Up Next</span>
+          <button onClick={() => setIsFsQueueOpen(false)} style={{ background: 'none', border: 'none', color: '#b3b3b3', cursor: 'pointer', padding: '4px', borderRadius: '50%', display: 'flex' }} className="panel-close-btn">
+            <FiX size={24} />
+          </button>
         </div>
-      )}
+
+        {/* Panel Tabs */}
+        <div style={{ padding: '12px 16px', display: 'flex', gap: '8px' }}>
+          <button 
+            onClick={() => handleTabClick('queue')}
+            style={{
+              background: activeTab === 'queue' ? '#fff' : 'transparent',
+              color: activeTab === 'queue' ? '#000' : '#b3b3b3',
+              borderRadius: '24px', padding: '6px 16px', fontSize: '13px', fontWeight: 600,
+              border: activeTab === 'queue' ? 'none' : '1px solid #535353', cursor: 'pointer', transition: 'all 0.2s ease'
+            }}
+          >
+            Queue
+          </button>
+          <button 
+            onClick={() => handleTabClick('suggestions')}
+            style={{
+              background: activeTab === 'suggestions' ? '#fff' : 'transparent',
+              color: activeTab === 'suggestions' ? '#000' : '#b3b3b3',
+              borderRadius: '24px', padding: '6px 16px', fontSize: '13px', fontWeight: 600,
+              border: activeTab === 'suggestions' ? 'none' : '1px solid #535353', cursor: 'pointer', transition: 'all 0.2s ease'
+            }}
+          >
+            Suggestions
+          </button>
+        </div>
+
+        {/* Tab Content */}
+        <div style={{ flex: 1, overflowY: 'auto', opacity: 1, transition: 'opacity 0.2s ease' }} className="hide-scrollbar">
+          {activeTab === 'queue' ? (
+            <div style={{ padding: '8px 0' }}>
+              <p style={{ fontSize: '10px', color: '#b3b3b3', letterSpacing: '1px', padding: '8px 20px 4px', margin: 0 }}>NOW PLAYING</p>
+              <SongRow song={currentSong} isPlaying={isPlaying} isCurrent={true} onClick={() => {}} />
+              
+              <p style={{ fontSize: '10px', color: '#b3b3b3', letterSpacing: '1px', padding: '16px 20px 4px', margin: 0 }}>NEXT UP</p>
+              {queue.slice(queueIndex + 1, queueIndex + 7).map((s, i) => (
+                <SongRow key={s.videoId || i} song={s} onClick={() => playSong(s)} />
+              ))}
+            </div>
+          ) : (
+            <div style={{ padding: '8px 0' }}>
+              <p style={{ fontSize: '10px', color: '#b3b3b3', letterSpacing: '1px', padding: '8px 20px 4px', margin: 0 }}>SUGGESTED FOR YOU</p>
+              {recommendations.slice(0, 8).map((s, i) => (
+                <SongRow key={s.videoId || i} song={s} showAdd={true} onClick={() => playSong(s)} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Top Bar */}
       <div style={{
@@ -488,17 +569,27 @@ export default function FullScreenPlayer() {
       </div>
 
       <style>{`
+        .panel-close-btn:hover { color: #fff !important; }
+        
+        .premium-song-row:hover { background: rgba(255,255,255,0.06) !important; }
+        .premium-song-row:hover .song-poster { filter: brightness(1.1); }
+        .premium-song-row:hover .row-duration, 
+        .premium-song-row:hover .row-dots { opacity: 1 !important; }
+        .premium-song-row:hover .add-btn { border-color: #fff !important; color: #fff !important; }
+
+        @keyframes eqBar {
+          from { height: 4px; }
+          to { height: 14px; }
+        }
+        .eq-bar {
+          width: 3px; border-radius: 2px; background: #8B5CF6;
+          animation: eqBar 0.6s ease-in-out infinite alternate;
+        }
+
         @keyframes pulseGlow {
           0% { box-shadow: 0 0 30px rgba(139,92,246,0.3); }
           50% { box-shadow: 0 0 80px rgba(139,92,246,0.5); }
           100% { box-shadow: 0 0 30px rgba(139,92,246,0.3); }
-        }
-        @keyframes fsQueueIn {
-          from { opacity: 0; transform: translateY(100%); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .fs-queue-row-premium:hover {
-          background: rgba(255,255,255,0.08);
         }
         .heart-btn {
           transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);

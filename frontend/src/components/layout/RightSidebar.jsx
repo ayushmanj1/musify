@@ -23,6 +23,78 @@ function fmt(s) {
   return `${m}:${String(sec).padStart(2, '0')}`
 }
 
+function SongRow({ song, isPlaying, isCurrent, showAdd, onClick }) {
+  const { addToQueue } = usePlayer()
+  const [added, setAdded] = useState(false)
+
+  if (!song) return null
+
+  const hue = ((song.title?.charCodeAt(0) || 0) * 37) % 360;
+  const bg = song.color || `hsl(${hue}, 35%, 25%)`
+  const initial = song.title?.charAt(0).toUpperCase()
+
+  const handleAdd = (e) => {
+    e.stopPropagation()
+    if (added) return
+    addToQueue(song)
+    setAdded(true)
+    toast.success('Added to queue', { position: 'bottom-center' })
+  }
+
+  return (
+    <div 
+      onClick={onClick}
+      className={`premium-song-row ${isCurrent ? 'active' : ''}`}
+      style={{
+        display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 20px',
+        margin: '0 8px', borderRadius: '8px', cursor: 'pointer',
+        background: isCurrent ? 'rgba(139,92,246,0.1)' : 'transparent',
+        borderLeft: isCurrent ? '3px solid #8B5CF6' : '3px solid transparent',
+        transition: 'background 0.2s ease'
+      }}
+    >
+      <div style={{ position: 'relative', width: 44, height: 44, borderRadius: 6, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }} className="song-poster">
+        {song.thumbnail ? (
+          <img src={song.thumbnail} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        ) : song.emoji ? (
+          <span style={{ fontSize: '20px', lineHeight: '44px' }}>{song.emoji}</span>
+        ) : (
+          <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#fff' }}>{initial}</span>
+        )}
+        
+        {isCurrent && (
+          <div style={{ position: 'absolute', bottom: '4px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '2px', alignItems: 'flex-end' }}>
+            <div className="eq-bar" style={{ animationPlayState: isPlaying ? 'running' : 'paused' }} />
+            <div className="eq-bar" style={{ animationDelay: '150ms', animationPlayState: isPlaying ? 'running' : 'paused' }} />
+            <div className="eq-bar" style={{ animationDelay: '300ms', animationPlayState: isPlaying ? 'running' : 'paused' }} />
+          </div>
+        )}
+      </div>
+
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ margin: 0, fontSize: '13px', fontWeight: 500, color: isCurrent ? '#A78BFA' : '#fff' }} className="truncate">{song.title}</p>
+        <p style={{ margin: 0, fontSize: '12px', color: '#b3b3b3' }} className="truncate">{song.artist}</p>
+      </div>
+
+      <span style={{ fontSize: '12px', color: '#b3b3b3', opacity: 0.7, flexShrink: 0 }} className="row-duration">{fmt(song.duration)}</span>
+      
+      <div style={{ flexShrink: 0, width: 24, display: 'flex', justifyContent: 'flex-end' }}>
+        {showAdd ? (
+          <button onClick={handleAdd} style={{
+            width: 20, height: 20, borderRadius: '50%', border: added ? '1px solid #8B5CF6' : '1px solid #535353',
+            background: 'none', color: added ? '#8B5CF6' : '#b3b3b3', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', transition: 'all 0.2s'
+          }} className="add-btn">
+            {added ? '✓' : '+'}
+          </button>
+        ) : (
+          <FiMoreHorizontal size={14} color="#b3b3b3" className="row-dots" />
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function RightSidebar() {
   const { 
     currentSong, isRightSidebarOpen, setIsRightSidebarOpen, queue, queueIndex,
@@ -319,160 +391,33 @@ export default function RightSidebar() {
                 {/* Up Next Section */}
                 <div className="up-next-section" style={{
                   background: 'var(--bg-card)',
-                  borderRadius: '4px',
-                  padding: '16px',
+                  borderRadius: '12px',
+                  padding: '16px 0',
                   marginBottom: '16px'
                 }}>
-                  <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '16px' }}>Up Next</h4>
+                  <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '16px', padding: '0 20px' }}>Up Next</h4>
                   
                   {/* Currently Playing */}
                   <div style={{ marginBottom: '16px' }}>
-                    <p style={{ fontSize: '11px', fontWeight: 700, color: '#A78BFA', textTransform: 'uppercase', marginBottom: '8px', paddingLeft: '8px' }}>Now Playing</p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px' }}>
-                      <div style={{ 
-                        width: '40px', height: '40px', borderRadius: '6px', flexShrink: 0,
-                        background: `hsl(${((currentSong.title?.charCodeAt(0) || 0) * 37) % 360}, 50%, 30%)`,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative',
-                        boxShadow: '0 0 10px rgba(139,92,246,0.5)'
-                      }}>
-                        <span style={{ fontSize: '18px', color: '#fff', fontWeight: 'bold' }}>
-                          {currentSong.emoji || currentSong.title?.charAt(0)}
-                        </span>
-                        
-                        <div style={{ position: 'absolute', bottom: '4px', left: '4px', display: 'flex', gap: '2px', alignItems: 'flex-end', height: '10px' }}>
-                          <div style={{ width: '3px', background: '#8B5CF6', animation: isPlaying ? 'eq 1.2s ease-in-out infinite' : 'none' }}></div>
-                          <div style={{ width: '3px', background: '#8B5CF6', animation: isPlaying ? 'eq 1s ease-in-out infinite' : 'none', animationDelay: '0.2s' }}></div>
-                          <div style={{ width: '3px', background: '#8B5CF6', animation: isPlaying ? 'eq 1.4s ease-in-out infinite' : 'none', animationDelay: '0.4s' }}></div>
-                        </div>
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p className="truncate" style={{ fontSize: '13px', fontWeight: 'bold', color: '#A78BFA' }}>{currentSong.title}</p>
-                        <p className="truncate" style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{currentSong.artist}</p>
-                      </div>
-                      <span style={{ fontSize: '11px', color: 'var(--text-secondary)', flexShrink: 0, textAlign: 'right' }}>{fmt(currentSong.duration || 210)}</span>
-                    </div>
+                    <p style={{ fontSize: '10px', fontWeight: 700, color: '#b3b3b3', textTransform: 'uppercase', marginBottom: '8px', paddingLeft: '20px', letterSpacing: '1px' }}>Now Playing</p>
+                    <SongRow song={currentSong} isPlaying={isPlaying} isCurrent={true} onClick={() => {}} />
                   </div>
 
                   {/* Next Queue Items */}
-                  {upNextList.map((song, i) => {
-                    const actualIndex = queueIndex + 1 + i
-                    const hue = ((song.title?.charCodeAt(0) || 0) * 37) % 360;
-                    return (
-                      <div 
-                        key={actualIndex}
-                        className="queue-row"
-                        onClick={(e) => {
-                          const el = e.currentTarget
-                          el.style.background = '#8B5CF6'
-                          setTimeout(() => {
-                            el.style.background = ''
-                            const finalQueue = [
-                              ...queue.slice(0, queueIndex + 1),
-                              ...queue.slice(queueIndex + 1).filter((_, idx) => idx !== i)
-                            ]
-                            playSong(song, finalQueue, queueIndex + 1)
-                          }, 300)
-                        }}
-                        style={{ 
-                          display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', 
-                          padding: '8px', borderRadius: '4px', cursor: 'pointer',
-                          transition: 'background 0.3s ease'
-                        }}
-                      >
-                        <div className="queue-art-card" style={{ 
-                          width: '40px', height: '40px', borderRadius: '6px', flexShrink: 0,
-                          background: `hsl(${hue}, 50%, 30%)`,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative',
-                          transition: 'filter 0.3s ease'
-                        }}>
-                          <span style={{ fontSize: '18px', color: '#fff', fontWeight: 'bold' }}>
-                            {song.emoji || song.title?.charAt(0)}
-                          </span>
-                          <div className="queue-play-overlay" style={{
-                            position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', 
-                            borderRadius: '6px', display: 'none', alignItems: 'center', justifyContent: 'center'
-                          }}>
-                            <FiPlay size={16} color="#fff" style={{ marginLeft: '2px' }} />
-                          </div>
-                        </div>
-                        
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <p className="truncate" style={{ fontSize: '13px', fontWeight: 'bold', color: '#fff' }}>{song.title}</p>
-                          <p className="truncate" style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{song.artist}</p>
-                        </div>
-                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)', flexShrink: 0, textAlign: 'right' }}>{fmt(song.duration || 210)}</span>
-                        
-                        <div className="queue-three-dot" style={{ opacity: 0, transition: 'opacity 0.2s', padding: '0 4px', display: 'flex', alignItems: 'center' }}>
-                          <FiMoreHorizontal size={14} color="#b3b3b3" />
-                        </div>
-                      </div>
-                    )
-                  })}
+                  <p style={{ fontSize: '10px', fontWeight: 700, color: '#b3b3b3', textTransform: 'uppercase', marginBottom: '8px', paddingLeft: '20px', letterSpacing: '1px' }}>Next Up</p>
+                  {upNextList.map((song, i) => (
+                    <SongRow key={song.videoId || i} song={song} onClick={() => playSong(song)} />
+                  ))}
                   {repeat !== 'context' && upNextList.length === 0 && (
                     <p style={{ textAlign: 'center', color: '#b3b3b3', fontSize: '13px', marginTop: '16px' }}>End of queue</p>
                   )}
 
                   {/* Queue Suggestions */}
                   <div style={{ marginTop: '24px' }}>
-                    <p style={{ fontSize: '14px', fontWeight: 600, color: '#b3b3b3', marginBottom: '12px' }}>Queue Suggestions</p>
-                    {suggestions.map((song, i) => {
-                      const hue = ((song.title?.charCodeAt(0) || 0) * 37) % 360;
-                      return (
-                        <div 
-                          key={i} 
-                          className="queue-row"
-                          onClick={() => {
-                            const newQueue = [...queue.slice(0, queueIndex + 1), song, ...queue.slice(queueIndex + 1)]
-                            playSong(song, newQueue, queueIndex + 1)
-                            toast(`Now playing: ${song.title}`)
-                          }}
-                          style={{ 
-                            display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', padding: '8px', 
-                            borderRadius: '4px', cursor: 'pointer', transition: 'background 0.2s ease' 
-                          }}
-                        >
-                          <div className="queue-art-card" style={{ 
-                            width: '40px', height: '40px', borderRadius: '6px', flexShrink: 0,
-                            background: `hsl(${hue}, 50%, 30%)`,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative',
-                            transition: 'filter 0.3s ease'
-                          }}>
-                            <span style={{ fontSize: '18px', color: '#fff', fontWeight: 'bold' }}>
-                              {song.emoji || song.title?.charAt(0)}
-                            </span>
-                            <div className="queue-play-overlay" style={{
-                              position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', 
-                              borderRadius: '6px', display: 'none', alignItems: 'center', justifyContent: 'center'
-                            }}>
-                              <FiPlay size={16} color="#fff" style={{ marginLeft: '2px' }} />
-                            </div>
-                          </div>
-                          
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <p className="truncate" style={{ fontSize: '13px', fontWeight: 'bold', color: '#fff' }}>{song.title}</p>
-                            <p className="truncate" style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{song.artist}</p>
-                          </div>
-                          
-                          <div className="queue-three-dot" style={{ opacity: 0, transition: 'opacity 0.2s', padding: '0 4px', display: 'flex', alignItems: 'center' }}>
-                            <button onClick={(e) => {
-                              e.stopPropagation()
-                              addToQueue(song)
-                            }} style={{
-                              background: 'none', border: 'none', color: '#b3b3b3', cursor: 'pointer',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px',
-                              transition: 'color 0.2s ease, transform 0.2s ease'
-                            }}
-                            onMouseEnter={e => e.currentTarget.style.color = '#fff'}
-                            onMouseLeave={e => e.currentTarget.style.color = '#b3b3b3'}
-                            onMouseDown={e => e.currentTarget.style.transform = 'scale(0.8)'}
-                            onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
-                            >
-                              <span style={{ fontSize: '20px' }}>+</span>
-                            </button>
-                          </div>
-                        </div>
-                      )
-                    })}
+                    <p style={{ fontSize: '10px', fontWeight: 700, color: '#b3b3b3', textTransform: 'uppercase', marginBottom: '12px', paddingLeft: '20px', letterSpacing: '1px' }}>Suggested For You</p>
+                    {suggestions.map((song, i) => (
+                      <SongRow key={song.videoId || i} song={song} showAdd={true} onClick={() => playSong(song)} />
+                    ))}
                   </div>
                 </div>
               </>
@@ -499,10 +444,21 @@ export default function RightSidebar() {
         @media (max-width: 1024px) {
           .right-sidebar { display: none !important; }
         }
-        .queue-row:hover { background: #282828 !important; border-radius: 8px !important; }
-        .queue-row:hover .queue-art-card { filter: brightness(1.15) !important; }
-        .queue-row:hover .queue-play-overlay { display: flex !important; }
-        .queue-row:hover .queue-three-dot { opacity: 1 !important; }
+        
+        .premium-song-row:hover { background: rgba(255,255,255,0.06) !important; }
+        .premium-song-row:hover .song-poster { filter: brightness(1.1); }
+        .premium-song-row:hover .row-duration, 
+        .premium-song-row:hover .row-dots { opacity: 1 !important; }
+        .premium-song-row:hover .add-btn { border-color: #fff !important; color: #fff !important; }
+
+        @keyframes eqBar {
+          from { height: 4px; }
+          to { height: 14px; }
+        }
+        .eq-bar {
+          width: 3px; border-radius: 2px; background: #8B5CF6;
+          animation: eqBar 0.6s ease-in-out infinite alternate;
+        }
 
         @keyframes eq {
           0% { height: 2px; }

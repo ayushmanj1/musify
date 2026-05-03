@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
-import { FiHome as IconHome, FiSearch as IconSearch, FiBook as IconLibrary, FiDisc as IconPlaylist, FiPlus as IconPlus, FiX, FiCheck } from 'react-icons/fi'
+import { 
+  FiHome as IconHome, FiSearch as IconSearch, FiBook as IconLibrary, 
+  FiDisc as IconPlaylist, FiPlus as IconPlus, FiX, FiCheck,
+  FiChevronDown, FiChevronRight
+} from 'react-icons/fi'
 import { usePlayer } from '../../context/PlayerContext.jsx'
 import toast from 'react-hot-toast'
 
@@ -18,6 +22,7 @@ export default function LeftSidebar() {
   const [newPlaylistSongs, setNewPlaylistSongs] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
   const [isReady, setIsReady] = useState(false)
+  const [isPlaylistsExpanded, setIsPlaylistsExpanded] = useState(true)
 
   // Handle initial load transition-none
   useEffect(() => {
@@ -200,8 +205,15 @@ export default function LeftSidebar() {
           <div style={{
             padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text-secondary)'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontWeight: 700, cursor: 'pointer' }} className="hover-text-primary">
-              <IconPlaylist size={24} />
+            <div 
+              onClick={() => setIsPlaylistsExpanded(!isPlaylistsExpanded)}
+              style={{ display: 'flex', alignItems: 'center', gap: '16px', fontWeight: 700, cursor: 'pointer' }} 
+              className="hover-text-primary"
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <IconPlaylist size={24} />
+                {isPlaylistsExpanded ? <FiChevronDown size={14} style={{ marginTop: '2px' }} /> : <FiChevronRight size={14} style={{ marginTop: '2px' }} />}
+              </div>
               <span className="sidebar-text" style={{ fontSize: '14px' }}>Playlists</span>
             </div>
             <button onClick={handleCreateClick} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer' }} className="sidebar-text hover-text-primary">
@@ -209,7 +221,18 @@ export default function LeftSidebar() {
             </button>
           </div>
 
-          <div className="hide-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '8px 12px' }}>
+          <div 
+            className="hide-scrollbar" 
+            style={{ 
+              flex: 1, 
+              overflowY: 'auto', 
+              padding: isPlaylistsExpanded ? '8px 12px' : '0 12px',
+              maxHeight: isPlaylistsExpanded ? '1000px' : '0',
+              opacity: isPlaylistsExpanded ? 1 : 0,
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              pointerEvents: isPlaylistsExpanded ? 'auto' : 'none'
+            }}
+          >
             {userPlaylists.map((playlist, i) => {
               const name = playlist.name
               const urlName = encodeURIComponent(name)

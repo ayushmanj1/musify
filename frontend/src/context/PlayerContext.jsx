@@ -484,7 +484,7 @@ export function PlayerProvider({ children }) {
     setCurrentSong(song)
     setRecentlyPlayed(prev => {
       const filtered = prev.filter(s => s.videoId !== song.videoId)
-      return [song, ...filtered].slice(0, 6) // keep last 6
+      return [song, ...filtered].slice(0, 10) // keep last 10
     })
     initWebAudio()
     setCurrentTime(0)

@@ -204,92 +204,6 @@ export default function Player() {
 
       {/* ─── RIGHT: Volume & Extras (30%) ─── */}
       <div style={{ flex: '0 1 30%', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '16px' }}>
-        <div style={{ position: 'relative' }} ref={queueRef}>
-          <button 
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setIsQueueOpen(!isQueueOpen);
-            }}
-            style={{ background: 'none', border: 'none', color: isQueueOpen ? 'var(--accent)' : 'var(--text-secondary)' }}
-          >
-            <FiList size={16} />
-          </button>
-          
-          {/* QUEUE OVERLAY */}
-          {isQueueOpen && (
-            <div style={{
-              position: 'absolute',
-              bottom: '40px',
-              right: 0,
-              background: 'rgba(20,15,30,0.95)',
-              backdropFilter: 'blur(20px)',
-              borderRadius: '16px',
-              border: '1px solid rgba(139,92,246,0.3)',
-              padding: '16px',
-              width: '320px',
-              maxHeight: '400px',
-              overflowY: 'auto',
-              zIndex: 200,
-              animation: 'queueFadeIn 0.25s ease',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.8)'
-            }} className="hide-scrollbar">
-              <h3 style={{ color: '#fff', fontSize: '16px', fontWeight: 700, marginBottom: '16px', paddingLeft: '8px' }}>Next in Queue</h3>
-              {recommendations.length > 0 ? (
-                recommendations.slice(0, 12).map((song, i) => {
-                  const hue = ((song.title?.charCodeAt(0) || 0) * 37) % 360;
-                  return (
-                    <div 
-                      key={song.videoId || i}
-                      onClick={() => { playSong(song, recommendations, i); setIsQueueOpen(false) }}
-                      className="queue-row"
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: '10px', padding: '8px',
-                        borderRadius: '8px', cursor: 'pointer', transition: 'background 0.2s ease',
-                        marginBottom: '4px'
-                      }}
-                    >
-                      <div style={{ 
-                        width: '40px', height: '40px', borderRadius: '6px', flexShrink: 0,
-                        background: `hsl(${hue}, 50%, 30%)`,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative',
-                        transition: 'filter 0.3s ease'
-                      }} className="queue-art-card">
-                        <span style={{ fontSize: '18px', color: '#fff', fontWeight: 'bold' }}>
-                          {song.emoji || song.title?.charAt(0)}
-                        </span>
-                        <div className="queue-play-overlay" style={{
-                          position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', 
-                          borderRadius: '6px', display: 'none', alignItems: 'center', justifyContent: 'center'
-                        }}>
-                          <FiPlay size={16} color="#fff" style={{ marginLeft: '2px' }} />
-                        </div>
-                      </div>
-
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p className="truncate" style={{ fontSize: '13px', color: '#fff', fontWeight: 'bold', margin: 0 }}>{song.title}</p>
-                        <p className="truncate" style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: 0 }}>{song.artist}</p>
-                      </div>
-                      
-                      <span style={{ fontSize: '11px', color: 'var(--text-secondary)', flexShrink: 0, textAlign: 'right' }}>
-                        {fmt(song.duration)}
-                      </span>
-
-                      <div className="queue-three-dot" style={{ opacity: 0, transition: 'opacity 0.2s', padding: '0 4px', display: 'flex', alignItems: 'center' }}>
-                        <FiMoreHorizontal size={14} color="#b3b3b3" />
-                      </div>
-                    </div>
-                  )
-                })
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '200px', color: 'var(--text-secondary)' }}>
-                  <FiList size={40} style={{ opacity: 0.2, marginBottom: '12px' }} />
-                  <p style={{ fontSize: '13px', margin: 0 }}>No suggested songs yet</p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
         <div style={{ position: 'relative' }}>
           <button 
             onClick={() => setIsSleepTimerOpen(!isSleepTimerOpen)}
@@ -302,7 +216,7 @@ export default function Player() {
             <FiClock size={16} />
             {sleepTimer.active && sleepTimerRemaining > 0 && (
               <span style={{ 
-                position: 'absolute', top: '-8px', right: '-8px', background: '#8B5CF6', 
+                position: 'absolute', top: '-8px', right: '-12px', background: '#8B5CF6', 
                 color: '#fff', fontSize: '9px', fontWeight: 'bold', padding: '2px 4px', borderRadius: '8px' 
               }}>
                 {Math.ceil(sleepTimerRemaining / 60000)}m

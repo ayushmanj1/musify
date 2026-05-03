@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation, useParams } from 'react-router-dom'
-import { FiSearch, FiX, FiBell, FiUser, FiSettings, FiLogOut, FiArrowLeft, FiArrowRight, FiCheck } from 'react-icons/fi'
+import { FiSearch, FiX, FiUser, FiSettings, FiLogOut, FiArrowLeft, FiArrowRight, FiCheck } from 'react-icons/fi'
 import { usePlayer } from '../../context/PlayerContext.jsx'
 
 export default function TopBar() {
@@ -15,9 +15,7 @@ export default function TopBar() {
     userPlaylists
   } = usePlayer()
 
-  const [isNotifyOpen, setIsNotifyOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
-  const [unreadNotify, setUnreadNotify] = useState(true)
   const [showSearchDropdown, setShowSearchDropdown] = useState(false)
   const [results, setResults] = useState({ songs: [], playlists: [], artists: [] })
   
@@ -110,7 +108,6 @@ export default function TopBar() {
   useEffect(() => {
     const handleClick = (e) => {
       if (!barRef.current?.contains(e.target)) {
-        setIsNotifyOpen(false)
         setIsProfileOpen(false)
         setShowSearchDropdown(false)
       }
@@ -124,7 +121,6 @@ export default function TopBar() {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         setShowSearchDropdown(false)
-        setIsNotifyOpen(false)
         setIsProfileOpen(false)
         searchInputRef.current?.blur()
       }
@@ -256,33 +252,7 @@ export default function TopBar() {
         )}
 
         <div style={{ position: 'relative' }}>
-          <FiBell 
-            size={22} 
-            style={{ color: '#b3b3b3', cursor: 'pointer' }} 
-            className="bell-icon" 
-            onClick={() => { setIsNotifyOpen(!isNotifyOpen); setIsProfileOpen(false); setUnreadNotify(false); }} 
-          />
-          {unreadNotify && <div style={{ position: 'absolute', top: '1px', right: '1px', width: '7px', height: '7px', background: '#e91429', borderRadius: '50%' }} />}
-          
-          {isNotifyOpen && (
-            <div className="topbar-dropdown" style={{ width: '280px', right: '0', top: '48px', padding: '16px' }}>
-              <h4 style={{ margin: '0 0 12px', fontSize: '15px' }}>What's New</h4>
-              {[
-                { t: "New release from The Weeknd", s: "2h ago" },
-                { t: "Dua Lipa added a track", s: "5h ago" },
-                { t: "Trending: 'Midnight City' is viral", s: "1d ago" }
-              ].map((n, i) => (
-                <div key={i} className="notify-row" style={{ padding: '8px 0', borderTop: '1px solid #333' }}>
-                  <p style={{ margin: 0, fontSize: '13px' }}>{n.t}</p>
-                  <span style={{ fontSize: '11px', color: '#b3b3b3' }}>{n.s}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div style={{ position: 'relative' }}>
-          <div onClick={() => { setIsProfileOpen(!isProfileOpen); setIsNotifyOpen(false); }} style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #8B5CF6, #4C1D95)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+          <div onClick={() => { setIsProfileOpen(!isProfileOpen); }} style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #8B5CF6, #4C1D95)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
             <span style={{ color: '#fff', fontWeight: 700, fontSize: '14px' }}>A</span>
           </div>
 

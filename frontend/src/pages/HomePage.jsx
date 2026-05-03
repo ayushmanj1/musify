@@ -115,7 +115,7 @@ function SkeletonRow() {
 /* ═══ HOME PAGE ═══ */
 export default function HomePage() {
   const navigate = useNavigate()
-  const { playSong, userPlaylists } = usePlayer()
+  const { playSong, userPlaylists, recentlyPlayed } = usePlayer()
   const [trending, setTrending] = useState([])
   const [madeForYou, setMadeForYou] = useState([])
   const [loading, setLoading] = useState(true)
@@ -246,6 +246,18 @@ export default function HomePage() {
           ))}
         </div>
       </div>
+
+      {/* ─── 4b. Recently Played (Scroll Row) ─── */}
+      {recentlyPlayed && recentlyPlayed.length > 0 && (
+        <div style={{ marginBottom: '40px' }}>
+          <SectionHeader title="Recently Listened" />
+          <div className="h-scroll">
+            {recentlyPlayed.slice(0, 10).map((song, i) => (
+              <VerticalCard key={song.videoId || i} song={song} onClick={() => handlePlaySong(song, recentlyPlayed, i)} />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ─── 5. New Releases (Scroll Row) ─── */}
       {loading ? <SkeletonRow /> : trending.length > 0 && (
