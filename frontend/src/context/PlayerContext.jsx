@@ -481,6 +481,7 @@ export function PlayerProvider({ children }) {
       crossfadeManager.cancelCrossfade(volumeRef.current / 100)
     }
 
+    audio.crossOrigin = 'anonymous'
     setCurrentSong(song)
     setRecentlyPlayed(prev => {
       const filtered = prev.filter(s => s.videoId !== song.videoId)
@@ -502,22 +503,14 @@ export function PlayerProvider({ children }) {
     audio.oncanplay = null
 
     console.log(`[Audio] Loading: ${song.title}`)
-    audio.src = `/api/stream?id=${song.videoId}`
+    // Add cache-buster to avoid stale browser cache
+    audio.src = `/api/stream?id=${song.videoId}&t=${Date.now()}`
     audio.load()
 
-    // Try playing immediately (works on desktop)
+    // Try playing immediately
     const playPromise = audio.play()
     if (playPromise !== undefined) {
       playPromise.catch(err => {
-        console.warn('[Audio] Immediate play failed, waiting for buffer...', err.message)
-        // On mobile: wait for the audio to buffer, then play
-        audio.oncanplay = () => {
-          audio.oncanplay = null
-          audio.play().catch(() => {
-            setIsPlaying(false)
-            setIsAudioLoading(false)
-          })
-        }
       })
     }
   }, [])

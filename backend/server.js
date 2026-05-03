@@ -23,6 +23,8 @@ import { fileURLToPath } from 'url'
 import compression from 'compression'
 import { Innertube } from 'youtubei.js'
 import { LRUCache } from 'lru-cache'
+import { Readable } from 'stream'
+import os from 'os'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -51,7 +53,7 @@ function checkStreamRate(ip) {
     streamRateMap.set(ip, { start: now, count: 1 })
     return true
   }
-  if (entry.count >= 60) return false
+  if (entry.count >= 300) return false // Increased for chunked streaming
   entry.count++
   return true
 }
@@ -185,8 +187,9 @@ async function getStreamUrl(videoId) {
     const info = await withRetry(() => youtubedl(`https://www.youtube.com/watch?v=${videoId}`, { 
       dumpJson: true, 
       noWarnings: true, 
-      cacheDir: '/tmp', // CRITICAL for Vercel read-only filesystem
-      format: 'bestaudio[ext=m4a][acodec^=mp4a]/bestaudio[ext=webm][acodec=opus]/bestaudio[ext=m4a]/bestaudio' 
+      cacheDir: os.tmpdir(), // Cross-platform temp dir
+      format: 'bestaudio/best', // Simplified format selection
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     }), 2, 500)
     
     if (!info || !info.url) {
@@ -195,7 +198,8 @@ async function getStreamUrl(videoId) {
     
     console.log(`[Stream] ${videoId} → ${info.ext} @ ${Math.round((info.abr || 128))}kbps`)
     const mime = info.ext === 'webm' ? 'audio/webm' : 'audio/mp4'
-    return { url: info.url, mime }
+    const size = info.filesize || info.filesize_approx || 0
+    return { url: info.url, mime, size }
   } catch (err) {
     console.error(`[Stream] yt-dlp failed for ${videoId}:`, err.message)
     throw new Error('No playable audio format found')
@@ -401,6 +405,7 @@ app.get('/api/stream', async (req, res) => {
     return res.status(429).json({ error: 'Rate limit exceeded. Try again shortly.' })
   }
 
+  console.log(`[Stream] Request for ${videoId} from ${clientIp} (Range: ${req.headers.range || 'none'})`)
   try {
     // Check cache for resolved stream info
     let streamInfo = streamCache.get(videoId)
@@ -412,101 +417,80 @@ app.get('/api/stream', async (req, res) => {
 
     const streamUrl = streamInfo.url
     const mimeType = streamInfo.mime || 'audio/webm'
+    const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 
-    // Force 1MB chunk sizes to bypass Vercel 10s timeout
-    const CHUNK_SIZE = 1024 * 1024 // 1MB
-    let range = req.headers.range || 'bytes=0-'
+    // Use a large chunk size for local, small for Vercel
+    const isVercel = process.env.VERCEL || process.env.NODE_ENV === 'production'
+    const CHUNK_SIZE = isVercel ? 1024 * 1024 * 2 : 1024 * 1024 * 10 // 10MB for local
     
+    let range = req.headers.range || 'bytes=0-'
     let start = 0
     let end = undefined
     
     const parts = range.replace(/bytes=/, "").split("-")
     start = parseInt(parts[0], 10)
-    if (parts[1]) {
-      end = parseInt(parts[1], 10)
-    }
+    if (parts[1]) end = parseInt(parts[1], 10)
 
-    // Temporarily fetch headers to get total file size
-    const headRes = await fetch(streamInfo.url, { method: 'HEAD' })
-    const totalSize = parseInt(headRes.headers.get('content-length') || '0', 10)
+    let totalSize = streamInfo.size || 0
+    if (!totalSize) {
+      try {
+        const headRes = await fetch(streamUrl, { method: 'HEAD', headers: { 'User-Agent': userAgent } })
+        totalSize = parseInt(headRes.headers.get('content-length') || '0', 10)
+      } catch (e) {}
+    }
 
     if (totalSize > 0) {
-      if (end === undefined || end >= totalSize) {
-        end = totalSize - 1
-      }
-      // Strictly enforce chunk size
-      if (end - start + 1 > CHUNK_SIZE) {
-        end = start + CHUNK_SIZE - 1
-      }
+      if (end === undefined || end >= totalSize) end = totalSize - 1
+      if (end - start + 1 > CHUNK_SIZE) end = start + CHUNK_SIZE - 1
     }
 
-    const fetchOptions = { headers: { Range: `bytes=${start}-${end !== undefined ? end : ''}` } }
-    const response = await fetch(streamInfo.url, fetchOptions)
+    const fetchOptions = { 
+      headers: { 
+        'Range': `bytes=${start}-${end !== undefined ? end : ''}`,
+        'User-Agent': userAgent,
+        'Referer': 'https://www.youtube.com/',
+        'Origin': 'https://www.youtube.com/'
+      } 
+    }
+    
+    const response = await fetch(streamUrl, fetchOptions)
 
-    if (!response.ok) {
+    if (!response.ok && response.status !== 206) {
       throw new Error(`Upstream returned ${response.status}`)
     }
 
-    res.status(206) // Always return Partial Content to force browser chunking
-
-    // Set precise headers
+    // Set headers correctly
+    res.status(response.status === 206 ? 206 : 200)
     res.setHeader('Accept-Ranges', 'bytes')
     res.setHeader('Content-Type', mimeType)
     res.setHeader('Cache-Control', 'public, max-age=3600')
-    
-    if (totalSize > 0) {
+    res.setHeader('Access-Control-Allow-Origin', '*')
+
+    const upstreamRange = response.headers.get('content-range')
+    const upstreamLength = response.headers.get('content-length')
+
+    if (upstreamRange) res.setHeader('Content-Range', upstreamRange)
+    else if (totalSize > 0 && response.status === 206) {
       res.setHeader('Content-Range', `bytes ${start}-${end}/${totalSize}`)
-      res.setHeader('Content-Length', end - start + 1)
-    } else {
-      // Fallback if we don't know total size
-      if (response.headers.get('content-range')) res.setHeader('Content-Range', response.headers.get('content-range'))
-      if (response.headers.get('content-length')) res.setHeader('Content-Length', response.headers.get('content-length'))
     }
 
-    if (!response.body) {
-      return res.status(500).json({ error: 'Empty stream from upstream' })
+    if (upstreamLength) res.setHeader('Content-Length', upstreamLength)
+    else if (totalSize > 0) {
+      res.setHeader('Content-Length', end !== undefined ? (end - start + 1) : (totalSize - start))
     }
 
-    const reader = response.body.getReader()
-    
-    req.on('close', () => {
-      reader.cancel().catch(() => {})
-    })
+    if (!response.body) return res.status(500).json({ error: 'Empty stream' })
 
-    const pump = async () => {
-      try {
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) { 
-            if (!res.writableEnded) res.end()
-            break 
-          }
-          if (res.writableEnded) {
-            reader.cancel().catch(() => {})
-            break
-          }
-          res.write(Buffer.from(value))
-        }
-      } catch (e) {
-        console.error('Pump error:', e)
-        if (!res.writableEnded) res.end()
-      }
-    }
-    pump()
+    // Efficient piping using Node's stream conversion
+    Readable.fromWeb(response.body).pipe(res)
 
   } catch (err) {
     console.error('Stream endpoint error:', err.message)
-
-    // If stream URL expired, clear cache and retry once
     if (err.message?.includes('403') || err.message?.includes('expired')) {
       streamCache.delete(videoId)
-      // Reset ANDROID client in case session expired
       ytAndroid = null
     }
-
-    if (!res.headersSent) {
-      res.status(500).json({ error: 'unavailable' })
-    }
+    if (!res.headersSent) res.status(500).json({ error: 'unavailable' })
   }
 })
 
