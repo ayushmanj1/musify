@@ -10,178 +10,276 @@ import { FiHeart, FiPlay, FiShuffle, FiMoreHorizontal } from 'react-icons/fi'
 
 /* ─── Song Row ─── */
 function SongRow({ song, index, onPlay, onRemove, isSaved }) {
-  const [showMenu, setShowMenu] = useState(false)
+  const [removed, setRemoved] = useState(false)
+
+  const handleRemove = (e) => {
+    e.stopPropagation()
+    setRemoved(true)
+    setTimeout(() => {
+      onRemove()
+    }, 200)
+  }
 
   return (
-    <div className="song-row" style={{ position: 'relative' }}>
-      <button
+    <div className="song-row" style={{ 
+      position: 'relative',
+      opacity: removed ? 0 : 1,
+      height: removed ? 0 : 56,
+      overflow: 'hidden',
+      transition: 'opacity 0.2s ease, height 0.2s ease',
+      marginBottom: removed ? 0 : 8
+    }}>
+      <div
         onClick={onPlay}
         style={{
           display: 'flex', alignItems: 'center', gap: 12,
           width: '100%', height: 56, padding: '0 16px',
           background: 'none', border: 'none', cursor: 'pointer',
           color: 'var(--text-primary)', touchAction: 'manipulation',
+          borderRadius: 8
         }}
+        className="hover-bg-card"
       >
-        <img src={song.thumbnail} alt="" width={48} height={48} loading="lazy"
-          style={{ borderRadius: 'var(--radius-base)', flexShrink: 0 }} />
+        <img src={song.thumbnail || `https://i.ytimg.com/vi/${song.videoId}/default.jpg`} alt="" width={48} height={48} loading="lazy"
+          style={{ borderRadius: 'var(--radius-base)', flexShrink: 0, objectFit: 'cover' }} />
         <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-          <p className="truncate" style={{ fontSize: 14, fontWeight: 500 }}>{song.title}</p>
-          <p className="truncate" style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
-            {song.artist}
+          <p className="truncate" style={{ fontSize: 16, fontWeight: 500 }}>{song.title}</p>
+          <p className="truncate" style={{ fontSize: 14, color: 'var(--text-secondary)', marginTop: 2 }}>
+            {song.artist || 'Unknown Artist'}
           </p>
         </div>
-        <button
-          onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu) }}
-          style={{
-            background: 'none', border: 'none', padding: 8, cursor: 'pointer',
-            color: 'var(--text-muted)', touchAction: 'manipulation',
-          }}
-        >
-          <FiMoreHorizontal size={18} />
-        </button>
-      </button>
-
-      {/* ─── Context Bottom Sheet ─── */}
-      {showMenu && (
-        <>
-          <div
-            onClick={() => setShowMenu(false)}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            onClick={handleRemove}
             style={{
-              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
-              zIndex: 90, animation: 'fadeIn 280ms ease',
+              background: 'none', border: 'none', padding: 8, cursor: 'pointer',
+              color: '#8B5CF6', touchAction: 'manipulation',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'transform 0.2s ease'
             }}
-          />
-          <div style={{
-            position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50)',
-            width: '100%', maxWidth: 390, zIndex: 91,
-            background: 'var(--bg-elevated)', borderRadius: '16px 16px 0 0',
-            padding: '20px 0 calc(20px + var(--safe-bottom))',
-            animation: 'slideUp 280ms cubic-bezier(0.32,0.72,0,1)',
-          }}>
-            {/* Song info */}
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 12,
-              padding: '0 20px 16px', borderBottom: '1px solid var(--surface-highlight)',
-            }}>
-              <img src={song.thumbnail} alt="" width={48} height={48}
-                style={{ borderRadius: 'var(--radius-base)' }} />
-              <div style={{ minWidth: 0 }}>
-                <p className="truncate" style={{ fontSize: 14, fontWeight: 600 }}>{song.title}</p>
-                <p className="truncate" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{song.artist}</p>
-              </div>
-            </div>
-            {/* Actions */}
-            {[
-              { label: 'Play next', action: () => { setShowMenu(false) } },
-              { label: 'Add to queue', action: () => { setShowMenu(false) } },
-              { label: 'Share', action: () => { shareSong(song); setShowMenu(false) } },
-              { label: 'Remove from Liked', action: () => { onRemove(); setShowMenu(false) }, danger: true },
-            ].map((item, i) => (
-              <button key={i} onClick={item.action} style={{
-                width: '100%', padding: '14px 20px', background: 'none', border: 'none',
-                fontSize: 15, fontWeight: 500, textAlign: 'left', cursor: 'pointer',
-                color: item.danger ? '#E61E32' : 'var(--text-primary)',
-                touchAction: 'manipulation',
-              }}>
-                {item.label}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
+            onMouseDown={e => e.currentTarget.style.transform = 'scale(0.8)'}
+            onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+          >
+            <FiHeart size={20} style={{ fill: '#8B5CF6' }} />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              const rect = e.currentTarget.getBoundingClientRect()
+              window.dispatchEvent(new CustomEvent('open-context-menu', {
+                detail: { x: rect.left, y: rect.bottom + 8, song }
+              }))
+            }}
+            style={{
+              background: 'none', border: 'none', padding: 8, cursor: 'pointer',
+              color: 'var(--text-secondary)', touchAction: 'manipulation',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'color 0.2s ease'
+            }}
+            onMouseEnter={e => e.currentTarget.style.color = '#fff'}
+            onMouseLeave={e => e.currentTarget.style.color = 'var(--text-secondary)'}
+          >
+            <FiMoreHorizontal size={20} />
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
 
 /* ═══ LIBRARY PAGE ═══ */
+import { useNavigate } from 'react-router-dom'
+
 export default function LibraryPage() {
-  const { savedSongs, playSong, toggleSavedSong, isSongSaved } = usePlayer()
+  const { savedSongs, recentlyPlayed, userPlaylists, playSong } = usePlayer()
+  const navigate = useNavigate()
+  const [filter, setFilter] = useState('All') // 'All', 'Playlists', 'Recently Played', 'Albums'
 
-  const handlePlayAll = () => {
-    if (savedSongs.length > 0) {
-      playSong(savedSongs[0], savedSongs, 0)
-    }
-  }
-
-  const handleShuffle = () => {
-    if (savedSongs.length > 0) {
-      const shuffled = [...savedSongs].sort(() => Math.random() - 0.5)
-      playSong(shuffled[0], shuffled, 0)
-    }
-  }
+  const showRecentlyPlayed = filter === 'All' || filter === 'Recently Played'
+  const showPlaylists = filter === 'All' || filter === 'Playlists'
+  const showLikedSongs = filter === 'All' || filter === 'Playlists'
 
   return (
-    <div style={{ paddingBottom: 24 }}>
+    <div style={{
+      paddingBottom: 24,
+      animation: 'libraryFadeIn 0.25s ease',
+      transformOrigin: 'top center'
+    }}>
+      <style>{`
+        @keyframes libraryFadeIn {
+          from { opacity: 0; transform: translateX(-10px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+        .filter-pill {
+          padding: 8px 16px;
+          border-radius: 500px;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .filter-pill.active {
+          background: #fff;
+          color: #000;
+        }
+        .filter-pill.inactive {
+          background: rgba(255,255,255,0.1);
+          color: #fff;
+        }
+        .filter-pill.inactive:hover {
+          background: rgba(255,255,255,0.2);
+        }
+        .lib-card:hover {
+          background: #282828 !important;
+        }
+        .lib-card:hover .card-play-btn {
+          opacity: 1 !important;
+          transform: translateY(0) !important;
+        }
+      `}</style>
+
       {/* ─── Header ─── */}
-      <div style={{ padding: '48px 16px 16px' }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 20 }}>Your Library</h1>
+      <div style={{ padding: '48px 32px 16px' }}>
+        <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 20 }}>Your Library</h1>
+        
+        {/* Filter Pills */}
+        <div style={{ display: 'flex', gap: 8 }}>
+          {['Playlists', 'Recently Played', 'Albums'].map(f => (
+            <button
+              key={f}
+              onClick={() => setFilter(filter === f ? 'All' : f)}
+              className={`filter-pill ${filter === f ? 'active' : 'inactive'}`}
+              style={{ border: 'none' }}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* ─── Liked Songs Hero Card ─── */}
-      <div style={{
-        margin: '0 16px 20px',
-        background: 'linear-gradient(135deg, #450AF5, #8E8FFA, #C4EFD9)',
-        borderRadius: 'var(--radius-card)',
-        padding: '20px 16px',
-        minHeight: 140,
-        display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
-      }}>
-        <FiHeart size={28} style={{ marginBottom: 12 }} />
-        <h2 style={{ fontSize: 22, fontWeight: 700 }}>Liked Songs</h2>
-        <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 4 }}>
-          {savedSongs.length} song{savedSongs.length !== 1 ? 's' : ''}
-        </p>
+      <div style={{ padding: '0 32px' }}>
+        {/* ─── Section A: Recently Listened ─── */}
+        {showRecentlyPlayed && recentlyPlayed.length > 0 && (
+          <div style={{ marginBottom: 40 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>Recently Listened</h2>
+            <div style={{ 
+              display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 16,
+              scrollSnapType: 'x mandatory'
+            }} className="hide-scrollbar">
+              {recentlyPlayed.map((song, i) => (
+                <div 
+                  key={i} 
+                  className="lib-card"
+                  onClick={() => playSong(song, recentlyPlayed, i)}
+                  style={{
+                    minWidth: 140, maxWidth: 140, background: '#282828',
+                    padding: 12, borderRadius: 8, cursor: 'pointer',
+                    transition: 'background 0.2s ease', scrollSnapAlign: 'start'
+                  }}
+                >
+                  <img 
+                    src={song.thumbnail || `https://i.ytimg.com/vi/${song.videoId}/mqdefault.jpg`} 
+                    alt="" 
+                    style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: 4, marginBottom: 12 }} 
+                  />
+                  <p className="truncate" style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>{song.title}</p>
+                  <p className="truncate" style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>{song.artist}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ─── Section B: Your Playlists ─── */}
+        {showPlaylists && (
+          <div style={{ marginBottom: 40 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 700 }}>Your Playlists</h2>
+              <button 
+                onClick={() => {
+                  // Trigger sidebar's create playlist modal by dispatching custom event
+                  window.dispatchEvent(new CustomEvent('open-create-playlist'))
+                }}
+                style={{
+                  background: 'none', border: 'none', color: 'var(--text-secondary)',
+                  cursor: 'pointer', fontSize: 24, padding: '0 8px'
+                }}
+              >
+                +
+              </button>
+            </div>
+            
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', 
+              gap: 16 
+            }}>
+              {userPlaylists.map((pl, i) => {
+                const isObj = typeof pl === 'object' && pl !== null
+                const name = isObj ? pl.name : pl
+                const urlName = encodeURIComponent(name)
+                const songCount = isObj && pl.songs ? pl.songs.length : 12
+
+                return (
+                  <div 
+                    key={i}
+                    className="lib-card"
+                    onClick={() => navigate(`/playlist/${urlName}`)}
+                    style={{
+                      background: '#181818', padding: '16px', borderRadius: '8px', cursor: 'pointer',
+                      display: 'flex', flexDirection: 'column', gap: '16px', transition: 'background 0.2s ease',
+                      position: 'relative'
+                    }}
+                  >
+                    <div style={{
+                      width: '100%', aspectRatio: '1/1', background: isObj && pl.color ? pl.color : `hsl(${i * 45}, 60%, 20%)`,
+                      borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '48px', position: 'relative', overflow: 'hidden'
+                    }}>
+                      {isObj && pl.cover ? pl.cover : '🎵'}
+                      {/* Hover Play Button */}
+                      <div className="card-play-btn" style={{
+                        position: 'absolute', bottom: '8px', right: '8px',
+                        width: '40px', height: '40px', borderRadius: '50%', background: '#8B5CF6',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: '0 8px 16px rgba(0,0,0,0.3)', opacity: 0, transform: 'translateY(8px)',
+                        transition: 'all 0.2s ease'
+                      }}>
+                        <FiPlay size={20} color="#fff" style={{ marginLeft: '4px' }} />
+                      </div>
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <p className="truncate" style={{ fontSize: '14px', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>{name}</p>
+                      <p className="truncate" style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Playlist • {songCount} songs</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ─── Section C: Liked Songs ─── */}
+        {showLikedSongs && (
+          <div 
+            onClick={() => navigate('/playlist/Liked%20Songs')}
+            style={{
+              background: 'linear-gradient(135deg, #4C1D95, #1a1a2e)',
+              borderRadius: 8, padding: '32px 24px', cursor: 'pointer',
+              display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+              minHeight: 180, transition: 'transform 0.2s ease',
+            }}
+            onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.01)'}
+            onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+          >
+            <div style={{ flex: 1 }} />
+            <h2 style={{ fontSize: 32, fontWeight: 700, color: '#fff', marginBottom: 8 }}>Liked Songs</h2>
+            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)' }}>
+              {savedSongs.length} liked song{savedSongs.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+        )}
       </div>
-
-      {/* ─── Play/Shuffle Controls ─── */}
-      {savedSongs.length > 0 && (
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '0 16px', marginBottom: 12,
-        }}>
-          <button onClick={handleShuffle} style={{
-            background: 'none', border: 'none', padding: 8, cursor: 'pointer',
-            color: 'var(--accent)', touchAction: 'manipulation',
-          }}>
-            <FiShuffle size={24} />
-          </button>
-          <button onClick={handlePlayAll} style={{
-            width: 48, height: 48, borderRadius: '50%', background: 'var(--accent)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            border: 'none', cursor: 'pointer', touchAction: 'manipulation',
-          }}>
-            <FiPlay size={22} color="#121212" style={{ marginLeft: 2 }} />
-          </button>
-        </div>
-      )}
-
-      {/* ─── Song List ─── */}
-      {savedSongs.length === 0 ? (
-        <div style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center',
-          justifyContent: 'center', padding: '48px 32px', color: 'var(--text-secondary)',
-        }}>
-          <FiHeart size={48} style={{ marginBottom: 16, opacity: 0.3 }} />
-          <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>
-            Songs you like will appear here
-          </p>
-          <p style={{ fontSize: 13, marginTop: 8, textAlign: 'center', color: 'var(--text-muted)' }}>
-            Save songs by tapping the heart icon
-          </p>
-        </div>
-      ) : (
-        savedSongs.map((song, i) => (
-          <SongRow
-            key={song.videoId}
-            song={song}
-            index={i}
-            onPlay={() => playSong(song, savedSongs, i)}
-            onRemove={() => toggleSavedSong(song)}
-            isSaved={true}
-          />
-        ))
-      )}
     </div>
   )
 }

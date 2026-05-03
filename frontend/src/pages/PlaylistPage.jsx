@@ -1,0 +1,249 @@
+import React, { useMemo } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { usePlayer } from '../context/PlayerContext.jsx'
+import { FiPlay, FiClock, FiHeart, FiMoreHorizontal, FiArrowLeft, FiSearch, FiMusic } from 'react-icons/fi'
+
+function fmt(s) {
+  if (!s || isNaN(s)) return '0:00'
+  const m = Math.floor(s / 60)
+  const sec = Math.floor(s % 60)
+  return `${m}:${String(sec).padStart(2, '0')}`
+}
+
+export default function PlaylistPage() {
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const playlistName = decodeURIComponent(id)
+  
+  const { 
+    playSong, currentSong, savedSongs, toggleSavedSong, isSongSaved, 
+    userPlaylists 
+  } = usePlayer()
+
+  const isLikedPlaylist = playlistName === 'Liked Songs'
+  
+  // Find persistent playlist from context
+  const persistentPlaylist = userPlaylists.find(p => p.name === playlistName)
+  
+  // For Liked Songs, we use savedSongs. For others, we use their .songs array
+  // If it's a "generated" one that isn't persistent yet, we'd need a fallback, 
+  // but my PlayerContext refactor made all of them persistent.
+  const songs = isLikedPlaylist ? savedSongs : (persistentPlaylist?.songs || [])
+
+  const color = useMemo(() => {
+    if (persistentPlaylist?.color) return persistentPlaylist.color
+    if (isLikedPlaylist) return '#5b21b6'
+    // Fallback generate color from name
+    let hash = 0;
+    for (let i = 0; i < playlistName.length; i++) hash = playlistName.charCodeAt(i) + ((hash << 5) - hash);
+    return `hsl(${Math.abs(hash % 360)}, 50%, 30%)`
+  }, [playlistName, isLikedPlaylist, persistentPlaylist])
+
+  const openHeaderMenu = (e) => {
+    e.stopPropagation()
+    const rect = e.currentTarget.getBoundingClientRect()
+    window.dispatchEvent(new CustomEvent('open-context-menu', {
+      detail: { x: rect.left, y: rect.bottom + 8, type: 'playlist', playlistName }
+    }))
+  }
+
+  return (
+    <div style={{ paddingBottom: 100, animation: 'fadeIn 0.3s ease' }}>
+      {/* ─── Hero Section ─── */}
+      <div style={{
+        background: `linear-gradient(to bottom, ${color}, var(--bg-primary))`,
+        padding: '64px 32px 32px',
+        position: 'sticky', top: 0, zIndex: 10,
+        display: 'flex', alignItems: 'flex-end', gap: '24px',
+        transition: 'background 0.5s ease'
+      }}>
+        {/* Back Button */}
+        <button 
+          onClick={() => navigate(-1)}
+          style={{
+            position: 'absolute', top: '16px', left: '16px',
+            background: 'rgba(0,0,0,0.3)', border: 'none', borderRadius: '50%',
+            width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#fff', cursor: 'pointer', transition: 'background 0.2s ease'
+          }}
+          className="hover-bg-card"
+        >
+          <FiArrowLeft size={20} />
+        </button>
+
+        <div style={{
+          width: '232px', height: '232px',
+          background: isLikedPlaylist ? 'linear-gradient(135deg, #4C1D95, #1a1a2e)' : '#282828',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: '84px', borderRadius: '4px', boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+          flexShrink: 0
+        }}>
+          {isLikedPlaylist ? '💜' : '🎵'}
+        </div>
+        <div style={{ flex: 1 }}>
+          <p style={{ fontSize: '14px', fontWeight: 700, textTransform: 'uppercase', marginBottom: '8px' }}>Playlist</p>
+          <h1 style={{ fontSize: '96px', fontWeight: 900, margin: '0 0 16px 0', letterSpacing: '-4px', color: '#fff', lineHeight: 1 }}>
+            {playlistName}
+          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ color: '#fff', fontWeight: 700 }}>Musify</span>
+            <span style={{ color: 'rgba(255,255,255,0.7)' }}>• {songs.length} {songs.length === 1 ? 'song' : 'songs'}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Controls Row ─── */}
+      <div style={{ padding: '24px 32px', display: 'flex', alignItems: 'center', gap: '32px' }}>
+        <button 
+          onClick={() => songs.length > 0 && playSong(songs[0], songs, 0)}
+          style={{
+            width: '56px', height: '56px', borderRadius: '50%', background: 'var(--accent)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none',
+            cursor: songs.length > 0 ? 'pointer' : 'not-allowed', color: '#fff',
+            opacity: songs.length > 0 ? 1 : 0.5,
+            transition: 'transform 0.1s ease, background 0.2s ease',
+            boxShadow: '0 4px 12px rgba(139,92,246,0.3)'
+          }}
+          className="play-btn-big"
+        >
+          <FiPlay size={24} style={{ fill: 'currentcolor', marginLeft: '4px' }} />
+        </button>
+        
+        {!isLikedPlaylist && (
+          <button onClick={openHeaderMenu} style={{ background: 'none', border: 'none', color: '#b3b3b3', cursor: 'pointer', padding: '8px' }} onMouseEnter={e=>e.currentTarget.style.color='#fff'} onMouseLeave={e=>e.currentTarget.style.color='#b3b3b3'}>
+            <FiMoreHorizontal size={32} />
+          </button>
+        )}
+      </div>
+
+      {/* ─── Song List ─── */}
+      <div style={{ padding: '0 32px' }}>
+        {songs.length === 0 ? (
+          <div style={{ padding: '80px 0', textAlign: 'center', color: '#b3b3b3' }}>
+            <FiMusic size={64} style={{ marginBottom: '24px', opacity: 0.3 }} />
+            <h2 style={{ color: '#fff', fontSize: '24px', margin: '0 0 8px 0' }}>{isLikedPlaylist ? 'Songs you like will appear here' : 'This playlist is empty'}</h2>
+            <p style={{ fontSize: '14px' }}>Find more of the music you love in search</p>
+          </div>
+        ) : (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', color: '#b3b3b3', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '8px', marginBottom: '16px', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1.2px', fontWeight: 600 }}>
+              <div style={{ width: '40px', textAlign: 'center' }}>#</div>
+              <div style={{ flex: 1 }}>Title</div>
+              <div className="col-album" style={{ flex: 1 }}>Album</div>
+              <div style={{ width: '100px', textAlign: 'right', paddingRight: '32px' }}><FiClock size={16} /></div>
+            </div>
+
+            {songs.map((song, i) => {
+              const isPlaying = currentSong?.videoId === song.videoId
+              const saved = isSongSaved(song.videoId)
+              return (
+                <div
+                  key={song.videoId}
+                  className="song-row"
+                  style={{
+                    display: 'flex', alignItems: 'center',
+                    padding: '8px 0', borderRadius: '4px',
+                    color: isPlaying ? 'var(--accent)' : 'var(--text-primary)',
+                    transition: 'all 0.2s ease',
+                    height: '56px'
+                  }}
+                >
+                  <div 
+                    onClick={() => playSong(song, songs, i)}
+                    style={{ width: '40px', textAlign: 'center', color: isPlaying ? 'var(--accent)' : '#b3b3b3', fontSize: '14px', cursor: 'pointer' }}
+                  >
+                    {isPlaying ? (
+                      <div className="playing-bars">
+                        <div className="bar"></div><div className="bar"></div><div className="bar"></div>
+                      </div>
+                    ) : (
+                      i + 1
+                    )}
+                  </div>
+                  <div 
+                    onClick={() => playSong(song, songs, i)}
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', minWidth: 0 }}
+                  >
+                    <img src={song.thumbnail || `https://i.ytimg.com/vi/${song.videoId}/default.jpg`} style={{ width: 40, height: 40, borderRadius: 4, objectFit: 'cover' }} alt="" />
+                    <div style={{ minWidth: 0 }}>
+                      <div className="truncate" style={{ fontSize: '16px', fontWeight: 600, color: isPlaying ? 'var(--accent)' : '#fff' }}>{song.title}</div>
+                      <div className="truncate" style={{ fontSize: '14px', color: '#b3b3b3' }}>{song.artist || 'Unknown Artist'}</div>
+                    </div>
+                  </div>
+                  <div className="col-album truncate" style={{ flex: 1, fontSize: '14px', color: '#b3b3b3' }}>
+                    {song.album || 'Single'}
+                  </div>
+                  
+                  <div style={{ width: '100px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '16px', paddingRight: '16px' }}>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); toggleSavedSong(song) }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: saved ? '#8B5CF6' : '#b3b3b3' }}
+                      className="hover-pop"
+                    >
+                      <FiHeart size={18} style={{ fill: saved ? '#8B5CF6' : 'none' }} />
+                    </button>
+                    
+                    <span style={{ fontSize: '14px', color: '#b3b3b3', width: '40px', textAlign: 'right' }}>{fmt(song.duration || 210)}</span>
+                    
+                    <button
+                      className="row-more-btn"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        const rect = e.currentTarget.getBoundingClientRect()
+                        window.dispatchEvent(new CustomEvent('open-context-menu', {
+                          detail: { x: rect.left - 180, y: rect.bottom + 8, song, playlistName }
+                        }))
+                      }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#b3b3b3', padding: '4px' }}
+                    >
+                      <FiMoreHorizontal size={18} />
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </>
+        )}
+      </div>
+
+      {/* ─── Search Add Songs Section ─── */}
+      {!isLikedPlaylist && (
+        <div id="playlist-search" style={{ padding: '64px 32px 0' }}>
+          <h2 style={{ color: '#fff', fontSize: '24px', fontWeight: 700, marginBottom: '24px' }}>Let's find something for your playlist</h2>
+          <div style={{ position: 'relative', maxWidth: '400px' }}>
+            <FiSearch style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#b3b3b3' }} />
+            <input 
+              type="text" placeholder="Search for songs" 
+              style={{ width: '100%', background: '#242424', border: 'none', borderRadius: '4px', padding: '12px 12px 12px 40px', color: '#fff', fontSize: '14px', outline: 'none' }} 
+            />
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        .song-row:hover { background-color: rgba(255,255,255,0.1); }
+        .row-more-btn { opacity: 0; }
+        .song-row:hover .row-more-btn { opacity: 1; }
+        
+        .play-btn-big:hover { transform: scale(1.05); }
+        .hover-pop:active { transform: scale(1.3); transition: transform 0.1s; }
+        
+        .playing-bars { display: flex; align-items: flex-end; gap: 2px; height: 14px; width: 14px; margin: 0 auto; }
+        .playing-bars .bar { width: 3px; background: var(--accent); animation: playBar 0.8s infinite ease-in-out; }
+        .playing-bars .bar:nth-child(2) { animation-delay: 0.2s; }
+        .playing-bars .bar:nth-child(3) { animation-delay: 0.4s; }
+        
+        @keyframes playBar {
+          0%, 100% { height: 4px; }
+          50% { height: 14px; }
+        }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        @media (max-width: 768px) {
+          .col-album { display: none !important; }
+        }
+      `}</style>
+    </div>
+  )
+}

@@ -1,202 +1,172 @@
-/**
- * MUSIFY — Search Screen
- * Search bar + Browse Categories grid + Song results
- */
-
-import { useState, useRef, useCallback } from 'react'
+import React, { useState, useEffect } from 'react'
 import { usePlayer } from '../context/PlayerContext.jsx'
-import { searchSongs } from '../utils/api.js'
-import { FiSearch, FiX } from 'react-icons/fi'
+import { FiPlay, FiMusic, FiChevronRight, FiSearch } from 'react-icons/fi'
 
-/* ─── Browse Categories ─── */
 const CATEGORIES = [
-  { name: 'Pop', color: '#E61E32', query: 'pop hits 2024' },
-  { name: 'Hip-Hop', color: '#BA5D07', query: 'hip hop hits 2024' },
-  { name: 'Rock', color: '#8C67AC', query: 'rock hits 2024' },
-  { name: 'Electronic', color: '#0D73EC', query: 'electronic dance music' },
-  { name: 'Indie', color: '#477D95', query: 'indie music 2024' },
-  { name: 'Chill', color: '#1E3264', query: 'chill lofi beats' },
-  { name: 'Bollywood', color: '#E13300', query: 'bollywood hits 2024' },
-  { name: 'Punjabi', color: '#7D4B32', query: 'punjabi songs 2024' },
+  { name: 'Pop', color: '#E13300', emoji: '🎤' },
+  { name: 'Hip-Hop', color: '#BA5D07', emoji: '🎧' },
+  { name: 'Rock', color: '#1E3264', emoji: '🎸' },
+  { name: 'Electronic', color: '#0D73EC', emoji: '🎹' },
+  { name: 'Lo-Fi', color: '#148A08', emoji: '☁️' },
+  { name: 'Classical', color: '#509BF5', emoji: '🎻' },
+  { name: 'Jazz', color: '#E8115B', emoji: '🎷' },
+  { name: 'R&B', color: '#8400E7', emoji: '🥃' },
+  { name: 'Synthwave', color: '#4B0082', emoji: '🌃' },
+  { name: 'Acoustic', color: '#BC5900', emoji: '🪵' },
+  { name: 'Workout', color: '#E91429', emoji: '💪' },
+  { name: 'Focus', color: '#8B5CF6', emoji: '🧠' }
 ]
 
-/* ─── Song Result Row ─── */
-function SongRow({ song, onClick }) {
-  const mins = Math.floor((song.durationSec || 0) / 60)
-  const secs = (song.durationSec || 0) % 60
-  return (
-    <button
-      className="song-row"
-      onClick={onClick}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 12,
-        width: '100%', height: 56, padding: '0 16px',
-        background: 'none', border: 'none', cursor: 'pointer',
-        color: 'var(--text-primary)', touchAction: 'manipulation',
-      }}
-    >
-      <img src={song.thumbnail} alt="" width={48} height={48} loading="lazy"
-        style={{ borderRadius: 'var(--radius-base)', flexShrink: 0 }} />
-      <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-        <p className="truncate" style={{ fontSize: 14, fontWeight: 500 }}>{song.title}</p>
-        <p className="truncate" style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{song.artist}</p>
-      </div>
-      <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>
-        {song.duration || ''}
-      </span>
-    </button>
-  )
-}
-
-/* ─── Skeleton Results ─── */
-function SkeletonResults() {
-  return (
-    <div style={{ padding: '12px 0' }}>
-      {[...Array(6)].map((_, i) => (
-        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 16px' }}>
-          <div className="skeleton" style={{ width: 48, height: 48, borderRadius: 'var(--radius-base)', flexShrink: 0 }} />
-          <div style={{ flex: 1 }}>
-            <div className="skeleton" style={{ width: '70%', height: 14, marginBottom: 6 }} />
-            <div className="skeleton" style={{ width: '40%', height: 12 }} />
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-/* ═══ SEARCH PAGE ═══ */
 export default function SearchPage() {
-  const { playSong } = usePlayer()
-  const [query, setQuery] = useState('')
-  const [results, setResults] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [hasSearched, setHasSearched] = useState(false)
-  const inputRef = useRef(null)
-  const debounceRef = useRef(null)
+  const { 
+    searchQuery, setSearchQuery, 
+    masterPlaylistData, playSong,
+    userPlaylists
+  } = usePlayer()
 
-  const doSearch = useCallback(async (q) => {
-    if (!q.trim()) { setResults([]); setHasSearched(false); return }
-    setLoading(true)
-    setHasSearched(true)
-    try {
-      const data = await searchSongs(q)
-      setResults(data || [])
-    } catch (e) {
-      console.error('Search error:', e)
-      setResults([])
-    } finally {
-      setLoading(false)
+  const [results, setResults] = useState({ songs: [], playlists: [], artists: [] })
+  const [isSearching, setIsSearching] = useState(false)
+
+  // Escape key to clear search
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setSearchQuery('')
     }
-  }, [])
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [setSearchQuery])
 
-  const handleInput = (e) => {
-    const val = e.target.value
-    setQuery(val)
-    clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => doSearch(val), 350)
-  }
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      if (searchQuery.trim().length > 0) {
+        setIsSearching(true)
+        const q = searchQuery.toLowerCase()
+        
+        // 1. Local Data Filter
+        const localSongs = masterPlaylistData.filter(s => 
+          s.title.toLowerCase().includes(q) || s.artist.toLowerCase().includes(q)
+        )
+        const localPlaylists = userPlaylists.filter(p => 
+          p.name.toLowerCase().includes(q)
+        )
+        const allArtists = Array.from(new Set(masterPlaylistData.map(s => s.artist)))
+        const localArtists = allArtists.filter(a => a.toLowerCase().includes(q))
 
-  const handleClear = () => {
-    setQuery('')
-    setResults([])
-    setHasSearched(false)
-    inputRef.current?.focus()
-  }
+        // 2. API Data Fetch
+        try {
+          const { searchSongs } = await import('../utils/api.js')
+          const apiSongs = await searchSongs(searchQuery)
+          
+          const combinedSongs = [...localSongs]
+          apiSongs.forEach(apiS => {
+            if (!combinedSongs.find(s => s.videoId === apiS.videoId)) {
+              combinedSongs.push(apiS)
+            }
+          })
 
-  const handleCategoryClick = (cat) => {
-    setQuery(cat.name)
-    doSearch(cat.query)
-  }
+          setResults({ songs: combinedSongs, playlists: localPlaylists, artists: localArtists })
+        } catch (err) {
+          console.error('Search API error:', err)
+          setResults({ songs: localSongs, playlists: localPlaylists, artists: localArtists })
+        }
+      } else {
+        setIsSearching(false)
+        setResults({ songs: [], playlists: [], artists: [] })
+      }
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [searchQuery, masterPlaylistData, userPlaylists])
+
+  const isEmpty = searchQuery.trim().length === 0
 
   return (
-    <div style={{ paddingBottom: 24 }}>
-      {/* ─── Header ─── */}
-      <div style={{ padding: '48px 16px 8px' }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 16 }}>Search</h1>
-
-        {/* ─── Search Bar ─── */}
+    <div style={{ padding: '24px 32px', minHeight: '100%' }}>
+      
+      {/* STATE 1: BROWSE CATEGORIES */}
+      <div style={{ display: isEmpty ? 'block' : 'none' }}>
+        <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#fff', marginBottom: '24px' }}>Browse all</h1>
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 10,
-          background: 'var(--bg-card)', borderRadius: 'var(--radius-base)',
-          height: 48, padding: '0 14px',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+          gap: '16px'
         }}>
-          <FiSearch size={18} color="var(--text-muted)" style={{ flexShrink: 0 }} />
-          <input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={handleInput}
-            placeholder="What do you want to listen to?"
-            style={{
-              flex: 1, height: '100%', fontSize: 14, fontWeight: 500,
-              touchAction: 'manipulation',
-            }}
-          />
-          {query && (
-            <button onClick={handleClear} style={{
-              background: 'none', border: 'none', padding: 4, cursor: 'pointer',
-              color: 'var(--text-primary)', touchAction: 'manipulation',
-            }}>
-              <FiX size={18} />
-            </button>
-          )}
+          {CATEGORIES.map(cat => (
+            <div 
+              key={cat.name} 
+              onClick={() => setSearchQuery(cat.name)}
+              style={{
+                height: '120px', background: cat.color, borderRadius: '8px',
+                padding: '12px', position: 'relative', overflow: 'hidden', cursor: 'pointer',
+                transition: '0.2s ease'
+              }}
+              className="category-card"
+            >
+              <span style={{ fontSize: '18px', fontWeight: 800, color: '#fff' }}>{cat.name}</span>
+              <span style={{
+                position: 'absolute', bottom: '-10px', right: '-10px',
+                fontSize: '64px', transform: 'rotate(25deg)', opacity: 0.8
+              }}>{cat.emoji}</span>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* ─── Content: Categories or Results ─── */}
-      {!hasSearched ? (
-        /* Browse Categories */
-        <div style={{ padding: '20px 16px 0' }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Browse all</h2>
-          <div style={{
-            display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
-          }}>
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat.name}
-                onClick={() => handleCategoryClick(cat)}
-                style={{
-                  position: 'relative', height: 96, borderRadius: 'var(--radius-card)',
-                  background: cat.color, border: 'none', cursor: 'pointer',
-                  overflow: 'hidden', textAlign: 'left', padding: '12px 14px',
-                  touchAction: 'manipulation',
-                }}
-              >
-                <span style={{ fontSize: 16, fontWeight: 700, color: '#fff', position: 'relative', zIndex: 1 }}>
-                  {cat.name}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : (
-        /* Search Results */
-        <div style={{ paddingTop: 8 }}>
-          {loading ? (
-            <SkeletonResults />
-          ) : results.length > 0 ? (
-            <>
-              <p style={{ fontSize: 14, fontWeight: 700, padding: '8px 16px', color: 'var(--text-primary)' }}>
-                Songs
-              </p>
-              {results.map((song, i) => (
-                <SongRow key={song.videoId} song={song}
-                  onClick={() => playSong(song, results, i)} />
-              ))}
-            </>
+      {/* STATE 2: SEARCH RESULTS */}
+      {!isEmpty && (
+        <div className="results-container" style={{ opacity: isSearching ? 1 : 0, transition: 'opacity 0.2s ease' }}>
+          
+          {results.songs.length > 0 ? (
+            <div style={{ animation: 'staggerIn 0.25s ease forwards' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#fff', marginBottom: '20px' }}>Songs</h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                {results.songs.map((song, i) => (
+                  <div key={song.videoId} className="song-result-row" onClick={() => playSong(song, results.songs, i)} style={{
+                    display: 'flex', alignItems: 'center', gap: '16px', height: '56px', padding: '0 12px', borderRadius: '8px', cursor: 'pointer', transition: 'background 0.2s'
+                  }}>
+                    <div style={{ width: '40px', height: '40px', borderRadius: '4px', background: `hsl(${song.title.charCodeAt(0)*37%360}, 40%, 25%)`, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {song.thumbnail ? (
+                        <img src={song.thumbnail} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '4px' }} />
+                      ) : (
+                        <span style={{ fontSize: '18px' }}>{song.emoji || '♪'}</span>
+                      )}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p className="truncate" style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#fff' }}>{song.title}</p>
+                      <p className="truncate" style={{ margin: 0, fontSize: '13px', color: '#b3b3b3' }}>{song.artist}</p>
+                    </div>
+                    <span style={{ fontSize: '13px', color: '#b3b3b3', flexShrink: 0 }}>{song.duration}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           ) : (
-            <div style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center',
-              justifyContent: 'center', padding: '64px 32px', color: 'var(--text-secondary)',
-            }}>
-              <FiSearch size={40} style={{ marginBottom: 16, opacity: 0.4 }} />
-              <p style={{ fontSize: 16, fontWeight: 600 }}>No results found</p>
-              <p style={{ fontSize: 13, marginTop: 4, color: 'var(--text-muted)' }}>Try different keywords</p>
+            /* NO RESULTS STATE */
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '100px 0' }}>
+              <FiSearch size={48} style={{ color: '#fff', opacity: 0.4, marginBottom: '24px' }} />
+              <p style={{ color: '#b3b3b3', fontSize: '16px', margin: 0 }}>No results found for</p>
+              <p style={{ color: '#fff', fontSize: '18px', fontWeight: 700, margin: '4px 0 8px' }}>"{searchQuery}"</p>
+              <p style={{ color: '#b3b3b3', fontSize: '13px' }}>Please make sure your words are spelled correctly.</p>
             </div>
           )}
         </div>
       )}
+
+      <style>{`
+        .category-card:hover { filter: brightness(1.15); transform: scale(1.02); }
+        .top-result-card:hover { background: #333333 !important; }
+        .top-result-card:hover .premium-play-btn { opacity: 1; transform: translateY(0); }
+        .song-result-row:hover { background: #282828; }
+        .search-card:hover { background: #282828 !important; }
+        .search-card:hover .premium-play-btn-mini { opacity: 1; transform: translateY(0); }
+        .horizontal-scroll::-webkit-scrollbar { display: none; }
+        .horizontal-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+        
+        @keyframes staggerIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   )
 }

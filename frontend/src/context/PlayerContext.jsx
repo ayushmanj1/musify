@@ -56,6 +56,79 @@ export function PlayerProvider({ children }) {
   const [isFullScreenPlayer, setIsFullScreenPlayer] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isAudioLoading, setIsAudioLoading] = useState(false)
+  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true)
+  
+  // Search & Navigation
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState([])
+  const [isSearchLoading, setIsSearchLoading] = useState(false)
+  const [navHistory, setNavHistory] = useState([window.location.pathname])
+  const [navIndex, setNavIndex] = useState(0)
+
+  // Master Playlist Data (Flattened songs for global search)
+  const [masterPlaylistData, setMasterPlaylistData] = useState([])
+  
+  const [isLeftSidebarCollapsed, setIsLeftSidebarCollapsed] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('sidebarCollapsed') || 'false')
+    } catch { return false }
+  })
+  const [preFSLeftSidebarState, setPreFSLeftSidebarState] = useState(false)
+
+  // Persist sidebar state
+  useEffect(() => {
+    localStorage.setItem('sidebarCollapsed', JSON.stringify(isLeftSidebarCollapsed))
+  }, [isLeftSidebarCollapsed])
+
+  const [recentlyPlayed, setRecentlyPlayed] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('recentlyPlayed') || '[]')
+      return Array.isArray(saved) ? saved : []
+    } catch { return [] }
+  })
+
+  const [userPlaylists, setUserPlaylists] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('userPlaylists_v2') || 'null')
+      if (saved && Array.isArray(saved)) return saved
+    } catch {}
+    
+    // Default playlists with curated gradients for premium "avatar" look
+    const defaults = [
+      { name: 'Liked Songs', color: 'linear-gradient(135deg, #450aef, #c359ff)' },
+      { name: 'Chill Vibes', color: 'linear-gradient(135deg, #064e3b, #059669)' },
+      { name: 'Workout Mix', color: 'linear-gradient(135deg, #7f1d1d, #ef4444)' },
+      { name: 'Focus 2024', color: 'linear-gradient(135deg, #1e3a8a, #3b82f6)' },
+      { name: 'Roadtrip', color: 'linear-gradient(135deg, #b45309, #f59e0b)' },
+      { name: 'Coding Flow', color: 'linear-gradient(135deg, #4c1d95, #8b5cf6)' },
+      { name: 'Discover Weekly', color: 'linear-gradient(135deg, #0f766e, #14b8a6)' },
+      { name: 'Release Radar', color: 'linear-gradient(135deg, #831843, #ec4899)' },
+      { name: 'Synthwave', color: 'linear-gradient(135deg, #db2777, #f472b6)' },
+      { name: 'Lo-Fi Beats', color: 'linear-gradient(135deg, #3f6212, #84cc16)' },
+      { name: 'Acoustic Covers', color: 'linear-gradient(135deg, #854d0e, #eab308)' },
+      { name: 'Classical', color: 'linear-gradient(135deg, #172554, #1e40af)' }
+    ]
+    return defaults.map(p => ({ name: p.name, songs: [], color: p.color }))
+  })
+
+  // Update master data whenever recommendations or trending changes
+  useEffect(() => {
+    const allSongs = [
+      ...(recommendations || []),
+      ...(queue || []),
+      ...(savedSongs || []),
+      ...(recentlyPlayed || []),
+      ...(userPlaylists?.flatMap(p => p.songs || []) || [])
+    ]
+    // Unique by videoId
+    const unique = Array.from(new Map(allSongs.map(s => [s.videoId, s])).values())
+    setMasterPlaylistData(unique)
+  }, [recommendations, queue, savedSongs, recentlyPlayed, userPlaylists])
+
+  // Persist playlists
+  useEffect(() => {
+    localStorage.setItem('userPlaylists_v2', JSON.stringify(userPlaylists))
+  }, [userPlaylists])
 
   // Equalizer state
   const [eqBands, setEqBands] = useState([0, 0, 0, 0, 0])
@@ -105,10 +178,23 @@ export function PlayerProvider({ children }) {
   useEffect(() => { sleepTimerRef.current = sleepTimer }, [sleepTimer])
   useEffect(() => { volumeRef.current = volume }, [volume])
 
-  // Persist saved songs and settings
+  // Auto-collapse Left Sidebar on Full Screen
+  useEffect(() => {
+    if (isFullScreenPlayer) {
+      setPreFSLeftSidebarState(isLeftSidebarCollapsed)
+      setIsLeftSidebarCollapsed(true)
+    } else {
+      setIsLeftSidebarCollapsed(preFSLeftSidebarState)
+    }
+  }, [isFullScreenPlayer])
+
   useEffect(() => {
     localStorage.setItem('savedSongs', JSON.stringify(savedSongs))
   }, [savedSongs])
+
+  useEffect(() => {
+    localStorage.setItem('recentlyPlayed', JSON.stringify(recentlyPlayed))
+  }, [recentlyPlayed])
 
   useEffect(() => {
     localStorage.setItem('crossfadeEnabled', JSON.stringify(crossfadeEnabled))
@@ -324,6 +410,7 @@ export function PlayerProvider({ children }) {
         setIsPlaying(false)
         setSleepTimer({ active: false, endTime: null, stopAfterCurrent: false })
         setSleepTimerRemaining(null)
+        toast('Sleep timer ended. Playback paused.', { duration: 5000 })
       } else {
         setSleepTimerRemaining(remaining)
       }
@@ -395,6 +482,10 @@ export function PlayerProvider({ children }) {
     }
 
     setCurrentSong(song)
+    setRecentlyPlayed(prev => {
+      const filtered = prev.filter(s => s.videoId !== song.videoId)
+      return [song, ...filtered].slice(0, 6) // keep last 6
+    })
     initWebAudio()
     setCurrentTime(0)
     setDuration(0)
@@ -542,6 +633,43 @@ export function PlayerProvider({ children }) {
     return savedSongs.some(s => s.videoId === videoId)
   }, [savedSongs])
 
+  const addSongToPlaylist = useCallback((playlistName, song) => {
+    setUserPlaylists(prev => prev.map(pl => {
+      if (pl.name === playlistName) {
+        const exists = pl.songs.some(s => s.videoId === song.videoId)
+        if (exists) return pl
+        return { ...pl, songs: [song, ...pl.songs] }
+      }
+      return pl
+    }))
+    toast.success(`Added to ${playlistName}`)
+  }, [])
+
+  const removeSongFromPlaylist = useCallback((playlistName, songId) => {
+    setUserPlaylists(prev => prev.map(pl => {
+      if (pl.name === playlistName) {
+        return { ...pl, songs: pl.songs.filter(s => s.videoId !== songId) }
+      }
+      return pl
+    }))
+    toast.success(`Removed from ${playlistName}`)
+  }, [])
+
+  const deletePlaylist = useCallback((playlistName) => {
+    setUserPlaylists(prev => prev.filter(pl => pl.name !== playlistName))
+    toast.success(`Playlist deleted`)
+  }, [])
+
+  const updatePlaylist = useCallback((oldName, newData) => {
+    setUserPlaylists(prev => prev.map(pl => {
+      if (pl.name === oldName) {
+        return { ...pl, ...newData }
+      }
+      return pl
+    }))
+    toast.success(`Playlist updated`)
+  }, [])
+
   // ─── Keyboard Shortcuts ───
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -562,8 +690,19 @@ export function PlayerProvider({ children }) {
   const value = useMemo(() => ({
     currentSong, isPlaying, volume, queue, queueIndex,
     savedSongs, recommendations, isRecLoading,
+    recentlyPlayed,
     isSuggestionsOpen, setIsSuggestionsOpen,
     isFullScreenPlayer, setIsFullScreenPlayer,
+    isRightSidebarOpen, setIsRightSidebarOpen,
+    isLeftSidebarCollapsed, setIsLeftSidebarCollapsed,
+    preFSLeftSidebarState, setPreFSLeftSidebarState,
+    searchQuery, setSearchQuery,
+    searchResults, setSearchResults,
+    isSearchLoading, setIsSearchLoading,
+    navHistory, setNavHistory,
+    navIndex, setNavIndex,
+    masterPlaylistData,
+    userPlaylists, setUserPlaylists,
     isSearchOpen, setIsSearchOpen, isAudioLoading,
     sleepTimer, sleepTimerRemaining, startSleepTimer, cancelSleepTimer,
     crossfadeEnabled, setCrossfadeEnabled,
@@ -573,15 +712,19 @@ export function PlayerProvider({ children }) {
     toggleSavedSong, isSongSaved,
     shuffle, setShuffle, repeat, setRepeat,
     eqBands, onEQChange,
+    addSongToPlaylist, removeSongFromPlaylist, deletePlaylist, updatePlaylist
   }), [
     currentSong, isPlaying, volume, queue, queueIndex,
-    savedSongs, recommendations, isRecLoading, isSuggestionsOpen,
+    savedSongs, recommendations, isRecLoading, recentlyPlayed, isSuggestionsOpen,
     isFullScreenPlayer, isSearchOpen, isAudioLoading,
+    isRightSidebarOpen, isLeftSidebarCollapsed, preFSLeftSidebarState, userPlaylists,
+    searchQuery, searchResults, isSearchLoading, navHistory, navIndex, masterPlaylistData,
     playSong, togglePlay, seekTo, setPlayerVolume,
     playNext, playPrevious, addToQueue,
     toggleSavedSong, isSongSaved,
     shuffle, repeat, sleepTimer, sleepTimerRemaining,
-    crossfadeEnabled, crossfadeDuration, eqBands, onEQChange
+    crossfadeEnabled, crossfadeDuration, eqBands, onEQChange,
+    addSongToPlaylist, removeSongFromPlaylist, deletePlaylist, updatePlaylist
   ])
 
   return (

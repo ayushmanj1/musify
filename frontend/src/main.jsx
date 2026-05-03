@@ -18,20 +18,22 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <App />
         <Toaster
           position="bottom-center"
-          containerStyle={{ bottom: 150 }}
+          containerStyle={{ bottom: 100 }}
           toastOptions={{
+            duration: 3000,
             style: {
-              background: 'var(--bg-card)',
-              color: 'var(--text-primary)',
-              border: '1px solid var(--surface-highlight)',
+              background: '#8B5CF6',
+              color: '#fff',
+              border: 'none',
               borderRadius: '8px',
               fontSize: '13px',
               fontWeight: '600',
               fontFamily: 'var(--font)',
-              padding: '10px 16px',
+              padding: '12px 20px',
+              animation: 'toastSlideUp 0.3s ease',
             },
             success: {
-              iconTheme: { primary: 'var(--accent)', secondary: '#fff' },
+              iconTheme: { primary: '#fff', secondary: '#8B5CF6' },
             },
           }}
         />

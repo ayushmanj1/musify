@@ -1,20 +1,10 @@
-/**
- * MUSIFY — Player (Mini + Full Screen Now Playing)
- * ─── Mini Player: 64px above bottom nav
- * ─── Full Screen: slides up with album blur background
- */
-
-import { useState, useRef, useCallback, useEffect } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { usePlayer } from '../../context/PlayerContext.jsx'
-import { shareSong, copySongLink } from '../../utils/share.js'
 import {
   FiPlay, FiPause, FiSkipBack, FiSkipForward,
-  FiHeart, FiShuffle, FiRepeat, FiChevronDown,
-  FiVolume2, FiShare2, FiMonitor, FiClock, FiList, FiMic,
+  FiHeart, FiShuffle, FiRepeat,
+  FiVolume2, FiVolumeX, FiList, FiMonitor, FiClock
 } from 'react-icons/fi'
-import { EqualizerPanel, EqualizerButton } from '../ui/EqualizerPanel.jsx'
-import { LyricsScreen } from '../ui/LyricsScreen.jsx'
-import { FlipAlbumArt } from '../ui/FlipAlbumArt.jsx'
 
 /* ─── Time Formatter ─── */
 function fmt(s) {
@@ -24,19 +14,6 @@ function fmt(s) {
   return `${m}:${String(sec).padStart(2, '0')}`
 }
 
-/* ─── Loading Spinner ─── */
-function Spinner({ size = 18, light = true }) {
-  return (
-    <div style={{
-      width: size, height: size,
-      border: `2px solid ${light ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)'}`,
-      borderTopColor: light ? '#fff' : '#000',
-      borderRadius: '50%',
-      animation: 'spin 0.8s linear infinite',
-    }} />
-  )
-}
-
 /* ─── Progress Hook ─── */
 function usePlayerTime() {
   const { currentSong } = usePlayer()
@@ -44,7 +21,6 @@ function usePlayerTime() {
   const [duration, setDuration] = useState(0)
 
   useEffect(() => {
-    // Use a polling approach to get time from context
     const interval = setInterval(() => {
       const audio = document.querySelector('audio') || window.__musifyAudio
       if (audio) {
@@ -58,512 +34,383 @@ function usePlayerTime() {
   return { currentTime, duration }
 }
 
-/* ═══════════════════════════════════════════════════════
-   PLAYER COMPONENT
-   ═══════════════════════════════════════════════════════ */
 export default function Player() {
   const {
     currentSong, isPlaying, togglePlay,
-    seekTo, playNext, playPrevious,
-    isFullScreenPlayer, setIsFullScreenPlayer,
+    seekTo, playNext, playPrevious, playSong,
     shuffle, setShuffle, repeat, setRepeat,
     toggleSavedSong, isSongSaved, isAudioLoading,
-    sleepTimer, sleepTimerRemaining, startSleepTimer, cancelSleepTimer,
-    recommendations, playSong,
-    eqBands, onEQChange,
+    recommendations, // Get queue
+    setVolume, volume,
+    isRightSidebarOpen, setIsRightSidebarOpen,
+    isFullScreenPlayer, setIsFullScreenPlayer,
+    sleepTimer, sleepTimerRemaining, startSleepTimer, cancelSleepTimer
   } = usePlayer()
 
   const { currentTime, duration } = usePlayerTime()
-  const [isSeeking, setIsSeeking] = useState(false)
-  const [seekValue, setSeekValue] = useState(0)
-  const [showTimerSheet, setShowTimerSheet] = useState(false)
-  const progressRef = useRef(null)
+  const [localVolume, setLocalVolume] = useState(1) // 0 to 1
+  const [isQueueOpen, setIsQueueOpen] = useState(false)
+  const [isSleepTimerOpen, setIsSleepTimerOpen] = useState(false)
+  const queueRef = useRef(null)
+  
+  // Set global audio volume
+  useEffect(() => {
+    const audio = document.querySelector('audio') || window.__musifyAudio
+    if (audio) audio.volume = localVolume
+  }, [localVolume])
 
-  const progress = duration > 0 ? (currentTime / duration) * 100 : 0
-  const saved = currentSong ? isSongSaved(currentSong.videoId) : false
-  const [heartAnim, setHeartAnim] = useState(false)
-
-  const handleToggleSave = () => {
-    if (currentSong) {
-      toggleSavedSong(currentSong)
-      setHeartAnim(true)
-      setTimeout(() => setHeartAnim(false), 300)
+  // Close queue on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (queueRef.current && !queueRef.current.contains(e.target)) {
+        setIsQueueOpen(false)
+      }
     }
-  }
-
-  /* ─── Touch Seeking ─── */
-  const handleProgressTouch = useCallback((e, element) => {
-    if (!element || !duration) return
-    const rect = element.getBoundingClientRect()
-    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left
-    const pct = Math.max(0, Math.min(1, x / rect.width))
-    return pct * duration
-  }, [duration])
+    if (isQueueOpen) document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isQueueOpen])
 
   if (!currentSong) return null
 
+  const saved = currentSong ? isSongSaved(currentSong.videoId) : false
   const thumb = currentSong.thumbnail || `https://i.ytimg.com/vi/${currentSong.videoId}/mqdefault.jpg`
+  const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0
 
   return (
-    <>
-      {/* ═══ MINI PLAYER ═══ */}
-      {!isFullScreenPlayer && (
-        <div
-          onClick={() => setIsFullScreenPlayer(true)}
+    <div className="bottom-bar" style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '0 16px',
+      position: 'relative', // For absolute queue box
+      zIndex: 9999 // ensure it's above the full screen player 9998
+    }}>
+      {/* ─── LEFT: Track Info (30%) ─── */}
+      <div 
+        onClick={() => setIsFullScreenPlayer(true)}
+        style={{ flex: '0 1 30%', minWidth: 0, display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer' }}
+      >
+        <img
+          src={thumb}
+          alt=""
+          width={56} height={56}
+          style={{ borderRadius: '4px', flexShrink: 0 }}
+        />
+        <div style={{ minWidth: 0 }}>
+          <p className="truncate" style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+            {currentSong.title}
+          </p>
+          <p className="truncate" style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+            {currentSong.artist}
+          </p>
+        </div>
+        <button
+          onClick={(e) => { e.stopPropagation(); toggleSavedSong(currentSong) }}
           style={{
-            position: 'fixed',
-            bottom: 'calc(var(--bottom-nav-h) + var(--safe-bottom) + 8px)',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: 'calc(100% - 16px)',
-            maxWidth: 374,
-            height: 'var(--mini-player-h)',
-            background: 'var(--bg-card)',
-            borderRadius: 12,
-            display: 'flex',
-            alignItems: 'center',
-            padding: '0 12px',
-            gap: 10,
-            cursor: 'pointer',
-            zIndex: 45,
-            animation: 'miniPlayerEnter 200ms ease-out',
-            willChange: 'transform',
-            overflow: 'hidden',
+            background: 'none', border: 'none', padding: '8px', cursor: 'pointer',
+            color: saved ? 'var(--accent)' : 'var(--text-secondary)',
+            marginLeft: '8px'
           }}
         >
-          {/* Album art */}
-          <img src={thumb} alt="" width={48} height={48}
-            style={{ borderRadius: 'var(--radius-base)', flexShrink: 0 }} />
+          <FiHeart size={16} style={{ fill: saved ? 'currentcolor' : 'none' }} />
+        </button>
+      </div>
 
-          {/* Title + artist */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <p className="truncate" style={{ fontSize: 13, fontWeight: 600 }}>
-              {currentSong.title}
-            </p>
-            <p className="truncate" style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 1 }}>
-              {currentSong.artist}
-            </p>
-          </div>
-
-          {/* Heart */}
+      {/* ─── CENTER: Controls & Progress (40%) ─── */}
+      <div style={{ flex: '0 1 40%', maxWidth: '722px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+        
+        {/* Playback Controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
           <button
-            onClick={(e) => { e.stopPropagation(); handleToggleSave() }}
+            onClick={() => setShuffle(!shuffle)}
+            style={{ background: 'none', border: 'none', color: shuffle ? 'var(--accent)' : 'var(--text-secondary)' }}
+          >
+            <FiShuffle size={16} />
+            {shuffle && <div style={{ width: 4, height: 4, background: 'var(--accent)', borderRadius: '50%', margin: '4px auto 0' }} />}
+          </button>
+          
+          <button onClick={playPrevious} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)' }}>
+            <FiSkipBack size={20} style={{ fill: 'currentcolor' }} />
+          </button>
+          
+          <button
+            onClick={togglePlay}
             style={{
-              background: 'none', border: 'none', padding: 6, cursor: 'pointer',
-              color: saved ? 'var(--accent)' : 'var(--text-secondary)',
-              transform: heartAnim ? 'scale(1.35)' : 'scale(1)',
-              transition: 'transform 300ms ease, color 200ms',
-              touchAction: 'manipulation',
+              width: 32, height: 32,
+              borderRadius: '50%',
+              background: '#fff',
+              color: '#000',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              border: 'none'
             }}
           >
-            <FiHeart size={18} style={{ fill: saved ? 'currentcolor' : 'none' }} />
+            {isPlaying ? <FiPause size={16} style={{ fill: 'currentcolor' }} /> : <FiPlay size={16} style={{ fill: 'currentcolor', marginLeft: '2px' }} />}
           </button>
 
-          {/* Play/Pause */}
+          <button onClick={playNext} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)' }}>
+            <FiSkipForward size={20} style={{ fill: 'currentcolor' }} />
+          </button>
+
           <button
-            onClick={(e) => { e.stopPropagation(); togglePlay() }}
-            style={{
-              background: 'none', border: 'none', padding: 6, cursor: 'pointer',
-              color: 'var(--text-primary)', touchAction: 'manipulation',
-            }}
+            onClick={() => setRepeat(repeat === 'none' ? 'one' : 'none')}
+            style={{ background: 'none', border: 'none', color: repeat !== 'none' ? 'var(--accent)' : 'var(--text-secondary)' }}
           >
-            {isAudioLoading ? <Spinner size={18} /> :
-              isPlaying ? <FiPause size={18} /> : <FiPlay size={18} style={{ marginLeft: 2 }} />}
-          </button>
-
-          {/* ─── 2px accent progress bar at bottom ─── */}
-          <div style={{
-            position: 'absolute', bottom: 0, left: 0,
-            width: `${progress}%`, height: 2,
-            background: 'var(--accent)',
-            transition: 'width 250ms linear',
-          }} />
-        </div>
-      )}
-
-      {/* ═══ FULL SCREEN NOW PLAYING ═══ */}
-      {isFullScreenPlayer && (
-        <NowPlaying
-          currentSong={currentSong}
-          thumb={thumb}
-          isPlaying={isPlaying}
-          isAudioLoading={isAudioLoading}
-          togglePlay={togglePlay}
-          seekTo={seekTo}
-          playNext={playNext}
-          playPrevious={playPrevious}
-          shuffle={shuffle}
-          setShuffle={setShuffle}
-          repeat={repeat}
-          setRepeat={setRepeat}
-          saved={saved}
-          heartAnim={heartAnim}
-          handleToggleSave={handleToggleSave}
-          progress={progress}
-          currentTime={currentTime}
-          duration={duration}
-          isSeeking={isSeeking}
-          setIsSeeking={setIsSeeking}
-          seekValue={seekValue}
-          setSeekValue={setSeekValue}
-          progressRef={progressRef}
-          handleProgressTouch={handleProgressTouch}
-          sleepTimer={sleepTimer}
-          sleepTimerRemaining={sleepTimerRemaining}
-          startSleepTimer={startSleepTimer}
-          cancelSleepTimer={cancelSleepTimer}
-          showTimerSheet={showTimerSheet}
-          setShowTimerSheet={setShowTimerSheet}
-          recommendations={recommendations}
-          playSong={playSong}
-          eqBands={eqBands}
-          onEQChange={onEQChange}
-          onClose={() => setIsFullScreenPlayer(false)}
-        />
-      )}
-    </>
-  )
-}
-
-/* ═══════════════════════════════════════════════════════
-   NOW PLAYING — Swipe-to-Dismiss + PC Minimize
-   ═══════════════════════════════════════════════════════ */
-function NowPlaying({
-  currentSong, thumb, isPlaying, isAudioLoading, togglePlay,
-  seekTo, playNext, playPrevious, shuffle, setShuffle, repeat, setRepeat,
-  saved, heartAnim, handleToggleSave, progress, currentTime, duration,
-  isSeeking, setIsSeeking, seekValue, setSeekValue, progressRef,
-  handleProgressTouch,
-  sleepTimer, sleepTimerRemaining, startSleepTimer, cancelSleepTimer,
-  showTimerSheet, setShowTimerSheet, recommendations, playSong, onClose,
-  eqBands, onEQChange,
-}) {
-  const containerRef = useRef(null)
-  const bgRef = useRef(null)
-  const albumRef = useRef(null)
-  const dragRef = useRef({ isDragging: false, startY: 0, currentY: 0, startTime: 0 })
-  const [isClosing, setIsClosing] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
-  
-  // Equalizer Panel state
-  const [showEQ, setShowEQ] = useState(false)
-  const [eqBtnRect, setEqBtnRect] = useState(null)
-
-  // Lyrics state
-  const [showLyrics, setShowLyrics] = useState(false)
-
-  // Suggestions popup state
-  const [showSuggestions, setShowSuggestions] = useState(false)
-
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth <= 480)
-    check()
-    window.addEventListener('resize', check)
-    return () => window.removeEventListener('resize', check)
-  }, [])
-
-  const closeWithAnimation = useCallback(() => {
-    setIsClosing(true)
-    setTimeout(() => { setIsClosing(false); onClose() }, 320)
-  }, [onClose])
-
-  /* ─── Pointer Handlers (mobile swipe only) ─── */
-  const onPointerDown = useCallback((e) => {
-    if (!isMobile) return
-    const el = containerRef.current
-    if (!el) return
-    const rect = el.getBoundingClientRect()
-    const relY = e.clientY - rect.top
-    const inTopZone = relY < rect.height * 0.3
-    const inAlbum = albumRef.current && albumRef.current.contains(e.target)
-    const scrollable = e.target.closest('[data-scrollable]')
-    if (scrollable && scrollable.scrollTop > 0) return
-    if (!inTopZone && !inAlbum) return
-
-    dragRef.current = { isDragging: true, startY: e.clientY, currentY: e.clientY, startTime: Date.now() }
-    el.setPointerCapture(e.pointerId)
-    el.style.transition = 'none'
-    if (bgRef.current) bgRef.current.style.transition = 'none'
-    if (albumRef.current) albumRef.current.style.transition = 'none'
-  }, [isMobile])
-
-  const onPointerMove = useCallback((e) => {
-    if (!dragRef.current.isDragging) return
-    const dy = Math.max(0, e.clientY - dragRef.current.startY)
-    dragRef.current.currentY = e.clientY
-    const el = containerRef.current
-    if (!el) return
-    const t = Math.min(dy / 400, 1)
-    el.style.transform = `translateY(${dy}px) scale(${1 - t * 0.04})`
-    el.style.opacity = `${1 - t * 0.3}`
-    if (albumRef.current) albumRef.current.style.transform = `scale(${1 - t * 0.08})`
-    if (bgRef.current) bgRef.current.style.filter = `blur(${80 - t * 60}px) brightness(0.35)`
-  }, [])
-
-  const onPointerUp = useCallback((e) => {
-    if (!dragRef.current.isDragging) return
-    dragRef.current.isDragging = false
-    const dy = Math.max(0, e.clientY - dragRef.current.startY)
-    const velocity = dy / Math.max(Date.now() - dragRef.current.startTime, 1)
-    const el = containerRef.current
-    if (!el) return
-
-    if (dy > 120 || velocity > 0.5) {
-      el.style.transition = 'transform 320ms cubic-bezier(0.32,0.72,0,1), opacity 320ms cubic-bezier(0.32,0.72,0,1)'
-      el.style.transform = 'translateY(100%) scale(0.96)'
-      el.style.opacity = '0'
-      setTimeout(() => onClose(), 320)
-    } else {
-      const ease = '280ms cubic-bezier(0.32,0.72,0,1)'
-      el.style.transition = `transform ${ease}, opacity ${ease}`
-      el.style.transform = 'translateY(0) scale(1)'
-      el.style.opacity = '1'
-      if (albumRef.current) { albumRef.current.style.transition = `transform ${ease}`; albumRef.current.style.transform = 'scale(1)' }
-      if (bgRef.current) { bgRef.current.style.transition = 'filter 280ms ease'; bgRef.current.style.filter = 'blur(80px) brightness(0.35)' }
-    }
-  }, [onClose])
-
-  return (
-    <div
-      ref={containerRef}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
-      style={{
-        position: 'fixed', inset: 0, zIndex: 100,
-        display: 'flex', flexDirection: 'column',
-        willChange: 'transform', overscrollBehavior: 'none',
-        animation: isClosing ? 'nowPlayingOut 320ms cubic-bezier(0.32,0.72,0,1) forwards' : 'slideUp 350ms cubic-bezier(0.32,0.72,0,1)',
-      }}
-    >
-      <div ref={bgRef} style={{
-        position: 'absolute', inset: 0, zIndex: 0,
-        backgroundImage: `url(${thumb})`, backgroundSize: 'cover', backgroundPosition: 'center',
-        filter: 'blur(80px) brightness(0.35)', transform: 'scale(1.2)',
-      }} />
-      <div style={{ position: 'absolute', inset: 0, zIndex: 1, background: 'rgba(0,0,0,0.45)' }} />
-
-      <div data-scrollable style={{
-        position: 'relative', zIndex: 2, flex: 1, display: 'flex', flexDirection: 'column',
-        maxWidth: 390, width: '100%', margin: '0 auto', padding: '0 24px',
-        overflowY: 'auto', WebkitOverflowScrolling: 'touch',
-        paddingBottom: 'calc(var(--safe-bottom) + 24px)', touchAction: 'pan-y',
-      }}>
-        {/* Top Bar */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 'max(16px, env(safe-area-inset-top))', height: 56 }}>
-          {isMobile ? (
-            <button onClick={closeWithAnimation} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fff', padding: 4, touchAction: 'manipulation' }}>
-              <FiChevronDown size={28} />
-            </button>
-          ) : (
-            <button
-              onClick={closeWithAnimation}
-              style={{
-                width: 36, height: 36, borderRadius: '50%', background: 'rgba(0,0,0,0.4)',
-                border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: '#fff', transition: 'background 150ms, transform 80ms',
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,0,0,0.4)'}
-              onMouseDown={e => e.currentTarget.style.transform = 'scale(0.92)'}
-              onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
-            >
-              <FiChevronDown size={20} />
-            </button>
-          )}
-          <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: 1 }}>Playing from Liked Songs</span>
-          <button onClick={() => setShowTimerSheet(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: sleepTimer?.active ? 'var(--accent)' : '#fff', padding: 4, touchAction: 'manipulation' }}>
-            <FiClock size={24} />
-          </button>
-        </div>
-
-        {/* Album Art Flip Card */}
-        <FlipAlbumArt 
-          albumRef={albumRef}
-          song={currentSong}
-          currentTime={currentTime}
-          duration={duration}
-          isPlaying={isPlaying}
-          onExpandLyrics={() => setShowLyrics(true)}
-        />
-
-        {/* Song Info */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <p className="truncate" style={{ fontSize: 22, fontWeight: 700 }}>{currentSong.title}</p>
-            <p className="truncate" style={{ fontSize: 14, color: 'var(--text-secondary)', marginTop: 4 }}>{currentSong.artist}</p>
-          </div>
-          <button onClick={handleToggleSave} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 8, color: saved ? 'var(--accent)' : 'rgba(255,255,255,0.6)', animation: heartAnim ? 'heartPop 300ms ease' : 'none', touchAction: 'manipulation', flexShrink: 0 }}>
-            <FiHeart size={24} style={{ fill: saved ? 'currentcolor' : 'none' }} />
+            <FiRepeat size={16} />
+            {repeat !== 'none' && <div style={{ width: 4, height: 4, background: 'var(--accent)', borderRadius: '50%', margin: '4px auto 0' }} />}
           </button>
         </div>
 
         {/* Progress Bar */}
-        <div ref={progressRef}
-          onTouchStart={(e) => { setIsSeeking(true); const t = handleProgressTouch(e, progressRef.current); if (t !== undefined) setSeekValue(t) }}
-          onTouchMove={(e) => { if (isSeeking) { const t = handleProgressTouch(e, progressRef.current); if (t !== undefined) setSeekValue(t) } }}
-          onTouchEnd={() => { if (isSeeking) { seekTo(seekValue); setIsSeeking(false) } }}
-          onClick={(e) => { const t = handleProgressTouch(e, progressRef.current); if (t !== undefined) seekTo(t) }}
-          style={{ width: '100%', height: 20, display: 'flex', alignItems: 'center', cursor: 'pointer', touchAction: 'none' }}
-        >
-          <div style={{ width: '100%', height: 4, background: 'rgba(255,255,255,0.2)', borderRadius: 2, position: 'relative' }}>
-            <div style={{ width: `${isSeeking ? (seekValue / (duration || 1)) * 100 : progress}%`, height: '100%', background: 'var(--accent)', borderRadius: 2, transition: isSeeking ? 'none' : 'width 250ms linear' }} />
-            <div style={{ position: 'absolute', top: '50%', left: `${isSeeking ? (seekValue / (duration || 1)) * 100 : progress}%`, transform: `translate(-50%, -50%) scale(${isSeeking ? 1.5 : 1})`, width: 12, height: 12, borderRadius: '50%', background: '#fff', transition: isSeeking ? 'none' : 'left 250ms linear, transform 150ms ease' }} />
+        <div style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-secondary)', minWidth: '32px', textAlign: 'right' }}>
+            {fmt(currentTime)}
+          </span>
+          <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <input
+              type="range"
+              min={0}
+              max={duration || 100}
+              value={currentTime}
+              onChange={(e) => seekTo(Number(e.target.value))}
+              className="spotify-slider"
+              style={{
+                position: 'absolute', zIndex: 2, width: '100%', opacity: 0, cursor: 'pointer'
+              }}
+            />
+            {/* Custom slider track */}
+            <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.3)', borderRadius: '2px', position: 'relative' }}>
+              <div style={{ width: `${progressPercent}%`, height: '100%', background: 'var(--accent)', borderRadius: '2px' }} />
+            </div>
+            {/* Range Thumb overlay */}
+            <input
+              type="range"
+              min={0}
+              max={duration || 100}
+              value={currentTime}
+              onChange={(e) => seekTo(Number(e.target.value))}
+              className="spotify-slider"
+              style={{
+                position: 'absolute', zIndex: 3, width: '100%',
+                background: `linear-gradient(to right, var(--accent) ${progressPercent}%, rgba(255,255,255,0.3) ${progressPercent}%)`
+              }}
+            />
           </div>
+          <span style={{ fontSize: '11px', color: 'var(--text-secondary)', minWidth: '32px' }}>
+            {fmt(duration)}
+          </span>
         </div>
-
-        {/* Time stamps */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-secondary)', marginTop: 4, marginBottom: 20 }}>
-          <span>{fmt(isSeeking ? seekValue : currentTime)}</span>
-          <span>{fmt(duration)}</span>
-        </div>
-
-        {/* Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 }}>
-          <button onClick={() => setShuffle(!shuffle)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 8, color: shuffle ? 'var(--accent)' : 'rgba(255,255,255,0.6)', touchAction: 'manipulation' }}><FiShuffle size={20} /></button>
-          <button onClick={playPrevious} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 8, color: '#fff', touchAction: 'manipulation' }}><FiSkipBack size={22} style={{ fill: 'currentcolor' }} /></button>
-          <button onClick={togglePlay} style={{ width: 64, height: 64, borderRadius: '50%', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#000', border: 'none', cursor: 'pointer', boxShadow: '0 8px 32px rgba(0,0,0,0.3)', touchAction: 'manipulation' }}>
-            {isAudioLoading ? <Spinner size={22} light={false} /> : isPlaying ? <FiPause size={26} style={{ fill: 'currentcolor' }} /> : <FiPlay size={26} style={{ fill: 'currentcolor', marginLeft: 3 }} />}
-          </button>
-          <button onClick={playNext} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 8, color: '#fff', touchAction: 'manipulation' }}><FiSkipForward size={22} style={{ fill: 'currentcolor' }} /></button>
-          <button onClick={() => setRepeat(repeat === 'none' ? 'one' : 'none')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 8, color: repeat !== 'none' ? 'var(--accent)' : 'rgba(255,255,255,0.6)', touchAction: 'manipulation' }}><FiRepeat size={20} /></button>
-        </div>
-
-        {/* Bottom Row */}
-        <div style={{ display: 'flex', alignItems: 'center', paddingBottom: 'max(24px, var(--safe-bottom))' }}>
-          <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start' }}>
-            <button onClick={() => currentSong && copySongLink(currentSong)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 8, color: 'rgba(255,255,255,0.5)', touchAction: 'manipulation' }}><FiMonitor size={18} /></button>
-          </div>
-          
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-            <EqualizerButton isPlaying={isPlaying} isOpen={showEQ} onClick={(rect) => { setEqBtnRect(rect); setShowEQ(!showEQ); }} />
-            
-            {/* Up Next / Suggestions Button */}
-            <button
-              onClick={() => setShowSuggestions(true)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 8, color: 'rgba(255,255,255,0.5)', touchAction: 'manipulation' }}
-            >
-              <FiList size={18} />
-            </button>
-          </div>
-
-          <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
-            <button onClick={() => currentSong && shareSong(currentSong)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 8, color: 'rgba(255,255,255,0.5)', touchAction: 'manipulation' }}><FiShare2 size={18} /></button>
-          </div>
-        </div>
-
 
       </div>
 
-      {/* Sleep Timer Bottom Sheet */}
-      {showTimerSheet && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 110, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)' }} onClick={() => setShowTimerSheet(false)} />
-          <div style={{ position: 'relative', background: '#282828', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: '24px 0', paddingBottom: 'max(24px, var(--safe-bottom))', width: '100%', maxWidth: 390, margin: '0 auto', animation: 'slideUp 0.3s cubic-bezier(0.32,0.72,0,1)' }}>
-            <h3 style={{ textAlign: 'center', fontSize: 18, fontWeight: 700, marginBottom: 16 }}>Stop audio in</h3>
-            {sleepTimer?.active && (
-              <p style={{ textAlign: 'center', color: 'var(--accent)', fontSize: 13, marginBottom: 16 }}>
-                {sleepTimer.stopAfterCurrent ? 'End of track' : `${Math.ceil(sleepTimerRemaining / 60000)} minutes remaining`}
-              </p>
-            )}
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {[{ label: '5 minutes', value: 5 }, { label: '10 minutes', value: 10 }, { label: '15 minutes', value: 15 }, { label: '30 minutes', value: 30 }, { label: '45 minutes', value: 45 }, { label: '1 hour', value: 60 }, { label: 'End of track', value: 'track' }].map(opt => (
-                <button key={opt.label} onClick={() => { startSleepTimer(opt.value); setShowTimerSheet(false) }} style={{ padding: '16px 24px', background: 'none', border: 'none', color: '#fff', fontSize: 16, textAlign: 'left', cursor: 'pointer', touchAction: 'manipulation' }}>{opt.label}</button>
-              ))}
-              {sleepTimer?.active && (
-                <button onClick={() => { cancelSleepTimer(); setShowTimerSheet(false) }} style={{ padding: '16px 24px', background: 'none', border: 'none', color: 'var(--accent)', fontSize: 16, textAlign: 'left', cursor: 'pointer', touchAction: 'manipulation' }}>Turn off timer</button>
+      {/* ─── RIGHT: Volume & Extras (30%) ─── */}
+      <div style={{ flex: '0 1 30%', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '16px' }}>
+        <div style={{ position: 'relative' }} ref={queueRef}>
+          <button 
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsQueueOpen(!isQueueOpen);
+            }}
+            style={{ background: 'none', border: 'none', color: isQueueOpen ? 'var(--accent)' : 'var(--text-secondary)' }}
+          >
+            <FiList size={16} />
+          </button>
+          
+          {/* QUEUE OVERLAY */}
+          {isQueueOpen && (
+            <div style={{
+              position: 'absolute',
+              bottom: '40px',
+              right: 0,
+              background: 'rgba(20,15,30,0.95)',
+              backdropFilter: 'blur(20px)',
+              borderRadius: '16px',
+              border: '1px solid rgba(139,92,246,0.3)',
+              padding: '16px',
+              width: '320px',
+              maxHeight: '400px',
+              overflowY: 'auto',
+              zIndex: 200,
+              animation: 'queueFadeIn 0.25s ease',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.8)'
+            }} className="hide-scrollbar">
+              <h3 style={{ color: '#fff', fontSize: '16px', fontWeight: 700, marginBottom: '16px', paddingLeft: '8px' }}>Next in Queue</h3>
+              {recommendations.length > 0 ? (
+                recommendations.slice(0, 12).map((song, i) => {
+                  const hue = ((song.title?.charCodeAt(0) || 0) * 37) % 360;
+                  return (
+                    <div 
+                      key={song.videoId || i}
+                      onClick={() => { playSong(song, recommendations, i); setIsQueueOpen(false) }}
+                      className="queue-row"
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '10px', padding: '8px',
+                        borderRadius: '8px', cursor: 'pointer', transition: 'background 0.2s ease',
+                        marginBottom: '4px'
+                      }}
+                    >
+                      <div style={{ 
+                        width: '40px', height: '40px', borderRadius: '6px', flexShrink: 0,
+                        background: `hsl(${hue}, 50%, 30%)`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative',
+                        transition: 'filter 0.3s ease'
+                      }} className="queue-art-card">
+                        <span style={{ fontSize: '18px', color: '#fff', fontWeight: 'bold' }}>
+                          {song.emoji || song.title?.charAt(0)}
+                        </span>
+                        <div className="queue-play-overlay" style={{
+                          position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', 
+                          borderRadius: '6px', display: 'none', alignItems: 'center', justifyContent: 'center'
+                        }}>
+                          <FiPlay size={16} color="#fff" style={{ marginLeft: '2px' }} />
+                        </div>
+                      </div>
+
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p className="truncate" style={{ fontSize: '13px', color: '#fff', fontWeight: 'bold', margin: 0 }}>{song.title}</p>
+                        <p className="truncate" style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: 0 }}>{song.artist}</p>
+                      </div>
+                      
+                      <span style={{ fontSize: '11px', color: 'var(--text-secondary)', flexShrink: 0, textAlign: 'right' }}>
+                        {fmt(song.duration)}
+                      </span>
+
+                      <div className="queue-three-dot" style={{ opacity: 0, transition: 'opacity 0.2s', padding: '0 4px', display: 'flex', alignItems: 'center' }}>
+                        <FiMoreHorizontal size={14} color="#b3b3b3" />
+                      </div>
+                    </div>
+                  )
+                })
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '200px', color: 'var(--text-secondary)' }}>
+                  <FiList size={40} style={{ opacity: 0.2, marginBottom: '12px' }} />
+                  <p style={{ fontSize: '13px', margin: 0 }}>No suggested songs yet</p>
+                </div>
               )}
             </div>
-          </div>
+          )}
         </div>
-      )}
-
-      {/* Equalizer Panel */}
-      <EqualizerPanel
-        isOpen={showEQ}
-        onClose={() => setShowEQ(false)}
-        onEQChange={onEQChange}
-        currentBands={eqBands || [0,0,0,0,0]}
-        isPlaying={isPlaying}
-        buttonRect={eqBtnRect}
-      />
-
-      {/* Lyrics Screen */}
-      <LyricsScreen
-        isOpen={showLyrics}
-        onClose={() => setShowLyrics(false)}
-        currentSong={currentSong}
-        currentTime={currentTime}
-        duration={duration}
-        isPlaying={isPlaying}
-      />
-
-      {/* Suggested Songs Popup */}
-      {showSuggestions && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 115, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}
-          onClick={() => setShowSuggestions(false)}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              background: '#1a1a1a', borderTopLeftRadius: 24, borderTopRightRadius: 24,
-              maxHeight: '70vh', display: 'flex', flexDirection: 'column',
-              width: '100%', maxWidth: 390, margin: '0 auto',
-              animation: 'slideUp 300ms cubic-bezier(0.32,0.72,0,1)',
-              paddingBottom: 'max(24px, var(--safe-bottom))',
+        <div style={{ position: 'relative' }}>
+          <button 
+            onClick={() => setIsSleepTimerOpen(!isSleepTimerOpen)}
+            style={{ 
+              background: 'none', border: 'none', 
+              color: sleepTimer.active ? '#8B5CF6' : 'var(--text-secondary)',
+              position: 'relative'
             }}
           >
-            {/* Handle + Header */}
-            <div style={{ padding: '12px 20px 8px', flexShrink: 0 }}>
-              <div style={{ width: 32, height: 3, background: 'rgba(255,255,255,0.2)', borderRadius: 2, margin: '0 auto 16px' }} />
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <h3 style={{ fontSize: 17, fontWeight: 700 }}>Up Next</h3>
-                <button onClick={() => setShowSuggestions(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', padding: 4 }}>
-                  <FiChevronDown size={22} />
-                </button>
-              </div>
-            </div>
-
-            {/* Song List */}
-            <div style={{ overflowY: 'auto', padding: '4px 16px 16px' }} className="hide-scrollbar">
-              {recommendations && recommendations.length > 0 ? recommendations.map((rec, i) => (
-                <div
-                  key={rec.videoId + i}
-                  onClick={() => { playSong(rec); setShowSuggestions(false); }}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    padding: '10px 8px', borderRadius: 12,
-                    cursor: 'pointer', touchAction: 'manipulation',
-                    transition: 'background 150ms',
-                  }}
-                  onTouchStart={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
-                  onTouchEnd={e => e.currentTarget.style.background = 'transparent'}
-                >
-                  <img
-                    src={rec.thumbnail || `https://i.ytimg.com/vi/${rec.videoId}/mqdefault.jpg`}
-                    alt=""
-                    width={52} height={52}
-                    style={{ borderRadius: 10, objectFit: 'cover', flexShrink: 0 }}
-                  />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p className="truncate" style={{ fontSize: 14, fontWeight: 600 }}>{rec.title}</p>
-                    <p className="truncate" style={{ fontSize: 12, color: '#B3B3B3', marginTop: 2 }}>{rec.artist || rec.channelTitle}</p>
-                  </div>
-                  <button
-                    onClick={e => { e.stopPropagation(); playSong(rec); setShowSuggestions(false); }}
-                    style={{ background: 'rgba(255,255,255,0.08)', border: 'none', color: '#fff', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer' }}
+            <FiClock size={16} />
+            {sleepTimer.active && sleepTimerRemaining > 0 && (
+              <span style={{ 
+                position: 'absolute', top: '-8px', right: '-8px', background: '#8B5CF6', 
+                color: '#fff', fontSize: '9px', fontWeight: 'bold', padding: '2px 4px', borderRadius: '8px' 
+              }}>
+                {Math.ceil(sleepTimerRemaining / 60000)}m
+              </span>
+            )}
+          </button>
+          
+          {isSleepTimerOpen && (
+            <div style={{
+              position: 'absolute', bottom: '40px', right: '-110px', background: '#242424',
+              borderRadius: '12px', padding: '16px', width: '220px',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.7)', border: '1px solid #3a3a3a',
+              zIndex: 300, animation: 'timerFadeIn 0.2s ease', cursor: 'default'
+            }}>
+              {sleepTimer.active ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <p style={{ color: '#fff', fontSize: '14px', fontWeight: 'bold', textAlign: 'center' }}>Timer Active</p>
+                  <p style={{ color: '#b3b3b3', fontSize: '12px', textAlign: 'center' }}>
+                    {sleepTimer.stopAfterCurrent ? 'Ends after current song' : `Ends in ${Math.ceil(sleepTimerRemaining / 60000)} minutes`}
+                  </p>
+                  <button 
+                    onClick={() => { cancelSleepTimer(); setIsSleepTimerOpen(false) }}
+                    style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}
                   >
-                    <FiPlay size={14} style={{ fill: 'currentcolor', marginLeft: 2 }} />
+                    Cancel Timer
                   </button>
                 </div>
-              )) : (
-                <p style={{ color: '#B3B3B3', fontSize: 14, textAlign: 'center', padding: '32px 0' }}>No suggestions yet</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div>
+                    <h4 style={{ color: '#fff', fontSize: '14px', fontWeight: 'bold', margin: 0 }}>Sleep Timer</h4>
+                    <p style={{ color: '#b3b3b3', fontSize: '12px', margin: '4px 0 0 0' }}>Stop playing after:</p>
+                  </div>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    {[5, 10, 15, 30, 45, 60].map(m => (
+                      <button key={m} onClick={() => { startSleepTimer(m); setIsSleepTimerOpen(false) }} style={{
+                        background: '#333', border: 'none', color: '#fff', padding: '8px 0',
+                        borderRadius: '8px', fontSize: '13px', cursor: 'pointer', transition: 'background 0.2s'
+                      }} onMouseEnter={e=>e.currentTarget.style.background='#8B5CF6'} onMouseLeave={e=>e.currentTarget.style.background='#333'}>
+                        {m} min
+                      </button>
+                    ))}
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderTop: '1px solid #3a3a3a', paddingTop: '12px' }}>
+                    <span style={{ color: '#fff', fontSize: '12px', width: '50px' }}>Custom:</span>
+                    <input type="number" min="1" max="120" placeholder="1-120" id="custom-timer-input" style={{
+                      background: '#1a1a1a', border: '1px solid #535353', color: '#fff', padding: '4px',
+                      borderRadius: '4px', width: '60px', fontSize: '12px', outline: 'none'
+                    }} />
+                    <button onClick={() => {
+                      const val = document.getElementById('custom-timer-input').value
+                      if (val && !isNaN(val) && val > 0 && val <= 120) {
+                        startSleepTimer(Number(val)); setIsSleepTimerOpen(false)
+                      }
+                    }} style={{ background: '#8B5CF6', color: '#fff', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '12px', cursor: 'pointer' }}>Set</button>
+                  </div>
+
+                  <button onClick={() => { startSleepTimer('endOfSong'); setIsSleepTimerOpen(false) }} style={{
+                    background: '#333', border: 'none', color: '#fff', padding: '8px',
+                    borderRadius: '8px', fontSize: '13px', cursor: 'pointer', width: '100%', transition: 'background 0.2s'
+                  }} onMouseEnter={e=>e.currentTarget.style.background='#8B5CF6'} onMouseLeave={e=>e.currentTarget.style.background='#333'}>
+                    End of song
+                  </button>
+                </div>
               )}
             </div>
-          </div>
+          )}
         </div>
-      )}
+
+        <button style={{ background: 'none', border: 'none', color: 'var(--text-secondary)' }}>
+          <FiMonitor size={16} />
+        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100px' }}>
+          <button
+            onClick={() => setLocalVolume(localVolume === 0 ? 1 : 0)}
+            style={{ background: 'none', border: 'none', color: 'var(--text-secondary)' }}
+          >
+            {localVolume === 0 ? <FiVolumeX size={16} /> : <FiVolume2 size={16} />}
+          </button>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={localVolume}
+            onChange={(e) => setLocalVolume(Number(e.target.value))}
+            className="spotify-slider"
+            style={{
+              flex: 1,
+              background: `linear-gradient(to right, var(--text-primary) ${localVolume * 100}%, rgba(255,255,255,0.3) ${localVolume * 100}%)`
+            }}
+          />
+        </div>
+      </div>
+      
+      <style>{`
+        .queue-row:hover { background: #282828; }
+        .queue-row:hover .queue-art-card { filter: brightness(1.15); }
+        .queue-row:hover .queue-play-overlay { display: flex; }
+        .queue-row:hover .queue-three-dot { opacity: 1; }
+
+        @keyframes queueFadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   )
 }
