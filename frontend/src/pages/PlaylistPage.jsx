@@ -140,6 +140,12 @@ export default function PlaylistPage() {
                 <div
                   key={song.videoId}
                   className="song-row"
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    window.dispatchEvent(new CustomEvent('open-context-menu', {
+                      detail: { x: e.clientX, y: e.clientY, song, playlistName, type: 'song' }
+                    }));
+                  }}
                   style={{
                     display: 'flex', alignItems: 'center',
                     padding: '8px 0', borderRadius: '4px',

@@ -131,14 +131,40 @@ async function performSearch(query, limit = 20) {
 
     const formattedResults = videos
       .filter(v => {
-        // Only process Video type results
         if (v.type !== 'Video') return false
         const title = (v.title?.text || '').toLowerCase()
         const durSec = parseDurationText(v.duration?.text)
         if (durSec < 60) return false
-        const blacklist = ['shorts', '#shorts', 'trailer', 'teaser', 'reaction', 'review', 'tutorial', 'vlog', 'gaming', 'unboxing']
+
+        const blacklist = [
+          'lyrics', 'lyric', 'karaoke', 'sing along', '4k', '8k', '1080p', '720p', 
+          'hd video', 'full video', 'unplugged', 'acoustic', 'cover', 'remake', 
+          'tribute', 'piano version', 'guitar version', 'instrumental', 'reaction', 
+          'react', 'review', 'explained', 'behind the scenes', 'making of', 'bts', 
+          'interview', 'teaser', 'trailer', 'lofi', 'reverbed', 'reverb', 'slowed'
+        ]
         if (blacklist.some(word => title.includes(word))) return false
         return true
+      })
+      .map(v => {
+        const title = (v.title?.text || '').toLowerCase()
+        const channelName = (v.author?.name || '').toLowerCase()
+        const isVerified = v.author?.is_verified || v.author?.is_artist || false
+        let score = 0
+
+        if (isVerified && (title.includes('audio') || channelName.includes('topic'))) score = 10
+        else if (isVerified && (title.includes('official video') || title.includes('music video'))) score = 8
+        else if (isVerified) score = 5
+        else score = 1
+
+        v._score = score
+        return v
+      })
+      .sort((a, b) => {
+        if (b._score !== a._score) return b._score - a._score
+        const viewsA = parseInt(a.view_count?.text?.replace(/[^0-9]/g, '') || 0)
+        const viewsB = parseInt(b.view_count?.text?.replace(/[^0-9]/g, '') || 0)
+        return viewsB - viewsA
       })
       .slice(0, limit)
       .map(v => ({

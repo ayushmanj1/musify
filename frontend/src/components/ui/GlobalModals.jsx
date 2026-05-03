@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { usePlayer } from '../../context/PlayerContext.jsx'
+import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { shareSong } from '../../utils/share.js'
-import { FiMoreHorizontal, FiTrash2, FiPlay, FiPlus, FiLink, FiSliders } from 'react-icons/fi'
+import { FiMoreHorizontal, FiTrash2, FiPlay, FiPlus, FiLink, FiSliders, FiX } from 'react-icons/fi'
 
 export default function GlobalModals() {
   const { 
@@ -21,6 +22,18 @@ export default function GlobalModals() {
   // Equalizer Modal State
   const [eqOpen, setEqOpen] = useState(false)
   const [localEq, setLocalEq] = useState([0,0,0,0,0])
+
+  // --- NEW: Global Playlist Modal State ---
+  const [playlistModal, setPlaylistModal] = useState({
+    isOpen: false,
+    editingName: null, // null for create, string for edit
+    name: '',
+    songs: [],
+    searchQuery: ''
+  })
+
+  const { masterPlaylistData, setUserPlaylists, addSongToPlaylist } = usePlayer()
+  const navigate = useNavigate()
 
   // Context Menu logic
   useEffect(() => {
@@ -58,8 +71,60 @@ export default function GlobalModals() {
       setEqOpen(true)
     }
     window.addEventListener('open-eq-modal', handleOpenEq)
-    return () => window.removeEventListener('open-eq-modal', handleOpenEq)
-  }, [eqBands])
+
+    // Playlist Modal listeners
+    const handleOpenCreate = () => {
+      setPlaylistModal({
+        isOpen: true,
+        editingName: null,
+        name: `My Playlist #${userPlaylists.length + 1}`,
+        songs: [],
+        searchQuery: ''
+      })
+    }
+    const handleOpenEdit = (e) => {
+      const pl = userPlaylists.find(p => p.name === e.detail.playlistName)
+      if (!pl) return
+      setPlaylistModal({
+        isOpen: true,
+        editingName: e.detail.playlistName,
+        name: pl.name,
+        songs: pl.songs || [],
+        searchQuery: ''
+      })
+    }
+
+    window.addEventListener('open-create-playlist', handleOpenCreate)
+    window.addEventListener('open-edit-playlist', handleOpenEdit)
+
+    return () => {
+      window.removeEventListener('open-eq-modal', handleOpenEq)
+      window.removeEventListener('open-create-playlist', handleOpenCreate)
+      window.removeEventListener('open-edit-playlist', handleOpenEdit)
+    }
+  }, [eqBands, userPlaylists])
+
+  const handleSavePlaylist = () => {
+    const finalName = playlistModal.name.trim() || `My Playlist #${userPlaylists.length + 1}`
+    
+    if (playlistModal.editingName) {
+      updatePlaylist(playlistModal.editingName, { name: finalName, songs: playlistModal.songs })
+      if (playlistModal.editingName !== finalName) {
+        navigate(`/playlist/${encodeURIComponent(finalName)}`)
+      }
+    } else {
+      const newPlaylistObj = { 
+        name: finalName, 
+        songs: playlistModal.songs, 
+        cover: '🎵', 
+        color: `hsl(${Math.random() * 360}, 50%, 30%)`
+      }
+      setUserPlaylists(prev => [newPlaylistObj, ...prev])
+      toast.success(`Playlist '${finalName}' created!`)
+      navigate(`/playlist/${encodeURIComponent(finalName)}`)
+    }
+    setPlaylistModal(prev => ({ ...prev, isOpen: false }))
+  }
 
   const handleCmClick = (e) => {
     e.stopPropagation()
@@ -211,9 +276,16 @@ export default function GlobalModals() {
                   <span style={{ color: '#b3b3b3', fontSize: 12, fontWeight: 700, textTransform: 'uppercase' }}>Add to playlist</span>
                 </div>
                 <div style={{ maxHeight: '200px', overflowY: 'auto' }} className="hide-scrollbar">
+                  <button className="cm-item" style={{ color: 'var(--accent)', fontWeight: 700 }} onClick={() => { 
+                    window.dispatchEvent(new CustomEvent('open-create-playlist'));
+                    setCmState({ isOpen: false });
+                  }}>
+                    <FiPlus size={16} /> Create new playlist
+                  </button>
+                  <div className="divider" style={{ margin: '4px 0' }} />
                   {userPlaylists.filter(p => p.name !== 'Liked Songs').map(pl => (
                     <button key={pl.name} className="cm-item" onClick={() => { 
-                      window.dispatchEvent(new CustomEvent('add-song-to-playlist', { detail: { playlistName: pl.name, song: cmState.song } }));
+                      addSongToPlaylist(pl.name, cmState.song);
                       setCmState({ isOpen: false });
                     }}>
                       {pl.name}
@@ -315,10 +387,101 @@ export default function GlobalModals() {
         </div>
       )}
 
-      <style>{`
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes modalScaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
-      `}</style>
+      {/* ─── CREATE/EDIT PLAYLIST MODAL ─── */}
+      {playlistModal.isOpen && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 10005,
+          background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          animation: 'fadeIn 0.25s ease'
+        }} onMouseDown={() => setPlaylistModal(p => ({ ...p, isOpen: false }))}>
+          
+          <div style={{
+            background: '#121212', borderRadius: '16px', width: '90%', maxWidth: '520px', 
+            maxHeight: '85vh', overflowY: 'auto', padding: 0, position: 'relative',
+            animation: 'modalScaleIn 0.25s ease', boxShadow: '0 24px 64px rgba(0,0,0,0.7)',
+            border: '1px solid rgba(255,255,255,0.1)'
+          }} className="hide-scrollbar" onMouseDown={e => e.stopPropagation()}>
+            
+            <button onClick={() => setPlaylistModal(p => ({ ...p, isOpen: false }))} style={{ position: 'absolute', top: '16px', right: '16px', background: 'rgba(255,255,255,0.05)', border: 'none', color: '#fff', cursor: 'pointer', zIndex: 10, width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <FiX size={20} />
+            </button>
+
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={{ padding: '32px 24px 24px', display: 'flex', flexDirection: window.innerWidth < 480 ? 'column' : 'row', gap: '24px', alignItems: 'center' }}>
+                <div style={{ width: '160px', height: '160px', background: '#282828', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+                  <span style={{ fontSize: '64px' }}>🎵</span>
+                </div>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', width: '100%' }}>
+                  <p style={{ fontSize: '12px', fontWeight: 700, color: '#b3b3b3', margin: '0 0 4px 0', textTransform: 'uppercase' }}>Playlist Details</p>
+                  <input type="text" value={playlistModal.name} onChange={e => setPlaylistModal(p => ({ ...p, name: e.target.value }))}
+                    placeholder="Playlist Name"
+                    style={{ background: 'transparent', border: 'none', borderBottom: '2px solid #333', color: '#fff', fontSize: '24px', fontWeight: 800, outline: 'none', paddingBottom: '8px', marginBottom: '20px', width: '100%' }} />
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <button onClick={handleSavePlaylist} style={{ background: '#fff', color: '#000', border: 'none', borderRadius: '24px', padding: '12px 36px', fontSize: '15px', fontWeight: 700, cursor: 'pointer', transition: 'transform 0.2s' }} onMouseDown={e=>e.currentTarget.style.transform='scale(0.95)'} onMouseUp={e=>e.currentTarget.style.transform='scale(1)'}>
+                      {playlistModal.editingName ? 'Save Changes' : 'Create Playlist'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ borderTop: '1px solid #282828', padding: '24px', background: 'rgba(255,255,255,0.02)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                  <h4 style={{ color: '#fff', fontSize: '15px', fontWeight: 700, margin: 0 }}>Add songs to your playlist</h4>
+                  <span style={{ fontSize: '11px', color: '#8B5CF6', fontWeight: 800, background: 'rgba(139,92,246,0.1)', padding: '2px 8px', borderRadius: '4px' }}>{playlistModal.songs.length} SELECTED</span>
+                </div>
+                
+                <div style={{ position: 'relative', marginBottom: '20px' }}>
+                  <FiPlus size={18} color="#b3b3b3" style={{ position: 'absolute', top: '12px', left: '12px', transform: 'rotate(45deg)' }} />
+                  <input 
+                    type="text" 
+                    placeholder="Search from your history or library" 
+                    value={playlistModal.searchQuery} 
+                    onChange={e => setPlaylistModal(p => ({ ...p, searchQuery: e.target.value }))} 
+                    style={{ width: '100%', background: '#242424', border: '1px solid #333', borderRadius: '8px', color: '#fff', fontSize: '14px', padding: '12px 12px 12px 40px', outline: 'none', transition: 'border-color 0.2s' }} 
+                    onFocus={e => e.currentTarget.style.borderColor = '#8B5CF6'}
+                    onBlur={e => e.currentTarget.style.borderColor = '#333'}
+                  />
+                </div>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '300px', overflowY: 'auto' }} className="hide-scrollbar">
+                  {masterPlaylistData
+                    .filter(s => s.title.toLowerCase().includes(playlistModal.searchQuery.toLowerCase()) || s.artist.toLowerCase().includes(playlistModal.searchQuery.toLowerCase()))
+                    .slice(0, 15)
+                    .map((song, i) => {
+                    const isAdded = playlistModal.songs.some(s => s.videoId === song.videoId)
+                    return (
+                      <div key={song.videoId || i} style={{ display: 'flex', alignItems: 'center', padding: '8px', borderRadius: '8px', background: isAdded ? 'rgba(139,92,246,0.05)' : 'transparent', transition: 'background 0.2s' }}>
+                        <img src={song.thumbnail} alt="" style={{ width: '40px', height: '40px', borderRadius: '4px', marginRight: '12px', objectFit: 'cover' }} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p className="truncate" style={{ color: '#fff', fontSize: '14px', fontWeight: 600, margin: 0 }}>{song.title}</p>
+                          <p className="truncate" style={{ color: '#b3b3b3', fontSize: '12px', margin: 0 }}>{song.artist}</p>
+                        </div>
+                        <button 
+                          onClick={() => { 
+                            if(!isAdded) setPlaylistModal(p => ({ ...p, songs: [song, ...p.songs] })); 
+                            else setPlaylistModal(p => ({ ...p, songs: p.songs.filter(s => s.videoId !== song.videoId) }));
+                          }}
+                          style={{ 
+                            background: isAdded ? '#8B5CF6' : 'transparent', 
+                            border: isAdded ? 'none' : '1px solid #535353', 
+                            borderRadius: '24px', color: isAdded ? '#fff' : '#fff', 
+                            padding: '6px 16px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', minWidth: '80px' 
+                          }}>
+                          {isAdded ? 'Added' : 'Add'}
+                        </button>
+                      </div>
+                    )
+                  })}
+                  {masterPlaylistData.length === 0 && (
+                    <p style={{ textAlign: 'center', color: '#b3b3b3', fontSize: '13px', padding: '20px' }}>Listen to some songs first to add them here!</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

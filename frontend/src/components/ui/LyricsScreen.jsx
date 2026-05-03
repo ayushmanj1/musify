@@ -258,19 +258,29 @@ export function LyricsScreen({ isOpen, onClose, currentSong, currentTime, durati
         {/* Share Button Overlay */}
         <div style={{
           position: 'absolute', bottom: 32, left: 16, right: 16,
-          transform: isSelectionMode && selectedLines.size > 0 ? 'translateY(0)' : 'translateY(150%)',
-          transition: 'transform 200ms ease-out',
+          transform: isSelectionMode ? 'translateY(0)' : 'translateY(0)', // Always show, but maybe styled differently
+          transition: 'transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1)',
           zIndex: 130
         }}>
           <button
-            onClick={() => setShowShareCard(true)}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (isSelectionMode) {
+                // Open the main LyricsShareCard UI
+                window.dispatchEvent(new CustomEvent('open-lyrics-share', { detail: { song: currentSong } }));
+                setIsSelectionMode(false); // Close selection mode here as the new UI handles it
+              } else {
+                setIsSelectionMode(true);
+              }
+            }}
             style={{
               width: '100%', height: 48, background: '#00C9FF', borderRadius: 500,
               color: '#000', fontSize: 15, fontWeight: 700, border: 'none',
-              cursor: 'pointer', touchAction: 'manipulation'
+              cursor: 'pointer', touchAction: 'manipulation',
+              boxShadow: '0 4px 12px rgba(0,201,255,0.3)'
             }}
           >
-            Share Lyrics Card
+            {isSelectionMode ? `Share ${selectedLines.size} Line${selectedLines.size !== 1 ? 's' : ''}` : 'Share Lyrics Card'}
           </button>
         </div>
       </div>
@@ -323,8 +333,10 @@ function LyricsCardPreview({ isOpen, onClose, song, lines }) {
         
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           shareData.files = [file];
+          shareData.url = `https://musify.com/track/${song?.videoId || ''}`;
           await navigator.share(shareData);
         } else {
+          shareData.text = `${shareData.text}\n\nListen here: https://musify.com/track/${song?.videoId || ''}`;
           await navigator.share(shareData); // Fallback text only
         }
       });

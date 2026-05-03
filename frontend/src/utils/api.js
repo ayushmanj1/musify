@@ -84,6 +84,64 @@ export async function getRecommendations(videoId, artist, title) {
   }
 }
 
+export async function getLyrics(videoId, artist, title) {
+  try {
+    const clean = (str) => {
+      if (!str) return ''
+      return str
+        .replace(/\(Official.*?\)|\[Official.*?\]|Official Video|Lyric Video|Audio|Full Video|HD|4K|Video/gi, '')
+        .replace(/\(Lyrics\)|\[Lyrics\]|Lyrics/gi, '')
+        .replace(/\(Remix\)|\[Remix\]|Remix/gi, '')
+        .replace(/\(feat\..*?\)|\[feat\..*?\]|ft\..*?|feat\./gi, '')
+        .replace(/\(.*?\)|\[.*?\]/g, '')
+        .replace(/\s\s+/g, ' ')
+        .trim()
+    }
+
+    let cleanTitle = clean(title)
+    let cleanArtist = (artist || '').replace(/ - Topic/gi, '').trim()
+    
+    // ─── Special Indian Music Handling ───
+    const labels = ['T-Series', 'Zee Music', 'Sony Music', 'YRF', 'Aditya Music', 'Tips', 'Eros Now', 'Speed Records', 'Desi Music Factory']
+    const isLabel = labels.some(l => cleanArtist.toLowerCase().includes(l.toLowerCase()))
+    
+    if (isLabel && cleanTitle.includes('-')) {
+      const parts = cleanTitle.split('-')
+      cleanTitle = parts[0].trim()
+    }
+
+    const tryFetch = async (a, t) => {
+      if (!t) return null
+      try {
+        const res = await fetch(`https://lrclib.net/api/get?artist_name=${encodeURIComponent(a)}&track_name=${encodeURIComponent(t)}`)
+        if (res.ok) {
+          const d = await res.json()
+          return d // Return the full object (contains syncedLyrics, plainLyrics)
+        }
+      } catch(e){}
+      return null
+    }
+
+    let result = await tryFetch(cleanArtist, cleanTitle)
+    if (!result && isLabel) result = await tryFetch('', cleanTitle)
+
+    if (!result) {
+      try {
+        const searchRes = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(cleanTitle)}`)
+        if (searchRes.ok) {
+          const searchData = await searchRes.json()
+          if (searchData.length > 0) return searchData[0]
+        }
+      } catch(e){}
+    }
+
+    return result || null
+  } catch (error) {
+    console.warn('[Frontend Lyrics] All sources failed:', error)
+    return null
+  }
+}
+
 export async function enrichSongMetadata(song) {
   if (!song || !song.title) return song
 

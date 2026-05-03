@@ -59,7 +59,16 @@ function HoverPlayButton({ style }) {
 /* ─── Vertical Card (180x220) ─── */
 function VerticalCard({ song, isArtist, isNewRelease, isRecommended, onClick }) {
   return (
-    <div className="vertical-card" onClick={onClick} style={{
+    <div 
+      className="vertical-card" 
+      onClick={onClick} 
+      onContextMenu={(e) => {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('open-context-menu', {
+          detail: { x: e.clientX, y: e.clientY, song, type: 'song' }
+        }));
+      }}
+      style={{
       width: '180px', height: '220px',
       background: '#181818',
       padding: '16px',
@@ -161,7 +170,15 @@ export default function HomePage() {
       <div style={{ marginBottom: '40px' }}>
         <div className="recently-grid">
           {recentTracks.map((song, i) => (
-            <div key={i} className="recent-card" onClick={() => handlePlaySong(song, recentTracks, i)} style={{
+            <div key={i} className="recent-card" 
+              onClick={() => handlePlaySong(song, recentTracks, i)} 
+              onContextMenu={(e) => {
+                e.preventDefault();
+                window.dispatchEvent(new CustomEvent('open-context-menu', {
+                  detail: { x: e.clientX, y: e.clientY, song, type: 'song' }
+                }));
+              }}
+              style={{
               height: '64px',
               background: '#282828',
               borderRadius: '4px',

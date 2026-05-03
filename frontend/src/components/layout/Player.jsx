@@ -3,8 +3,10 @@ import { usePlayer } from '../../context/PlayerContext.jsx'
 import {
   FiPlay, FiPause, FiSkipBack, FiSkipForward,
   FiHeart, FiShuffle, FiRepeat,
-  FiVolume2, FiVolumeX, FiList, FiMonitor, FiClock
+  FiVolume2, FiVolumeX, FiList, FiMonitor, FiClock, FiMessageSquare
 } from 'react-icons/fi'
+import LyricsShareCard from '../ui/LyricsShareCard.jsx'
+import { getLyrics } from '../../utils/api.js'
 
 /* ─── Time Formatter ─── */
 function fmt(s) {
@@ -40,7 +42,7 @@ export default function Player() {
     seekTo, playNext, playPrevious, playSong,
     shuffle, setShuffle, repeat, setRepeat,
     toggleSavedSong, isSongSaved, isAudioLoading,
-    recommendations, // Get queue
+    recommendations, 
     setVolume, volume,
     isRightSidebarOpen, setIsRightSidebarOpen,
     isFullScreenPlayer, setIsFullScreenPlayer,
@@ -51,8 +53,16 @@ export default function Player() {
   const [localVolume, setLocalVolume] = useState(1) // 0 to 1
   const [isQueueOpen, setIsQueueOpen] = useState(false)
   const [isSleepTimerOpen, setIsSleepTimerOpen] = useState(false)
+  const [lyrics, setLyrics] = useState([])
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
   const queueRef = useRef(null)
   
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
   // Set global audio volume
   useEffect(() => {
     const audio = document.querySelector('audio') || window.__musifyAudio
@@ -70,11 +80,99 @@ export default function Player() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [isQueueOpen])
 
+  // Fetch lyrics for current song
+  useEffect(() => {
+    if (!currentSong) return
+    const fetchLyrics = async () => {
+      try {
+        const data = await getLyrics(currentSong.videoId, currentSong.artist, currentSong.title)
+        if (data && data.plainLyrics) {
+          // Split by newline and filter empty
+          const lines = data.plainLyrics.split('\n').filter(l => l.trim().length > 0).map(text => ({ text }))
+          setLyrics(lines)
+        } else if (data && data.syncedLyrics) {
+          // Simple regex to remove [mm:ss.xx]
+          const lines = data.syncedLyrics.split('\n')
+            .map(l => l.replace(/\[\d+:\d+\.\d+\]/g, '').trim())
+            .filter(l => l.length > 0)
+            .map(text => ({ text }))
+          setLyrics(lines)
+        } else {
+          setLyrics([])
+        }
+      } catch (err) {
+        setLyrics([])
+      }
+    }
+    fetchLyrics()
+  }, [currentSong])
+
   if (!currentSong) return null
 
   const saved = currentSong ? isSongSaved(currentSong.videoId) : false
   const thumb = currentSong.thumbnail || `https://i.ytimg.com/vi/${currentSong.videoId}/mqdefault.jpg`
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0
+
+  if (isMobile) {
+    return (
+      <div 
+        onClick={() => setIsFullScreenPlayer(true)}
+        style={{
+          position: 'fixed',
+          bottom: 'calc(64px + 8px + var(--safe-bottom, 0px))',
+          left: '8px',
+          right: '8px',
+          height: '64px',
+          background: 'rgba(32, 32, 32, 0.85)',
+          backdropFilter: 'blur(24px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+          borderRadius: '12px',
+          display: 'flex',
+          alignItems: 'center',
+          padding: '0 12px',
+          gap: '12px',
+          zIndex: 900,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          animation: 'slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
+        }}
+      >
+        <div style={{ position: 'relative', width: 44, height: 44, borderRadius: '6px', overflow: 'hidden', flexShrink: 0 }}>
+          <img src={thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        </div>
+        
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p className="truncate" style={{ fontSize: '13px', fontWeight: 600, color: '#fff', margin: 0 }}>
+            {currentSong.title}
+          </p>
+          <p className="truncate" style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', margin: '2px 0 0 0' }}>
+            {currentSong.artist}
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            onClick={(e) => { e.stopPropagation(); togglePlay() }}
+            style={{ background: 'none', border: 'none', color: '#fff', padding: '8px', cursor: 'pointer' }}
+          >
+            {isPlaying ? <FiPause size={24} /> : <FiPlay size={24} />}
+          </button>
+        </div>
+
+        {/* Progress bar line at bottom */}
+        <div style={{ position: 'absolute', bottom: 0, left: '12px', right: '12px', height: '2px', background: 'rgba(255,255,255,0.1)', borderRadius: '1px', overflow: 'hidden' }}>
+          <div style={{ width: `${progressPercent}%`, height: '100%', background: 'var(--accent)', transition: 'width 0.2s linear' }} />
+        </div>
+
+        <style>{`
+          @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+          }
+        `}</style>
+      </div>
+    )
+  }
 
   return (
     <div className="bottom-bar" style={{
@@ -82,8 +180,8 @@ export default function Player() {
       alignItems: 'center',
       justifyContent: 'space-between',
       padding: '0 16px',
-      position: 'relative', // For absolute queue box
-      zIndex: 9999 // ensure it's above the full screen player 9998
+      position: 'relative',
+      zIndex: 9999
     }}>
       {/* ─── LEFT: Track Info (30%) ─── */}
       <div 
@@ -114,12 +212,16 @@ export default function Player() {
         >
           <FiHeart size={16} style={{ fill: saved ? 'currentcolor' : 'none' }} />
         </button>
+        
+        {/* Lyrics Share Trigger */}
+        <div style={{ marginLeft: '12px' }} onClick={(e) => e.stopPropagation()}>
+          <LyricsShareCard song={currentSong} lyrics={lyrics} />
+        </div>
       </div>
 
       {/* ─── CENTER: Controls & Progress (40%) ─── */}
       <div style={{ flex: '0 1 40%', maxWidth: '722px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
         
-        {/* Playback Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
           <button
             onClick={() => setShuffle(!shuffle)}
@@ -160,33 +262,22 @@ export default function Player() {
           </button>
         </div>
 
-        {/* Progress Bar */}
         <div style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ fontSize: '11px', color: 'var(--text-secondary)', minWidth: '32px', textAlign: 'right' }}>
             {fmt(currentTime)}
           </span>
           <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center' }}>
             <input
-              type="range"
-              min={0}
-              max={duration || 100}
-              value={currentTime}
+              type="range" min={0} max={duration || 100} value={currentTime}
               onChange={(e) => seekTo(Number(e.target.value))}
               className="spotify-slider"
-              style={{
-                position: 'absolute', zIndex: 2, width: '100%', opacity: 0, cursor: 'pointer'
-              }}
+              style={{ position: 'absolute', zIndex: 2, width: '100%', opacity: 0, cursor: 'pointer' }}
             />
-            {/* Custom slider track */}
             <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.3)', borderRadius: '2px', position: 'relative' }}>
               <div style={{ width: `${progressPercent}%`, height: '100%', background: 'var(--accent)', borderRadius: '2px' }} />
             </div>
-            {/* Range Thumb overlay */}
             <input
-              type="range"
-              min={0}
-              max={duration || 100}
-              value={currentTime}
+              type="range" min={0} max={duration || 100} value={currentTime}
               onChange={(e) => seekTo(Number(e.target.value))}
               className="spotify-slider"
               style={{
@@ -199,7 +290,6 @@ export default function Player() {
             {fmt(duration)}
           </span>
         </div>
-
       </div>
 
       {/* ─── RIGHT: Volume & Extras (30%) ─── */}
@@ -299,28 +389,16 @@ export default function Player() {
             {localVolume === 0 ? <FiVolumeX size={16} /> : <FiVolume2 size={16} />}
           </button>
           <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.01}
-            value={localVolume}
+            type="range" min={0} max={1} step={0.01} value={localVolume}
             onChange={(e) => setLocalVolume(Number(e.target.value))}
             className="spotify-slider"
-            style={{
-              flex: 1,
-              background: `linear-gradient(to right, var(--text-primary) ${localVolume * 100}%, rgba(255,255,255,0.3) ${localVolume * 100}%)`
-            }}
+            style={{ flex: 1, background: `linear-gradient(to right, var(--text-primary) ${localVolume * 100}%, rgba(255,255,255,0.3) ${localVolume * 100}%)` }}
           />
         </div>
       </div>
       
       <style>{`
-        .queue-row:hover { background: #282828; }
-        .queue-row:hover .queue-art-card { filter: brightness(1.15); }
-        .queue-row:hover .queue-play-overlay { display: flex; }
-        .queue-row:hover .queue-three-dot { opacity: 1; }
-
-        @keyframes queueFadeIn {
+        @keyframes timerFadeIn {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
         }

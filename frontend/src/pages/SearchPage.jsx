@@ -121,7 +121,15 @@ export default function SearchPage() {
               <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#fff', marginBottom: '20px' }}>Songs</h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                 {results.songs.map((song, i) => (
-                  <div key={song.videoId} className="song-result-row" onClick={() => playSong(song, results.songs, i)} style={{
+                  <div key={song.videoId} className="song-result-row" 
+                    onClick={() => playSong(song, results.songs, i)} 
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      window.dispatchEvent(new CustomEvent('open-context-menu', {
+                        detail: { x: e.clientX, y: e.clientY, song, type: 'song' }
+                      }));
+                    }}
+                    style={{
                     display: 'flex', alignItems: 'center', gap: '16px', height: '56px', padding: '0 12px', borderRadius: '8px', cursor: 'pointer', transition: 'background 0.2s'
                   }}>
                     <div style={{ width: '40px', height: '40px', borderRadius: '4px', background: `hsl(${song.title.charCodeAt(0)*37%360}, 40%, 25%)`, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

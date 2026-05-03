@@ -21,18 +21,18 @@ export default function MobileNav() {
     <nav style={{
       position: 'fixed',
       bottom: 0,
-      left: '50%',
-      transform: 'translateX(-50%)',
-      width: '100%',
-      maxWidth: 390,
-      height: 'calc(var(--bottom-nav-h) + var(--safe-bottom))',
-      paddingBottom: 'var(--safe-bottom)',
-      background: 'var(--bg-primary)',
-      borderTop: '1px solid var(--bg-card)',
+      left: 0,
+      right: 0,
+      height: 'calc(64px + var(--safe-bottom, 0px))',
+      paddingBottom: 'var(--safe-bottom, 0px)',
+      background: 'rgba(18, 18, 18, 0.8)',
+      backdropFilter: 'blur(20px) saturate(180%)',
+      WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+      borderTop: '1px solid rgba(255, 255, 255, 0.08)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-around',
-      zIndex: 50,
+      zIndex: 1000,
     }}>
       {TABS.map(({ path, label, Icon }) => {
         const active = pathname === path
@@ -42,15 +42,28 @@ export default function MobileNav() {
             onClick={() => navigate(path)}
             style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center',
-              gap: 4, background: 'none', border: 'none', padding: '8px 16px',
+              gap: 4, background: 'none', border: 'none', padding: '12px',
+              flex: 1,
               cursor: 'pointer', touchAction: 'manipulation',
-              color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
-              transform: active ? 'scale(1.08)' : 'scale(1)',
-              transition: 'transform 150ms ease, color 150ms ease',
+              color: active ? '#fff' : 'var(--text-secondary)',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             }}
           >
-            <Icon size={24} />
-            <span style={{ fontSize: 10, fontWeight: active ? 700 : 500 }}>
+            <div style={{
+              transform: active ? 'translateY(-2px)' : 'translateY(0)',
+              transition: 'transform 0.3s ease'
+            }}>
+              <Icon size={24} style={{ 
+                strokeWidth: active ? 2.5 : 2,
+                filter: active ? 'drop-shadow(0 0 8px rgba(139, 92, 246, 0.5))' : 'none'
+              }} />
+            </div>
+            <span style={{ 
+              fontSize: 10, 
+              fontWeight: active ? 700 : 500,
+              opacity: active ? 1 : 0.7,
+              letterSpacing: '0.02em'
+            }}>
               {label}
             </span>
           </button>

@@ -57,6 +57,7 @@ export function PlayerProvider({ children }) {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isAudioLoading, setIsAudioLoading] = useState(false)
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true)
+  const [playbackHistory, setPlaybackHistory] = useState([])
   
   // Search & Navigation
   const [searchQuery, setSearchQuery] = useState('')
@@ -169,6 +170,9 @@ export function PlayerProvider({ children }) {
   const playSongRef = useRef(null)
   const volumeRef = useRef(volume)
   const retryCountRef = useRef(0)
+  const currentSongRef = useRef(null)
+
+  useEffect(() => { currentSongRef.current = currentSong }, [currentSong])
 
   useEffect(() => { queueRef.current = queue }, [queue])
   useEffect(() => { queueIndexRef.current = queueIndex }, [queueIndex])
@@ -472,13 +476,13 @@ export function PlayerProvider({ children }) {
   }, [currentSong, fetchRecommendations])
 
   // ─── Play Song ───
-  const playSong = useCallback((song, songQueue = null, index = 0, isAutoCrossfade = false) => {
+  const playSong = useCallback((song, songQueue = null, index = 0, isAutoCrossfade = false, isHistoryNav = false) => {
     if (!song) return
     const audio = audioRef.current
 
-    // Cancel any ongoing crossfade when manually playing a song
-    if (!isAutoCrossfade) {
-      crossfadeManager.cancelCrossfade(volumeRef.current / 100)
+    // History Tracking: Push previous song to stack if not moving backward
+    if (!isHistoryNav && !isAutoCrossfade && currentSongRef.current && song.videoId !== currentSongRef.current.videoId) {
+      setPlaybackHistory(prev => [currentSongRef.current, ...prev].slice(0, 50))
     }
 
     audio.crossOrigin = 'anonymous'
@@ -574,14 +578,41 @@ export function PlayerProvider({ children }) {
   useEffect(() => { playNextRef.current = playNext }, [playNext])
   useEffect(() => { playSongRef.current = playSong }, [playSong])
 
-  const playPrevious = useCallback((isAutoCrossfade = false) => {
-    if (queue.length === 0) return
-    const prevIndex = queueIndex - 1
-    if (prevIndex >= 0) {
-      setQueueIndex(prevIndex)
-      playSong(queue[prevIndex], queue, prevIndex, isAutoCrossfade)
+  const playPrevious = useCallback(() => {
+    const audio = audioRef.current
+    
+    // If we've played more than 3 seconds, just restart the song
+    if (audio.currentTime > 3) {
+      audio.currentTime = 0
+      audio.play().catch(() => {})
+      return
     }
-  }, [queue, queueIndex, playSong])
+
+    // Try to pop from history stack first
+    if (playbackHistory.length > 0) {
+      const prevSong = playbackHistory[0]
+      setPlaybackHistory(prev => prev.slice(1))
+      
+      // When going back from history, we need to see if it was in the queue
+      const idxInQueue = queueRef.current.findIndex(s => s.videoId === prevSong.videoId)
+      if (idxInQueue !== -1) {
+        setQueueIndex(idxInQueue)
+      }
+      
+      // Play it with isHistoryNav = true to avoid pushing the current song back to history
+      playSong(prevSong, null, 0, false, true)
+      return
+    }
+
+    // Fallback to queue index if history is empty
+    if (queueRef.current.length > 0) {
+      const prevIndex = queueIndexRef.current - 1
+      if (prevIndex >= 0) {
+        setQueueIndex(prevIndex)
+        playSong(queueRef.current[prevIndex])
+      }
+    }
+  }, [playbackHistory, playSong])
 
   const addToQueue = useCallback((song) => {
     setQueue(prev => [...prev, song])
