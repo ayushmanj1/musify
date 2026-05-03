@@ -10,7 +10,7 @@
  * - ~3-5x faster stream extraction (no Python subprocess)
  * - LRU cache (100 streams, 200 searches) with TTL
  * - Compression (gzip) on all routes
- * - Soft rate limit on /stream only (60 req/min per IP)
+ * - Unlimited streaming (Rate limit removed)
  * - Auto-retry with exponential backoff
  * - Keep-alive connections
  */
@@ -43,28 +43,18 @@ app.use(express.json())
 const streamCache = new LRUCache({ max: 100, ttl: 1000 * 60 * 60 })       // 1 hour
 const searchCache = new LRUCache({ max: 200, ttl: 1000 * 60 * 30 })       // 30 min
 
-// ─── Stream Rate Limiter (60/min per IP) ───
-const streamRateMap = new Map()
 
-function checkStreamRate(ip) {
-  const now = Date.now()
-  const entry = streamRateMap.get(ip)
-  if (!entry || now - entry.start > 60000) {
-    streamRateMap.set(ip, { start: now, count: 1 })
-    return true
-  }
-  if (entry.count >= 300) return false // Increased for chunked streaming
-  entry.count++
-  return true
+// ─── Stealth Identity Mimicry ───
+const USER_AGENTS = [
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 Edg/119.0.0.0'
+]
+
+function getRandomUA() {
+  return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)]
 }
-
-// Cleanup stale rate entries every 5 min
-setInterval(() => {
-  const now = Date.now()
-  for (const [ip, entry] of streamRateMap) {
-    if (now - entry.start > 60000) streamRateMap.delete(ip)
-  }
-}, 300000)
 
 // ─── Retry Helper ───
 async function withRetry(fn, retries = 2, baseDelay = 200) {
@@ -399,12 +389,7 @@ app.get('/api/stream', async (req, res) => {
   const videoId = req.query.id
   if (!videoId) return res.status(400).json({ error: 'Missing video ID' })
 
-  // Soft rate limit on stream
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown'
-  if (!checkStreamRate(clientIp)) {
-    return res.status(429).json({ error: 'Rate limit exceeded. Try again shortly.' })
-  }
-
   console.log(`[Stream] Request for ${videoId} from ${clientIp} (Range: ${req.headers.range || 'none'})`)
   try {
     // Check cache for resolved stream info
@@ -417,7 +402,7 @@ app.get('/api/stream', async (req, res) => {
 
     const streamUrl = streamInfo.url
     const mimeType = streamInfo.mime || 'audio/webm'
-    const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    const userAgent = getRandomUA()
 
     // Use a large chunk size for local, small for Vercel
     const isVercel = process.env.VERCEL || process.env.NODE_ENV === 'production'

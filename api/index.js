@@ -10,7 +10,7 @@
  * - ~3-5x faster stream extraction (no Python subprocess)
  * - LRU cache (100 streams, 200 searches) with TTL
  * - Compression (gzip) on all routes
- * - Soft rate limit on /stream only (60 req/min per IP)
+ * - Unlimited streaming (Rate limit removed)
  * - Auto-retry with exponential backoff
  * - Keep-alive connections
  */
@@ -23,6 +23,8 @@ import { fileURLToPath } from 'url'
 import compression from 'compression'
 import { Innertube } from 'youtubei.js'
 import { LRUCache } from 'lru-cache'
+import { Readable } from 'stream'
+import os from 'os'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -41,28 +43,19 @@ app.use(express.json())
 const streamCache = new LRUCache({ max: 100, ttl: 1000 * 60 * 60 })       // 1 hour
 const searchCache = new LRUCache({ max: 200, ttl: 1000 * 60 * 30 })       // 30 min
 
-// ─── Stream Rate Limiter (60/min per IP) ───
-const streamRateMap = new Map()
 
-function checkStreamRate(ip) {
-  const now = Date.now()
-  const entry = streamRateMap.get(ip)
-  if (!entry || now - entry.start > 60000) {
-    streamRateMap.set(ip, { start: now, count: 1 })
-    return true
-  }
-  if (entry.count >= 60) return false
-  entry.count++
-  return true
+// ─── Stealth Identity Mimicry ───
+const USER_AGENTS = [
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 Edg/119.0.0.0'
+]
+
+function getRandomUA() {
+  return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)]
 }
 
-// Cleanup stale rate entries every 5 min
-setInterval(() => {
-  const now = Date.now()
-  for (const [ip, entry] of streamRateMap) {
-    if (now - entry.start > 60000) streamRateMap.delete(ip)
-  }
-}, 300000)
 
 // ─── Retry Helper ───
 async function withRetry(fn, retries = 2, baseDelay = 200) {
@@ -185,8 +178,9 @@ async function getStreamUrl(videoId) {
     const info = await withRetry(() => youtubedl(`https://www.youtube.com/watch?v=${videoId}`, { 
       dumpJson: true, 
       noWarnings: true, 
-      cacheDir: '/tmp', // CRITICAL for Vercel read-only filesystem
-      format: 'bestaudio[ext=m4a][acodec^=mp4a]/bestaudio[ext=webm][acodec=opus]/bestaudio[ext=m4a]/bestaudio' 
+      cacheDir: os.tmpdir(), // Cross-platform temp dir
+      format: 'bestaudio/best', 
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     }), 2, 500)
     
     if (!info || !info.url) {
@@ -195,7 +189,8 @@ async function getStreamUrl(videoId) {
     
     console.log(`[Stream] ${videoId} → ${info.ext} @ ${Math.round((info.abr || 128))}kbps`)
     const mime = info.ext === 'webm' ? 'audio/webm' : 'audio/mp4'
-    return { url: info.url, mime }
+    const size = info.filesize || info.filesize_approx || 0
+    return { url: info.url, mime, size }
   } catch (err) {
     console.error(`[Stream] yt-dlp failed for ${videoId}:`, err.message)
     throw new Error('No playable audio format found')
@@ -395,11 +390,8 @@ app.get('/api/stream', async (req, res) => {
   const videoId = req.query.id
   if (!videoId) return res.status(400).json({ error: 'Missing video ID' })
 
-  // Soft rate limit on stream
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown'
-  if (!checkStreamRate(clientIp)) {
-    return res.status(429).json({ error: 'Rate limit exceeded. Try again shortly.' })
-  }
+  console.log(`[Stream] Vercel Request for ${videoId} from ${clientIp} (Range: ${req.headers.range || 'none'})`)
 
   try {
     // Check cache for resolved stream info
@@ -410,88 +402,73 @@ app.get('/api/stream', async (req, res) => {
       streamCache.set(videoId, streamInfo)
     }
 
+    const streamUrl = streamInfo.url
     const mimeType = streamInfo.mime || 'audio/webm'
+    const userAgent = getRandomUA()
 
-    // Force 1MB chunk sizes to bypass Vercel 10s timeout
-    const CHUNK_SIZE = 1024 * 1024 // 1MB
-    let range = req.headers.range || 'bytes=0-'
+    // Force small 2MB chunk sizes for Vercel Serverless
+    const CHUNK_SIZE = 1024 * 1024 * 2
     
+    let range = req.headers.range || 'bytes=0-'
     let start = 0
     let end = undefined
     
     const parts = range.replace(/bytes=/, "").split("-")
     start = parseInt(parts[0], 10)
-    if (parts[1]) {
-      end = parseInt(parts[1], 10)
-    }
+    if (parts[1]) end = parseInt(parts[1], 10)
 
-    // Temporarily fetch headers to get total file size
-    const headRes = await fetch(streamInfo.url, { method: 'HEAD' })
-    const totalSize = parseInt(headRes.headers.get('content-length') || '0', 10)
+    let totalSize = streamInfo.size || 0
+    if (!totalSize) {
+      try {
+        const headRes = await fetch(streamUrl, { method: 'HEAD', headers: { 'User-Agent': userAgent } })
+        totalSize = parseInt(headRes.headers.get('content-length') || '0', 10)
+      } catch (e) {}
+    }
 
     if (totalSize > 0) {
-      if (end === undefined || end >= totalSize) {
-        end = totalSize - 1
-      }
-      // Strictly enforce chunk size
-      if (end - start + 1 > CHUNK_SIZE) {
-        end = start + CHUNK_SIZE - 1
-      }
+      if (end === undefined || end >= totalSize) end = totalSize - 1
+      if (end - start + 1 > CHUNK_SIZE) end = start + CHUNK_SIZE - 1
     }
 
-    const fetchOptions = { headers: { Range: `bytes=${start}-${end !== undefined ? end : ''}` } }
-    const response = await fetch(streamInfo.url, fetchOptions)
+    const fetchOptions = { 
+      headers: { 
+        'Range': `bytes=${start}-${end !== undefined ? end : ''}`,
+        'User-Agent': userAgent,
+        'Referer': 'https://www.youtube.com/',
+        'Origin': 'https://www.youtube.com/'
+      } 
+    }
+    
+    const response = await fetch(streamUrl, fetchOptions)
 
-    if (!response.ok) {
+    if (!response.ok && response.status !== 206) {
       throw new Error(`Upstream returned ${response.status}`)
     }
 
-    res.status(206) // Always return Partial Content to force browser chunking
-
-    // Set precise headers
+    // Set headers correctly
+    res.status(response.status === 206 ? 206 : 200)
     res.setHeader('Accept-Ranges', 'bytes')
     res.setHeader('Content-Type', mimeType)
     res.setHeader('Cache-Control', 'public, max-age=3600')
-    
-    if (totalSize > 0) {
+    res.setHeader('Access-Control-Allow-Origin', '*')
+
+    const upstreamRange = response.headers.get('content-range')
+    const upstreamLength = response.headers.get('content-length')
+
+    if (upstreamRange) res.setHeader('Content-Range', upstreamRange)
+    else if (totalSize > 0 && response.status === 206) {
       res.setHeader('Content-Range', `bytes ${start}-${end}/${totalSize}`)
-      res.setHeader('Content-Length', end - start + 1)
-    } else {
-      // Fallback if we don't know total size
-      if (response.headers.get('content-range')) res.setHeader('Content-Range', response.headers.get('content-range'))
-      if (response.headers.get('content-length')) res.setHeader('Content-Length', response.headers.get('content-length'))
     }
 
-    if (!response.body) {
-      return res.status(500).json({ error: 'Empty stream from upstream' })
+    if (upstreamLength) res.setHeader('Content-Length', upstreamLength)
+    else if (totalSize > 0) {
+      res.setHeader('Content-Length', end !== undefined ? (end - start + 1) : (totalSize - start))
     }
 
-    const reader = response.body.getReader()
-    
-    req.on('close', () => {
-      reader.cancel().catch(() => {})
-    })
+    if (!response.body) return res.status(500).json({ error: 'Empty stream' })
 
-    const pump = async () => {
-      try {
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) { 
-            if (!res.writableEnded) res.end()
-            break 
-          }
-          if (res.writableEnded) {
-            reader.cancel().catch(() => {})
-            break
-          }
-          res.write(Buffer.from(value))
-        }
-      } catch (e) {
-        console.error('Pump error:', e)
-        if (!res.writableEnded) res.end()
-      }
-    }
-    pump()
+    // Use Readable.fromWeb for clean piping on Node 18+ (Vercel's default)
+    Readable.fromWeb(response.body).pipe(res)
 
   } catch (err) {
     console.error('Stream endpoint error:', err.message)
