@@ -139,7 +139,7 @@ export default function LibraryPage() {
       `}</style>
 
       {/* ─── Header ─── */}
-      <div style={{ padding: '48px 32px 16px' }}>
+      <div style={{ padding: window.innerWidth < 768 ? '32px 16px 16px' : '48px 32px 16px' }}>
         <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 20 }}>Your Library</h1>
         
         {/* Filter Pills */}
@@ -157,7 +157,7 @@ export default function LibraryPage() {
         </div>
       </div>
 
-      <div style={{ padding: '0 32px' }}>
+      <div style={{ padding: window.innerWidth < 768 ? '0 16px 120px' : '0 32px' }}>
         {/* ─── Section A: Recently Listened ─── */}
         {showRecentlyPlayed && recentlyPlayed.length > 0 && (
           <div style={{ marginBottom: 40 }}>
@@ -211,8 +211,8 @@ export default function LibraryPage() {
             
             <div style={{ 
               display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', 
-              gap: 16 
+              gridTemplateColumns: window.innerWidth < 768 ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(180px, 1fr))', 
+              gap: window.innerWidth < 768 ? '12px' : '16px' 
             }}>
               {userPlaylists.map((pl, i) => {
                 const isObj = typeof pl === 'object' && pl !== null

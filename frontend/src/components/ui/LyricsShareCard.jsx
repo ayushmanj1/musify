@@ -129,9 +129,9 @@ export default function LyricsShareCard({ song, lyrics }) {
 
   if (!isExpanded) {
     return (
-      <div className="lyric-mini-trigger" onClick={(e) => { e.stopPropagation(); setIsExpanded(true); }}>
-        <FiMessageCircle size={16} />
-        <span>Share Lyrics</span>
+      <div className="lyric-mini-trigger" onClick={(e) => { e.stopPropagation(); setIsExpanded(true); }} style={{ padding: window.innerWidth < 768 ? '8px' : '8px 16px' }}>
+        <FiMessageCircle size={window.innerWidth < 768 ? 20 : 16} />
+        {window.innerWidth >= 768 && <span>Share Lyrics</span>}
       </div>
     );
   }
@@ -186,8 +186,8 @@ export default function LyricsShareCard({ song, lyrics }) {
             backgroundColor: activeColor.value,
             boxShadow: `0 20px 50px ${activeColor.glow}`,
             color: activeColor.text === 'light' ? '#ffffff' : '#000000',
-            height: '450px', 
-            width: '360px'
+            height: window.innerWidth < 768 ? 'min(450px, 60vh)' : '450px', 
+            width: window.innerWidth < 768 ? 'min(360px, 90vw)' : '360px'
           }}
         >
           <div className="lyric-noise-overlay"></div>
@@ -249,12 +249,16 @@ export default function LyricsShareCard({ song, lyrics }) {
         {!isCapturing && (
           <div className="lyric-share-controls">
             {/* Color Swatches */}
-            <div className="lyric-color-picker">
+            <div className="lyric-color-picker" style={{ gap: window.innerWidth < 768 ? '8px' : '12px', padding: window.innerWidth < 768 ? '6px' : '8px' }}>
               {SWATCHES.map((swatch, idx) => (
                 <button
                   key={swatch.name}
                   className={`color-swatch ${selectedColorIdx === idx ? 'active' : ''}`}
-                  style={{ backgroundColor: swatch.value }}
+                  style={{ 
+                    backgroundColor: swatch.value,
+                    width: window.innerWidth < 768 ? '20px' : '24px',
+                    height: window.innerWidth < 768 ? '20px' : '24px'
+                  }}
                   onClick={(e) => { e.stopPropagation(); setSelectedColorIdx(idx); }}
                   title={swatch.name}
                 />
@@ -266,6 +270,7 @@ export default function LyricsShareCard({ song, lyrics }) {
               className="lyric-share-btn-main"
               disabled={selectedLines.length === 0}
               onClick={(e) => { e.stopPropagation(); handleShare('main'); }}
+              style={{ width: window.innerWidth < 768 ? 'min(280px, 85vw)' : '280px' }}
             >
               {selectedLines.length > 0 ? (
                 <>

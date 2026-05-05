@@ -108,17 +108,24 @@ function AppShell({ location }) {
     <div id="app-container" style={{
       '--right-w': isRightSidebarOpen ? '280px' : '40px',
       '--left-w': isLeftSidebarCollapsed ? '56px' : '220px',
-      '--bottom-nav-h': isMobile ? '64px' : '0px',
+      '--nav-h': isMobile ? 'var(--mobile-nav-h)' : '0px',
       transition: 'grid-template-columns 0.35s cubic-bezier(0.4,0,0.2,1)',
       display: isFullScreenPlayer ? 'block' : 'grid',
       gridTemplateColumns: isMobile ? '1fr' : 'var(--left-w) 1fr var(--right-w)',
-      gridTemplateRows: `1fr ${isMobile ? 'calc(var(--bottom-bar-h) + var(--bottom-nav-h))' : 'var(--bottom-bar-h)'}`
+      gridTemplateRows: isMobile ? '1fr' : '1fr var(--bottom-bar-h)',
+      height: '100vh',
+      width: '100vw',
+      overflow: 'hidden'
     }}>
       <div style={{ display: isFullScreenPlayer ? 'none' : 'contents' }}>
         {!isMobile && <LeftSidebar />}
 
         {/* Center Panel (Scrollable content area) */}
-        <div className="center-panel hide-scrollbar" style={{ margin: isMobile ? '0' : '8px 0', borderRadius: isMobile ? '0' : '8px' }}>
+        <div className="center-panel hide-scrollbar" style={{ 
+          margin: isMobile ? '0' : '8px 0', 
+          borderRadius: isMobile ? '0' : '8px',
+          paddingBottom: isMobile ? 'calc(var(--mobile-player-h) + var(--mobile-nav-h) + var(--safe-bottom) + 20px)' : '0'
+        }}>
           <TopBar />
           <PageWrapper key={location.pathname}>
             <Routes location={location}>
@@ -131,7 +138,6 @@ function AppShell({ location }) {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </PageWrapper>
-          {isMobile && <div style={{ height: '160px' }} />}
         </div>
 
         {!isMobile && <RightSidebar />}

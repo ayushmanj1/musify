@@ -21,6 +21,9 @@
   --radius-pill: 500px;
   --radius-card: 4px; /* NO rounded album art beyond 4px */
   --bottom-bar-h: 90px;
+  --mobile-nav-h: 64px;
+  --mobile-player-h: 64px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* ─── Reset ─── */
@@ -68,10 +71,18 @@ body {
 /* Mobile fallback */
 @media (max-width: 767px) {
   #app-container {
-    grid-template-columns: 0px 1fr 0px;
-    grid-template-areas:
-      "center-panel center-panel center-panel"
-      "bottom-bar bottom-bar bottom-bar";
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+    grid-template-areas: "center-panel";
+  }
+  
+  body {
+    overscroll-behavior-y: none; /* Prevent pull-to-refresh on mobile */
+  }
+
+  /* Make sure scrolling is smooth on iOS */
+  .center-panel {
+    -webkit-overflow-scrolling: touch;
   }
 }
 

@@ -69,16 +69,17 @@ function VerticalCard({ song, isArtist, isNewRelease, isRecommended, onClick }) 
         }));
       }}
       style={{
-      width: '180px', height: '220px',
+      width: window.innerWidth < 768 ? '140px' : '180px', 
+      height: window.innerWidth < 768 ? '190px' : '220px',
       background: '#181818',
-      padding: '16px',
+      padding: window.innerWidth < 768 ? '12px' : '16px',
       borderRadius: '8px',
       cursor: 'pointer',
       position: 'relative',
       flexShrink: 0,
       transition: 'background 0.2s ease, box-shadow 0.2s ease',
     }}>
-      <div style={{ position: 'relative', width: '148px', height: '148px', marginBottom: '16px', background: 'linear-gradient(to bottom, #2a2a2a, #1a1a1a)', borderRadius: isArtist ? '50%' : '4px' }}>
+      <div style={{ position: 'relative', width: '100%', aspectRatio: '1/1', marginBottom: window.innerWidth < 768 ? '12px' : '16px', background: 'linear-gradient(to bottom, #2a2a2a, #1a1a1a)', borderRadius: isArtist ? '50%' : '4px' }}>
         <img
           src={song.thumbnail || song.img} alt={song.title || song.name}
           style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: isArtist ? '50%' : '4px' }}
@@ -96,10 +97,10 @@ function VerticalCard({ song, isArtist, isNewRelease, isRecommended, onClick }) 
         <HoverPlayButton style={{ bottom: '8px', right: '8px' }} />
       </div>
       <div style={{ width: '100%' }}>
-        <p className="truncate" style={{ fontSize: '14px', fontWeight: 700, color: '#ffffff', marginBottom: '4px' }}>
+        <p className="truncate" style={{ fontSize: window.innerWidth < 768 ? '13px' : '14px', fontWeight: 700, color: '#ffffff', marginBottom: '4px' }}>
           {song.title || song.name}
         </p>
-        <p className="truncate" style={{ fontSize: '14px', color: isRecommended ? '#A78BFA' : '#b3b3b3' }}>
+        <p className="truncate" style={{ fontSize: window.innerWidth < 768 ? '12px' : '14px', color: isRecommended ? '#A78BFA' : '#b3b3b3' }}>
           {isArtist ? 'Artist' : (isRecommended ? song.genre || 'Electronic' : song.artist)}
         </p>
       </div>
@@ -160,9 +161,9 @@ export default function HomePage() {
   const recentTracks = madeForYou.slice(0, 6)
 
   return (
-    <div style={{ padding: '24px 32px 64px' }}>
+    <div style={{ padding: window.innerWidth < 768 ? '16px 16px 100px' : '24px 32px 64px' }}>
       {/* ─── 1. Greeting Header ─── */}
-      <h1 style={{ fontSize: '32px', fontWeight: 700, color: '#ffffff', marginBottom: '24px' }}>
+      <h1 style={{ fontSize: window.innerWidth < 768 ? '24px' : '32px', fontWeight: 800, color: '#ffffff', marginBottom: '24px' }}>
         {getGreeting()}
       </h1>
 
@@ -305,10 +306,16 @@ export default function HomePage() {
         /* Scrollable rows */
         .h-scroll {
           display: flex;
-          gap: 24px;
+          gap: 16px;
           overflow-x: auto;
           scrollbar-width: none;
           padding-bottom: 24px; /* Space for box-shadow hover */
+          margin: 0 -16px;
+          padding-left: 16px;
+          padding-right: 16px;
+        }
+        @media (min-width: 768px) {
+          .h-scroll { gap: 24px; margin: 0; padding: 0; padding-bottom: 24px; }
         }
         .h-scroll::-webkit-scrollbar {
           display: none;

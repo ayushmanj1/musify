@@ -119,43 +119,53 @@ export default function Player() {
         onClick={() => setIsFullScreenPlayer(true)}
         style={{
           position: 'fixed',
-          bottom: 'calc(64px + 8px + var(--safe-bottom, 0px))',
-          left: '8px',
-          right: '8px',
-          height: '64px',
-          background: 'rgba(32, 32, 32, 0.85)',
-          backdropFilter: 'blur(24px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+          bottom: 'calc(var(--mobile-nav-h) + 12px + var(--safe-bottom, 0px))',
+          left: '12px',
+          right: '12px',
+          height: 'var(--mobile-player-h)',
+          background: 'rgba(24, 24, 24, 0.8)',
+          backdropFilter: 'blur(30px) saturate(200%)',
+          WebkitBackdropFilter: 'blur(30px) saturate(200%)',
           borderRadius: '12px',
           display: 'flex',
           alignItems: 'center',
           padding: '0 12px',
           gap: '12px',
-          zIndex: 900,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          animation: 'slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
+          zIndex: 1100,
+          boxShadow: '0 12px 32px rgba(0,0,0,0.5)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          animation: 'slideUp 0.6s cubic-bezier(0.22, 1, 0.36, 1)'
         }}
       >
-        <div style={{ position: 'relative', width: 44, height: 44, borderRadius: '6px', overflow: 'hidden', flexShrink: 0 }}>
+        <div style={{ position: 'relative', width: 44, height: 44, borderRadius: '8px', overflow: 'hidden', flexShrink: 0, boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
           <img src={thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         </div>
         
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p className="truncate" style={{ fontSize: '13px', fontWeight: 600, color: '#fff', margin: 0 }}>
+          <p className="truncate" style={{ fontSize: '14px', fontWeight: 700, color: '#fff', margin: 0, letterSpacing: '-0.01em' }}>
             {currentSong.title}
           </p>
-          <p className="truncate" style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', margin: '2px 0 0 0' }}>
+          <p className="truncate" style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', margin: '2px 0 0 0', fontWeight: 500 }}>
             {currentSong.artist}
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          {/* Share Lyrics Trigger */}
+          <div onClick={(e) => e.stopPropagation()} style={{ marginRight: '4px' }}>
+            <LyricsShareCard song={currentSong} lyrics={lyrics} />
+          </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); toggleSavedSong(currentSong) }}
+            style={{ background: 'none', border: 'none', color: saved ? 'var(--accent)' : '#fff', padding: '10px', cursor: 'pointer', opacity: saved ? 1 : 0.6 }}
+          >
+            <FiHeart size={20} style={{ fill: saved ? 'currentcolor' : 'none' }} />
+          </button>
           <button
             onClick={(e) => { e.stopPropagation(); togglePlay() }}
-            style={{ background: 'none', border: 'none', color: '#fff', padding: '8px', cursor: 'pointer' }}
+            style={{ background: 'none', border: 'none', color: '#fff', padding: '10px', cursor: 'pointer' }}
           >
-            {isPlaying ? <FiPause size={24} /> : <FiPlay size={24} />}
+            {isPlaying ? <FiPause size={28} /> : <FiPlay size={28} />}
           </button>
         </div>
 
@@ -166,7 +176,7 @@ export default function Player() {
 
         <style>{`
           @keyframes slideUp {
-            from { transform: translateY(20px); opacity: 0; }
+            from { transform: translateY(30px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
           }
         `}</style>

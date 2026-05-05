@@ -7,6 +7,7 @@ import {
 } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import { getLyrics } from '../../utils/api.js'
+import LyricsShareCard from '../ui/LyricsShareCard.jsx'
 
 function fmt(s) {
   if (!s || isNaN(s)) return '0:00'
@@ -257,9 +258,12 @@ export default function FullScreenPlayer() {
       display: 'flex', flexDirection: 'column',
       color: '#fff',
       transform: isFullScreenPlayer ? 'translateY(0)' : 'translateY(100%)',
-      transition: isFullScreenPlayer ? 'transform 0.4s cubic-bezier(0.4,0,0.2,1)' : 'transform 0.35s ease-in',
+      transition: window.innerWidth < 768 
+        ? (isFullScreenPlayer ? 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)' : 'transform 0.4s cubic-bezier(0.32, 0, 0.67, 0)')
+        : (isFullScreenPlayer ? 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)' : 'transform 0.35s ease-in'),
       overflow: 'hidden',
-      background: '#121212'
+      background: '#121212',
+      paddingBottom: window.innerWidth < 768 ? 'var(--safe-bottom, 0px)' : '0'
     }}>
       
       {/* Background */}
@@ -307,11 +311,13 @@ export default function FullScreenPlayer() {
       </div>
 
       {/* Top Bar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', height: '56px', flexShrink: 0 }}>
-        <button onClick={handleClose} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '8px' }}><FiChevronDown size={24}/></button>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: window.innerWidth < 768 ? '16px 16px 0' : '0 24px', height: '56px', flexShrink: 0 }}>
+        <button onClick={handleClose} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '8px' }}>
+          <FiChevronDown size={window.innerWidth < 768 ? 28 : 24}/>
+        </button>
         <div style={{ textAlign: 'center' }}>
-          <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', letterSpacing: '1px', margin: 0 }}>PLAYING FROM</p>
-          <p style={{ fontSize: '13px', fontWeight: 700, margin: 0 }}>Premium Player</p>
+          <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', letterSpacing: window.innerWidth < 768 ? '1.5px' : '1px', margin: 0, fontWeight: window.innerWidth < 768 ? 800 : 400 }}>PLAYING FROM</p>
+          <p style={{ fontSize: '13px', fontWeight: window.innerWidth < 768 ? 800 : 700, margin: 0 }}>{window.innerWidth < 768 ? currentSong.artist : 'Premium Player'}</p>
         </div>
         <button onClick={openMenu} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '8px' }}><FiMoreHorizontal size={24} /></button>
       </div>
@@ -326,11 +332,18 @@ export default function FullScreenPlayer() {
               setIsFlipped(!isFlipped)
               if (!hintSeen) { setHintSeen(true); localStorage.setItem('lyricsHintSeen', 'true'); }
             }}
-            style={{ width: 'min(300px, 75vw)', aspectRatio: '1/1', position: 'relative', cursor: 'pointer', perspective: '1200px' }}
+            style={{ 
+              width: window.innerWidth < 768 ? '85vw' : 'min(300px, 75vw)', 
+              aspectRatio: '1/1', 
+              position: 'relative', 
+              cursor: 'pointer', 
+              perspective: '1200px' 
+            }}
           >
             <div style={{
               width: '100%', height: '100%', position: 'absolute', transformStyle: 'preserve-3d', 
-              transition: 'transform 0.8s cubic-bezier(0.4,0,0.2,1)', transform: isFlipped ? 'rotateY(-180deg)' : 'rotateY(0deg)'
+              transition: 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)', 
+              transform: isFlipped ? 'rotateY(-180deg)' : 'rotateY(0deg)'
             }}>
               <div style={{ position: 'absolute', inset: 0, backfaceVisibility: 'hidden', borderRadius: '20px', overflow: 'hidden', animation: isPlaying && !isFlipped ? 'pulseGlow 3s infinite ease-in-out' : 'none', boxShadow: '0 12px 48px rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.1)' }}>
                 <img src={thumb} style={{width:'100%', height:'100%', objectFit:'cover'}} alt="" />
@@ -377,20 +390,37 @@ export default function FullScreenPlayer() {
 
         {/* Info & Controls - These will stay visible */}
         <div style={{ width: '100%', maxWidth: '440px', margin: '0 auto', flexShrink: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <button onClick={toggleFsQueue} style={{ background: 'none', border: 'none', color: isFsQueueOpen ? '#8B5CF6' : '#fff', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: window.innerWidth < 768 ? '12px' : '8px' }}>
+            <button onClick={toggleFsQueue} style={{ background: 'none', border: 'none', color: isFsQueueOpen ? '#8B5CF6' : '#fff', opacity: 0.8, cursor: 'pointer', padding: window.innerWidth < 768 ? '0' : '8px', display: 'flex', alignItems: 'center' }}>
               <FiList size={22} />
             </button>
-            <button onClick={() => toggleSavedSong(currentSong)} style={{ background: 'none', border: 'none', color: saved ? '#8B5CF6' : '#fff', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-              <FiHeart size={22} style={{ fill: saved ? '#8B5CF6' : 'none', opacity: saved ? 1 : 0.4 }} />
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div onClick={(e) => e.stopPropagation()}>
+                <LyricsShareCard song={currentSong} lyrics={activeLyrics} />
+              </div>
+              {window.innerWidth < 768 && (
+                <button onClick={openEq} style={{ background: 'none', border: 'none', color: '#fff', opacity: 0.8, cursor: 'pointer' }}>
+                  <FiSliders size={22} />
+                </button>
+              )}
+              {window.innerWidth >= 768 && (
+                <button onClick={() => toggleSavedSong(currentSong)} style={{ background: 'none', border: 'none', color: saved ? '#8B5CF6' : '#fff', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                  <FiHeart size={22} style={{ fill: saved ? '#8B5CF6' : 'none', opacity: saved ? 1 : 0.4 }} />
+                </button>
+              )}
+            </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: window.innerWidth < 768 ? '20px' : '16px' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <h1 className="truncate" style={{ fontSize: '20px', fontWeight: '800', margin: '0 0 2px 0' }}>{currentSong.title}</h1>
-              <p className="truncate" style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', fontWeight: 600, margin: 0 }}>{currentSong.artist}</p>
+              <h1 className="truncate" style={{ fontSize: window.innerWidth < 768 ? '24px' : '20px', fontWeight: window.innerWidth < 768 ? '900' : '800', margin: window.innerWidth < 768 ? '0 0 4px 0' : '0 0 2px 0', letterSpacing: window.innerWidth < 768 ? '-0.02em' : 'normal' }}>{currentSong.title}</h1>
+              <p className="truncate" style={{ fontSize: window.innerWidth < 768 ? '16px' : '14px', color: window.innerWidth < 768 ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.5)', fontWeight: 600, margin: 0 }}>{currentSong.artist}</p>
             </div>
+            {window.innerWidth < 768 && (
+              <button onClick={() => toggleSavedSong(currentSong)} style={{ background: 'none', border: 'none', color: saved ? '#8B5CF6' : '#fff', padding: '12px', cursor: 'pointer' }}>
+                <FiHeart size={28} style={{ fill: saved ? '#8B5CF6' : 'none', opacity: saved ? 1 : 0.5 }} />
+              </button>
+            )}
           </div>
 
           <div style={{ marginBottom: '20px' }}>

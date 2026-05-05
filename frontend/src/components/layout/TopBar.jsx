@@ -176,32 +176,40 @@ export default function TopBar() {
       backdropFilter: 'blur(12px)',
       borderBottom: '1px solid rgba(255,255,255,0.06)',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      padding: '0 24px'
+      padding: window.innerWidth < 768 ? '0 12px' : '0 24px'
     }}>
       
-      {/* Left Navigation */}
-      <div style={{ display: 'flex', gap: '8px' }}>
-        <button onClick={goBack} disabled={navIndex === 0} 
-          style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: navIndex === 0 ? 'not-allowed' : 'pointer', opacity: navIndex === 0 ? 0.4 : 1 }}
-          className="nav-arrow-btn">
-          <FiArrowLeft size={20} />
-        </button>
-        <button onClick={goForward} disabled={navIndex === navHistory.length - 1}
-          style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: navIndex === navHistory.length - 1 ? 'not-allowed' : 'pointer', opacity: navIndex === navHistory.length - 1 ? 0.4 : 1 }}
-          className="nav-arrow-btn">
-          <FiArrowRight size={20} />
-        </button>
-      </div>
+      {/* Left Navigation - Hidden on Mobile */}
+      {window.innerWidth >= 768 && (
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button onClick={goBack} disabled={navIndex === 0} 
+            style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: navIndex === 0 ? 'not-allowed' : 'pointer', opacity: navIndex === 0 ? 0.4 : 1 }}
+            className="nav-arrow-btn">
+            <FiArrowLeft size={20} />
+          </button>
+          <button onClick={goForward} disabled={navIndex === navHistory.length - 1}
+            style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: navIndex === navHistory.length - 1 ? 'not-allowed' : 'pointer', opacity: navIndex === navHistory.length - 1 ? 0.4 : 1 }}
+            className="nav-arrow-btn">
+            <FiArrowRight size={20} />
+          </button>
+        </div>
+      )}
 
       {/* Center Search / Title */}
-      <div style={{ flex: 1, display: 'flex', justifyContent: 'center', position: 'relative' }}>
+      <div style={{ 
+        flex: 1, 
+        display: 'flex', 
+        justifyContent: window.innerWidth < 768 ? 'flex-start' : 'center', 
+        position: 'relative',
+        marginLeft: window.innerWidth < 768 && !isSearchPage ? '12px' : '0'
+      }}>
         {isSearchPage ? (
-          <div style={{ position: 'relative', width: '360px' }}>
+          <div style={{ position: 'relative', width: window.innerWidth < 768 ? '100%' : '360px' }}>
             <FiSearch style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#b3b3b3', zIndex: 2 }} />
             <input
               ref={searchInputRef}
               type="text"
-              placeholder="What do you want to play?"
+              placeholder="Search songs, artists..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="search-input-premium"
@@ -222,17 +230,31 @@ export default function TopBar() {
             )}
           </div>
         ) : (
-          <span style={{ fontSize: '16px', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '400px' }}>
-            {pageTitle}
+          <span style={{ 
+            fontSize: window.innerWidth < 768 ? '18px' : '16px', 
+            fontWeight: 800, 
+            color: '#fff', 
+            whiteSpace: 'nowrap', 
+            overflow: 'hidden', 
+            textOverflow: 'ellipsis', 
+            maxWidth: window.innerWidth < 768 ? '200px' : '400px' 
+          }}>
+            {pageTitle || 'Musify'}
           </span>
         )}
       </div>
 
       {/* Right Controls */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: window.innerWidth < 768 ? '12px' : '16px' }}>
         
-        {/* Compact Search Bar (Visible on Home) */}
-        {pathname === '/' && (
+        {/* Compact Search Icon instead of Bar on Mobile Home */}
+        {pathname === '/' && window.innerWidth < 768 && (
+          <button onClick={() => navigate('/search')} style={{ background: 'none', border: 'none', color: '#fff', padding: '8px' }}>
+            <FiSearch size={22} />
+          </button>
+        )}
+
+        {pathname === '/' && window.innerWidth >= 768 && (
           <div style={{ position: 'relative', width: '220px', marginRight: '8px' }}>
             <FiSearch style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#b3b3b3', fontSize: '14px' }} />
             <input
