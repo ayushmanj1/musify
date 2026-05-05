@@ -169,112 +169,102 @@ export default function TopBar() {
   const isSearchPage = pathname === '/search'
 
   return (
-    <div ref={barRef} className="top-bar-sticky" style={{
-      position: 'sticky', top: 0, zIndex: 1000,
-      height: '64px', width: '100%',
-      background: 'rgba(18,18,18,0.95)',
-      backdropFilter: 'blur(12px)',
-      borderBottom: '1px solid rgba(255,255,255,0.06)',
+    <div ref={barRef} className="top-bar-sticky glass-box" style={{
+      position: 'sticky', top: '0', zIndex: 1000,
+      height: '64px', 
+      width: 'calc(100% - 64px)',
+      margin: '0 32px 24px',
+      border: 'none',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      padding: window.innerWidth < 768 ? '0 12px' : '0 24px'
+      padding: '0 24px',
+      borderRadius: '12px',
+      boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
     }}>
       
-      {/* Left Navigation - Hidden on Mobile */}
-      {window.innerWidth >= 768 && (
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button onClick={goBack} disabled={navIndex === 0} 
-            style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: navIndex === 0 ? 'not-allowed' : 'pointer', opacity: navIndex === 0 ? 0.4 : 1 }}
-            className="nav-arrow-btn">
-            <FiArrowLeft size={20} />
-          </button>
-          <button onClick={goForward} disabled={navIndex === navHistory.length - 1}
-            style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: navIndex === navHistory.length - 1 ? 'not-allowed' : 'pointer', opacity: navIndex === navHistory.length - 1 ? 0.4 : 1 }}
-            className="nav-arrow-btn">
-            <FiArrowRight size={20} />
-          </button>
-        </div>
-      )}
-
-      {/* Center Search / Title */}
+      {/* Left Navigation */}
       <div style={{ 
-        flex: 1, 
         display: 'flex', 
-        justifyContent: window.innerWidth < 768 ? 'flex-start' : 'center', 
-        position: 'relative',
-        marginLeft: window.innerWidth < 768 && !isSearchPage ? '12px' : '0'
+        background: 'rgba(0,0,0,0.5)', 
+        borderRadius: '24px', 
+        overflow: 'hidden',
+        border: '1px solid rgba(255,255,255,0.1)',
+        alignItems: 'center'
       }}>
-        {isSearchPage ? (
-          <div style={{ position: 'relative', width: window.innerWidth < 768 ? '100%' : '360px' }}>
-            <FiSearch style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#b3b3b3', zIndex: 2 }} />
-            <input
-              ref={searchInputRef}
-              type="text"
-              placeholder="Search songs, artists..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="search-input-premium"
-              style={{
-                width: '100%', height: '40px', background: '#242424', borderRadius: '24px', border: 'none',
-                padding: '0 40px 0 42px', color: '#fff', fontSize: '14px', outline: 'none',
-                transition: 'border 0.15s ease, background 0.15s ease'
-              }}
-            />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery('')} style={{
-                position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
-                width: '20px', height: '20px', borderRadius: '50%', background: '#b3b3b3', color: '#121212',
-                border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '12px'
-              }}>
-                <FiX />
-              </button>
-            )}
-          </div>
-        ) : (
-          <span style={{ 
-            fontSize: window.innerWidth < 768 ? '18px' : '16px', 
-            fontWeight: 800, 
-            color: '#fff', 
-            whiteSpace: 'nowrap', 
-            overflow: 'hidden', 
-            textOverflow: 'ellipsis', 
-            maxWidth: window.innerWidth < 768 ? '200px' : '400px' 
-          }}>
-            {pageTitle || 'Musify'}
+        <button onClick={goBack} disabled={navIndex === 0} 
+          style={{ width: '44px', height: '40px', background: 'transparent', border: 'none', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: navIndex === 0 ? 'not-allowed' : 'pointer', opacity: navIndex === 0 ? 0.4 : 1 }}
+          className="nav-arrow-btn">
+          <FiArrowLeft size={24} />
+        </button>
+        <div style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.15)' }} />
+        <button onClick={goForward} disabled={navIndex === navHistory.length - 1}
+          style={{ width: '44px', height: '40px', background: 'transparent', border: 'none', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: navIndex === navHistory.length - 1 ? 'not-allowed' : 'pointer', opacity: navIndex === navHistory.length - 1 ? 0.4 : 1 }}
+          className="nav-arrow-btn">
+          <FiArrowRight size={24} />
+        </button>
+      </div>
+
+      {/* Center Title (only when no search bar) */}
+      <div style={{ flex: 1, display: 'flex', justifyContent: 'center', position: 'relative' }}>
+        {(!isSearchPage && pathname !== '/') && (
+          <span style={{ fontSize: '16px', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '400px' }}>
+            {pageTitle}
           </span>
         )}
       </div>
 
       {/* Right Controls */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: window.innerWidth < 768 ? '12px' : '16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
         
-        {/* Compact Search Icon instead of Bar on Mobile Home */}
-        {pathname === '/' && window.innerWidth < 768 && (
-          <button onClick={() => navigate('/search')} style={{ background: 'none', border: 'none', color: '#fff', padding: '8px' }}>
-            <FiSearch size={22} />
-          </button>
-        )}
-
-        {pathname === '/' && window.innerWidth >= 768 && (
-          <div style={{ position: 'relative', width: '220px', marginRight: '8px' }}>
-            <FiSearch style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#b3b3b3', fontSize: '14px' }} />
+        {/* Search Bar (Now on the right) */}
+        {(isSearchPage || pathname === '/') && (
+          <div style={{ 
+            position: 'relative', 
+            width: '440px',
+            display: 'flex',
+            alignItems: 'center',
+            background: 'rgba(255,255,255,0.05)',
+            borderRadius: '24px',
+            padding: '0 12px',
+            height: '42px',
+            border: 'none',
+            transition: 'all 0.2s ease'
+          }} className="search-bar-container">
+            <FiSearch style={{ color: '#fff', fontSize: '18px', marginLeft: '4px' }} />
             <input
+              ref={searchInputRef}
               type="text"
-              placeholder="Search..."
+              placeholder="What do you want to play?"
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value)
-                if (e.target.value) navigate('/search')
+                if (pathname === '/' && e.target.value) navigate('/search')
               }}
+              onClick={() => { if (pathname === '/') navigate('/search') }}
               style={{
-                width: '100%', height: '36px', background: '#242424', borderRadius: '18px', border: 'none',
-                padding: '0 12px 0 34px', color: '#fff', fontSize: '13px', outline: 'none'
+                flex: 1, height: '100%', background: 'transparent', border: 'none',
+                padding: '0 12px', color: '#fff', fontSize: '13px', outline: 'none',
               }}
+              className="search-input-premium"
             />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery('')} style={{
+                background: 'none', border: 'none', color: '#b3b3b3', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center'
+              }}>
+                <FiX size={16} />
+              </button>
+            )}
+            <div style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.1)', margin: '0 8px' }} />
+            <button title="Browse" style={{ 
+              background: 'transparent', border: 'none', color: '#b3b3b3', cursor: 'pointer', 
+              padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' 
+            }} className="hover-white">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
           </div>
         )}
 
         <div style={{ position: 'relative' }}>
-          <div onClick={() => { setIsProfileOpen(!isProfileOpen); }} style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #8B5CF6, #4C1D95)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+          <div onClick={() => { setIsProfileOpen(!isProfileOpen); }} className="zoom-hover" style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #8B5CF6, #4C1D95)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
             <span style={{ color: '#fff', fontWeight: 700, fontSize: '14px' }}>A</span>
           </div>
 
@@ -291,8 +281,13 @@ export default function TopBar() {
       </div>
 
       <style>{`
-        .search-input-premium:focus { border: 2px solid #ffffff !important; }
-        .search-input-premium:hover:not(:focus) { background: #2a2a2a !important; }
+        .search-bar-container:focus-within { 
+          border: 1px solid rgba(255,255,255,0.2) !important; 
+          background: #2a2a2a !important;
+        }
+        .search-bar-container:hover { background: #2a2a2a !important; }
+        .hover-white:hover { color: #fff !important; }
+        .search-input-premium::placeholder { color: #757575; }
         .topbar-dropdown {
           position: absolute; background: #282828; border-radius: 12px;
           box-shadow: 0 16px 48px rgba(0,0,0,0.5); z-index: 1001;

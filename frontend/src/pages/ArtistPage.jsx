@@ -1,20 +1,14 @@
-/**
- * MUSIFY v2.0 — ArtistPage
- * ─────────────────────────────────────────────
- * CHANGES:
- * - Uses 64px horizontal song items instead of SongRow
- * - Removed playlist references
- * - No backdrop-filter blur
- * - Simplified layout
- */
-
-import { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import React, { useState, useEffect, useMemo } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import { getArtistSongs } from '../utils/api.js'
+import { usePlayer } from '../context/PlayerContext.jsx'
+import { FiPlay, FiArrowLeft, FiMusic } from 'react-icons/fi'
 import SongCard from '../components/ui/SongCard.jsx'
 
 export default function ArtistPage() {
   const { id } = useParams()
+  const navigate = useNavigate()
+  const { playSong } = usePlayer()
   const [artist, setArtist] = useState(null)
   const [songs, setSongs] = useState([])
   const [loading, setLoading] = useState(true)
@@ -32,43 +26,180 @@ export default function ArtistPage() {
     load()
   }, [id])
 
+  const color = useMemo(() => {
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
+    return `hsl(${Math.abs(hash % 360)}, 50%, 30%)`
+  }, [id])
+
   return (
-    <div style={{ padding: '24px 16px 120px', maxWidth: 800, margin: '0 auto' }}>
-      {/* Artist Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 32 }}>
-        {artist?.image && (
-          <img
-            src={artist.image}
-            alt=""
-            width={64} height={64}
-            style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(124,58,237,0.3)' }}
-            loading="lazy"
-          />
-        )}
-        <div>
-          <h1 style={{ fontSize: 24, fontWeight: 900, color: '#fff', letterSpacing: '-0.03em' }}>
+    <div style={{ paddingBottom: 100, animation: 'fadeIn 0.3s ease' }}>
+      {/* ─── Hero Section ─── */}
+      <div style={{
+        background: `linear-gradient(to bottom, ${color}, var(--bg-primary))`,
+        padding: '64px 32px 32px',
+        position: 'relative', zIndex: 10,
+        display: 'flex', alignItems: 'flex-end', gap: '24px',
+        transition: 'background 0.5s ease'
+      }}>
+        {/* Back Button */}
+        <button 
+          onClick={() => navigate(-1)}
+          style={{
+            position: 'absolute', top: '16px', left: '16px',
+            background: 'rgba(0,0,0,0.3)', border: 'none', borderRadius: '50%',
+            width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#fff', cursor: 'pointer', transition: 'background 0.2s ease'
+          }}
+          className="hover-bg-card"
+        >
+          <FiArrowLeft size={20} />
+        </button>
+
+        <div style={{
+          width: '232px', height: '232px',
+          borderRadius: '50%', overflow: 'hidden',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+          flexShrink: 0,
+          background: '#282828',
+          border: '4px solid rgba(255,255,255,0.1)'
+        }}>
+          {artist?.image ? (
+            <img src={artist.image.replace('mqdefault', 'hqdefault')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
+          ) : (
+            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 80 }}>👤</div>
+          )}
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+            <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#3d91ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+            </div>
+            <p style={{ fontSize: '14px', fontWeight: 700, textTransform: 'uppercase', margin: 0, color: '#fff' }}>Verified Artist</p>
+          </div>
+          <h1 style={{ 
+            fontSize: 'clamp(48px, 8vw, 96px)', 
+            fontWeight: 900, 
+            margin: '0 0 16px 0', 
+            letterSpacing: '-4px', 
+            color: '#fff', 
+            lineHeight: 1 
+          }}>
             {artist?.name || id}
           </h1>
-          <p style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.3)' }}>
-            {songs.length} songs
-          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ color: '#fff', fontWeight: 700 }}>Musify Premium</span>
+            <span style={{ color: 'rgba(255,255,255,0.7)' }}>• {songs.length * 1234} monthly listeners</span>
+          </div>
         </div>
       </div>
 
-      {/* Songs */}
-      {loading ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {Array.from({ length: 10 }).map((_, i) => (
-            <div key={i} className="skeleton-pulse" style={{ height: 64, borderRadius: 12 }} />
-          ))}
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {songs.map((song, i) => (
-            <SongCard key={song.videoId} song={song} songs={songs} index={i} />
-          ))}
-        </div>
-      )}
+      {/* ─── Controls Row ─── */}
+      <div style={{ padding: '24px 32px', display: 'flex', alignItems: 'center', gap: '32px' }}>
+        <button 
+          onClick={() => songs.length > 0 && playSong(songs[0], songs, 0)}
+          style={{
+            width: '56px', height: '56px', borderRadius: '50%', background: 'var(--accent)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none',
+            cursor: songs.length > 0 ? 'pointer' : 'not-allowed', color: '#fff',
+            opacity: songs.length > 0 ? 1 : 0.5,
+            transition: 'transform 0.1s ease, background 0.2s ease',
+            boxShadow: '0 4px 12px rgba(139,92,246,0.3)'
+          }}
+          className="play-btn-big"
+        >
+          <FiPlay size={24} style={{ fill: 'currentcolor', marginLeft: '4px' }} />
+        </button>
+        
+        <button style={{ 
+          background: 'transparent', 
+          border: '1px solid rgba(255,255,255,0.3)', 
+          borderRadius: '4px', 
+          padding: '8px 16px', 
+          color: '#fff', 
+          fontSize: '12px', 
+          fontWeight: 700, 
+          textTransform: 'uppercase', 
+          letterSpacing: '1px',
+          cursor: 'pointer'
+        }}>
+          Follow
+        </button>
+      </div>
+
+      {/* ─── Songs Container ─── */}
+      <div 
+        className="glass-box"
+        style={{ 
+          padding: '32px', 
+          margin: '0 32px',
+          borderRadius: '24px',
+          overflow: 'hidden'
+        }}
+      >
+        <h2 style={{ color: '#fff', fontSize: '24px', fontWeight: 800, marginBottom: '24px' }}>Popular</h2>
+        {loading ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="skeleton-pulse" style={{ height: 64, borderRadius: 12, background: 'rgba(255,255,255,0.05)' }} />
+            ))}
+          </div>
+        ) : songs.length === 0 ? (
+          <div style={{ padding: '80px 0', textAlign: 'center', color: '#b3b3b3' }}>
+            <FiMusic size={64} style={{ marginBottom: '24px', opacity: 0.3 }} />
+            <h2 style={{ color: '#fff', fontSize: '24px', margin: '0 0 8px 0' }}>No songs found</h2>
+            <p style={{ fontSize: '14px' }}>We couldn't find any tracks for this artist right now.</p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {songs.map((song, i) => (
+              <SongCard key={song.videoId} song={song} songs={songs} index={i} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <style>{`
+        .play-btn-big:hover { transform: scale(1.08); }
+        .play-btn-big:active { transform: scale(0.95); }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        .skeleton-pulse {
+          background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 75%);
+          background-size: 200% 100%;
+          animation: pulse-bg 1.5s infinite;
+        }
+        
+        @keyframes pulse-bg {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+
+        .hover-bg-card:hover {
+          background: rgba(255,255,255,0.1) !important;
+        }
+
+        @media (max-width: 768px) {
+          div[style*="padding: 64px 32px 32px"] {
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding-top: 80px;
+          }
+          div[style*="width: 232px"] {
+            width: 180px !important;
+            height: 180px !important;
+          }
+          h1 {
+            letter-spacing: -2px !important;
+          }
+          div[style*="margin: 0 32px"] {
+            margin: 0 16px !important;
+            padding: 20px !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }

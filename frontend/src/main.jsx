@@ -22,18 +22,21 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           toastOptions={{
             duration: 3000,
             style: {
-              background: '#8B5CF6',
+              background: 'rgba(0, 0, 0, 0.5)',
               color: '#fff',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '13px',
-              fontWeight: '600',
-              fontFamily: 'var(--font)',
-              padding: '12px 20px',
-              animation: 'toastSlideUp 0.3s ease',
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              backdropFilter: 'blur(24px)',
+              WebkitBackdropFilter: 'blur(24px)',
+              borderRadius: '99px',
+              fontSize: '12px',
+              fontWeight: '700',
+              padding: '6px 16px',
+              maxWidth: '300px',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+              textAlign: 'center'
             },
             success: {
-              iconTheme: { primary: '#fff', secondary: '#8B5CF6' },
+              iconTheme: { primary: '#fff', secondary: '#000' },
             },
           }}
         />

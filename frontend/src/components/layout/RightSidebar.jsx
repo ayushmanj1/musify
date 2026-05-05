@@ -4,17 +4,9 @@ import {
   FiX, FiMoreHorizontal, FiHeart, FiPlay, FiPause, 
   FiSkipBack, FiSkipForward, FiRepeat, FiShuffle, FiClock
 } from 'react-icons/fi'
+import { Reorder, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 
-/* Fake suggested songs generator */
-function getFakeSuggestions() {
-  return [
-    { videoId: 'sug1', title: 'Midnight City', artist: 'M83', duration: 243, thumbnail: 'https://i.ytimg.com/vi/dX3k_LSd3YY/mqdefault.jpg' },
-    { videoId: 'sug2', title: 'Starboy', artist: 'The Weeknd', duration: 230, thumbnail: 'https://i.ytimg.com/vi/34Na4j8HLjc/mqdefault.jpg' },
-    { videoId: 'sug3', title: 'Blinding Lights', artist: 'The Weeknd', duration: 200, thumbnail: 'https://i.ytimg.com/vi/4NRXx6U8ABQ/mqdefault.jpg' },
-    { videoId: 'sug4', title: 'Levitating', artist: 'Dua Lipa', duration: 203, thumbnail: 'https://i.ytimg.com/vi/TUVcZfQe-Kw/mqdefault.jpg' }
-  ]
-}
 
 function fmt(s) {
   if (!s || isNaN(s)) return '0:00'
@@ -23,7 +15,7 @@ function fmt(s) {
   return `${m}:${String(sec).padStart(2, '0')}`
 }
 
-function SongRow({ song, isPlaying, isCurrent, showAdd, onClick }) {
+function SongRow({ song, isPlaying, isCurrent, showAdd, onClick, onMore }) {
   const { addToQueue } = usePlayer()
   const [added, setAdded] = useState(false)
 
@@ -88,7 +80,12 @@ function SongRow({ song, isPlaying, isCurrent, showAdd, onClick }) {
             {added ? '✓' : '+'}
           </button>
         ) : (
-          <FiMoreHorizontal size={14} color="#b3b3b3" className="row-dots" />
+          <button 
+            onClick={(e) => { e.stopPropagation(); onMore && onMore(e, song) }}
+            style={{ background: 'none', border: 'none', color: '#b3b3b3', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+          >
+            <FiMoreHorizontal size={14} color="#b3b3b3" className="row-dots" />
+          </button>
         )}
       </div>
     </div>
@@ -100,12 +97,12 @@ export default function RightSidebar() {
     currentSong, isRightSidebarOpen, setIsRightSidebarOpen, queue, queueIndex,
     isPlaying, togglePlay, playNext, playPrevious, toggleSavedSong, isSongSaved, playSong,
     shuffle, setShuffle, repeat, setRepeat,
-    sleepTimer, sleepTimerRemaining, startSleepTimer, cancelSleepTimer
+    sleepTimer, sleepTimerRemaining, startSleepTimer, cancelSleepTimer,
+    reorderQueue
   } = usePlayer()
   
   // Local state to control the fade animation independent of the width transition
   const [contentVisible, setContentVisible] = useState(isRightSidebarOpen)
-  const [suggestions, setSuggestions] = useState([])
   const sidebarScrollRef = useRef(null)
   const [isSleepTimerOpen, setIsSleepTimerOpen] = useState(false)
 
@@ -134,9 +131,6 @@ export default function RightSidebar() {
 
   const saved = currentSong ? isSongSaved(currentSong.videoId) : false
 
-  useEffect(() => {
-    setSuggestions(getFakeSuggestions())
-  }, [])
 
   const handleClose = () => {
     setContentVisible(false) // Trigger fade out
@@ -168,11 +162,11 @@ export default function RightSidebar() {
     return () => window.removeEventListener('close-right-sidebar', onExternalClose)
   }, [])
 
-  const openMenu = (e, song) => {
+  const openMenu = (e, song, fromQueue = false) => {
     e.stopPropagation()
     const rect = e.currentTarget.getBoundingClientRect()
     window.dispatchEvent(new CustomEvent('open-context-menu', {
-      detail: { x: rect.left, y: rect.bottom + 8, song }
+      detail: { x: rect.left, y: rect.bottom + 8, song, fromQueue }
     }))
   }
 
@@ -181,24 +175,27 @@ export default function RightSidebar() {
     toast('Added to queue')
   }
 
-  // Next 5 songs
+  // Next 20 songs
   const upNextList = []
   if (queue && queue.length > 0 && queueIndex >= 0) {
-    for (let i = queueIndex + 1; i < Math.min(queue.length, queueIndex + 6); i++) {
+    for (let i = queueIndex + 1; i < Math.min(queue.length, queueIndex + 21); i++) {
       upNextList.push(queue[i])
     }
   }
 
   return (
-    <div className="right-sidebar" style={{
+    <div className="right-sidebar" 
+      onClick={() => !isRightSidebarOpen && handleOpen()}
+      style={{
       position: 'relative',
       height: '100%',
-      background: !isRightSidebarOpen ? '#1e1e1e' : 'var(--bg-panel)',
+      background: !isRightSidebarOpen ? '#121212' : '#121212',
       borderLeft: !isRightSidebarOpen ? '2px solid #8B5CF6' : 'none',
       transition: 'background 0.3s ease, border-left 0.3s ease',
       display: 'flex',
       flexDirection: 'column',
-      overflow: 'hidden'
+      overflow: 'hidden',
+      cursor: !isRightSidebarOpen ? 'pointer' : 'default'
     }}>
       
       {!isRightSidebarOpen ? (
@@ -246,100 +243,67 @@ export default function RightSidebar() {
                     100% { box-shadow: 0 0 15px rgba(139,92,246,0.2); }
                   }
                 `}</style>
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
-                  <img
-                    src={currentSong.thumbnail || `https://i.ytimg.com/vi/${currentSong.videoId}/maxresdefault.jpg`}
-                    alt={currentSong.title}
-                    style={{
-                      width: '200px',
-                      height: '200px',
-                      borderRadius: '12px',
-                      objectFit: 'cover',
-                      animation: isPlaying ? 'sidebarPulse 2s infinite' : 'none',
-                      transition: 'box-shadow 0.3s ease'
-                    }}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                  <button onClick={() => toggleSavedSong(currentSong)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                    <FiHeart size={20} style={{ fill: saved ? '#8B5CF6' : 'none', color: saved ? '#8B5CF6' : '#b3b3b3' }} />
-                  </button>
-                  <div style={{ flex: 1, minWidth: 0, textAlign: 'center', padding: '0 8px' }}>
-                    <h2 className="truncate" style={{ fontSize: '15px', fontWeight: 700, color: '#fff', marginBottom: '2px' }}>
+                <div className="glass-box" style={{ borderRadius: '12px', padding: '16px', marginBottom: '24px' }}>
+                  <div style={{ position: 'relative', width: '100%', aspectRatio: '1/1', marginBottom: '20px' }}>
+                    <img
+                      src={currentSong.thumbnail || `https://i.ytimg.com/vi/${currentSong.videoId}/maxresdefault.jpg`}
+                      alt={currentSong.title}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        borderRadius: '12px',
+                        objectFit: 'cover',
+                        boxShadow: isPlaying ? '0 8px 32px rgba(139,92,246,0.3)' : '0 8px 32px rgba(0,0,0,0.5)',
+                        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
+                      }}
+                    />
+                  </div>
+                  
+                  <div style={{ textAlign: 'center' }}>
+                    <h2 className="truncate" style={{ fontSize: '18px', fontWeight: 800, color: '#fff', marginBottom: '4px' }}>
                       {currentSong.title}
                     </h2>
-                    <p className="truncate" style={{ color: '#b3b3b3', fontSize: '13px' }}>
+                    <p className="truncate" style={{ color: '#A78BFA', fontSize: '14px', fontWeight: 600 }}>
                       {currentSong.artist}
                     </p>
                   </div>
                 </div>
 
-                {/* Seek Bar */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                  <span style={{ fontSize: '11px', color: '#b3b3b3', minWidth: '30px' }}>{fmt(currentTime)}</span>
-                  <input 
-                    type="range" min="0" max={duration || 100} value={currentTime} onChange={handleSeek}
-                    style={{ flex: 1, accentColor: '#8B5CF6', height: '4px' }}
-                  />
-                  <span style={{ fontSize: '11px', color: '#b3b3b3', minWidth: '30px', textAlign: 'right' }}>{fmt(duration)}</span>
-                </div>
-
-                {/* Main Controls */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginBottom: '16px' }}>
-                  <button onClick={() => setShuffle(!shuffle)} style={{ background: 'none', border: 'none', color: shuffle ? '#8B5CF6' : '#b3b3b3', cursor: 'pointer' }}>
-                    <FiShuffle size={20} />
-                  </button>
-                  <button onClick={playPrevious} style={{ background: 'none', border: 'none', color: '#b3b3b3', cursor: 'pointer', transition: 'color 0.2s ease' }} onMouseEnter={e=>e.currentTarget.style.color='#fff'} onMouseLeave={e=>e.currentTarget.style.color='#b3b3b3'}>
-                    <FiSkipBack size={20} />
-                  </button>
-                  <button onClick={togglePlay} style={{ 
-                    background: '#fff', border: 'none', color: '#000', borderRadius: '50%',
-                    width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: 'pointer', transition: 'transform 0.1s ease'
-                  }} onMouseDown={e=>e.currentTarget.style.transform='scale(0.95)'} onMouseUp={e=>e.currentTarget.style.transform='scale(1)'} onMouseEnter={e=>e.currentTarget.style.transform='scale(1.05)'} onMouseLeave={e=>e.currentTarget.style.transform='scale(1)'}>
-                    {isPlaying ? <FiPause size={20} fill="#000" /> : <FiPlay size={20} fill="#000" style={{ marginLeft: 2 }} />}
-                  </button>
-                  <button onClick={playNext} style={{ background: 'none', border: 'none', color: '#b3b3b3', cursor: 'pointer', transition: 'color 0.2s ease' }} onMouseEnter={e=>e.currentTarget.style.color='#fff'} onMouseLeave={e=>e.currentTarget.style.color='#b3b3b3'}>
-                    <FiSkipForward size={20} />
-                  </button>
-                  <button onClick={() => setRepeat(repeat === 'none' ? 'context' : 'none')} style={{ background: 'none', border: 'none', color: repeat !== 'none' ? '#8B5CF6' : '#b3b3b3', cursor: 'pointer' }}>
-                    <FiRepeat size={20} />
-                  </button>
-                </div>
-
-
                 {/* Up Next Section */}
-                <div className="up-next-section" style={{
-                  background: 'var(--bg-card)',
+                <div className="glass-box up-next-section" style={{
                   borderRadius: '12px',
                   padding: '16px 0',
                   marginBottom: '16px'
                 }}>
-                  <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '16px', padding: '0 20px' }}>Up Next</h4>
-                  
-                  {/* Currently Playing */}
-                  <div style={{ marginBottom: '16px' }}>
-                    <p style={{ fontSize: '10px', fontWeight: 700, color: '#b3b3b3', textTransform: 'uppercase', marginBottom: '8px', paddingLeft: '20px', letterSpacing: '1px' }}>Now Playing</p>
-                    <SongRow song={currentSong} isPlaying={isPlaying} isCurrent={true} onClick={() => {}} />
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', marginBottom: '16px' }}>
+                    <h4 style={{ fontSize: '14px', fontWeight: 700, margin: 0 }}>Up Next</h4>
+                    <span style={{ fontSize: '11px', fontWeight: 600, color: '#b3b3b3', opacity: 0.6 }}>
+                      {queue.length - queueIndex - 1} Tracks Left
+                    </span>
                   </div>
-
-                  {/* Next Queue Items */}
-                  <p style={{ fontSize: '10px', fontWeight: 700, color: '#b3b3b3', textTransform: 'uppercase', marginBottom: '8px', paddingLeft: '20px', letterSpacing: '1px' }}>Next Up</p>
-                  {upNextList.map((song, i) => (
-                    <SongRow key={song.videoId || i} song={song} onClick={() => playSong(song)} />
-                  ))}
+                  
+                  <Reorder.Group 
+                    axis="y" 
+                    values={queue} 
+                    onReorder={reorderQueue}
+                    style={{ listStyle: 'none', padding: 0, margin: 0 }}
+                  >
+                    {queue.map((song, i) => {
+                      if (i <= queueIndex) return null;
+                      return (
+                        <Reorder.Item 
+                          key={song.videoId || i} 
+                          value={song}
+                          whileDrag={{ scale: 1.02, background: 'rgba(255,255,255,0.05)', zIndex: 1 }}
+                        >
+                          <SongRow song={song} onClick={() => playSong(song)} onMore={(e, s) => openMenu(e, s, true)} />
+                        </Reorder.Item>
+                      )
+                    })}
+                  </Reorder.Group>
                   {repeat !== 'context' && upNextList.length === 0 && (
                     <p style={{ textAlign: 'center', color: '#b3b3b3', fontSize: '13px', marginTop: '16px' }}>End of queue</p>
                   )}
-
-                  {/* Queue Suggestions */}
-                  <div style={{ marginTop: '24px' }}>
-                    <p style={{ fontSize: '10px', fontWeight: 700, color: '#b3b3b3', textTransform: 'uppercase', marginBottom: '12px', paddingLeft: '20px', letterSpacing: '1px' }}>Suggested For You</p>
-                    {suggestions.map((song, i) => (
-                      <SongRow key={song.videoId || i} song={song} showAdd={true} onClick={() => playSong(song)} />
-                    ))}
-                  </div>
                 </div>
               </>
             ) : (

@@ -3,11 +3,24 @@ import { usePlayer } from '../../context/PlayerContext.jsx'
 import { 
   FiChevronDown, FiHeart, FiMoreHorizontal, 
   FiShuffle, FiSkipBack, FiPlay, FiPause, FiSkipForward, FiRepeat,
-  FiVolume2, FiVolumeX, FiClock, FiMinimize2, FiSliders, FiList, FiX
+  FiVolume2, FiVolumeX, FiClock, FiMinimize2, FiSliders, FiList, FiX, FiShare2,
+  FiYoutube, FiUser, FiMusic, FiMonitor, FiExternalLink, FiMaximize2, FiDisc, FiPlusCircle
 } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import { getLyrics } from '../../utils/api.js'
-import LyricsShareCard from '../ui/LyricsShareCard.jsx'
+import { Reorder, motion, AnimatePresence } from 'framer-motion'
+import html2canvas from 'html2canvas'
+
+const SWATCHES = [
+  { name: 'Electric Purple', value: '#8B5CF6', text: 'light', glow: 'rgba(139, 92, 246, 0.5)' },
+  { name: 'Deep Teal', value: '#006466', text: 'light', glow: 'rgba(0, 100, 102, 0.5)' },
+  { name: 'Coral Flame', value: '#FF5E5B', text: 'light', glow: 'rgba(255, 94, 91, 0.5)' },
+  { name: 'Amber Gold', value: '#FFB800', text: 'dark', glow: 'rgba(255, 184, 0, 0.5)' },
+  { name: 'Midnight Navy', value: '#0A192F', text: 'light', glow: 'rgba(10, 25, 47, 0.5)' },
+  { name: 'Rose Quartz', value: '#F4A261', text: 'dark', glow: 'rgba(244, 162, 97, 0.5)' },
+  { name: 'Spotify Green', value: '#1DB954', text: 'dark', glow: 'rgba(29, 185, 84, 0.5)' },
+  { name: 'Black', value: '#000000', text: 'light', glow: 'rgba(255, 255, 255, 0.2)' },
+];
 
 function fmt(s) {
   if (!s || isNaN(s)) return '0:00'
@@ -36,7 +49,7 @@ function parseLRC(lrcContent) {
   return result.sort((a, b) => a.time - b.time)
 }
 
-function SongRow({ song, isPlaying, isCurrent, showAdd, onClick }) {
+function SongRow({ song, isPlaying, isCurrent, showAdd, onClick, onMore, addNext }) {
   const { addToQueue } = usePlayer()
   const [added, setAdded] = useState(false)
 
@@ -49,9 +62,9 @@ function SongRow({ song, isPlaying, isCurrent, showAdd, onClick }) {
   const handleAdd = (e) => {
     e.stopPropagation()
     if (added) return
-    addToQueue(song)
+    addToQueue(song, addNext)
     setAdded(true)
-    toast.success('Added to queue', { position: 'bottom-center' })
+    toast.success(addNext ? 'Playing next' : 'Added to queue', { position: 'bottom-center' })
   }
 
   return (
@@ -101,7 +114,12 @@ function SongRow({ song, isPlaying, isCurrent, showAdd, onClick }) {
             {added ? '✓' : '+'}
           </button>
         ) : (
-          <FiMoreHorizontal size={14} color="#b3b3b3" className="row-dots" />
+          <button 
+            onClick={(e) => { e.stopPropagation(); onMore && onMore(e, song) }}
+            style={{ background: 'none', border: 'none', color: '#b3b3b3', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+          >
+            <FiMoreHorizontal size={14} color="#b3b3b3" className="row-dots" />
+          </button>
         )}
       </div>
     </div>
@@ -115,7 +133,7 @@ export default function FullScreenPlayer() {
     playNext, playPrevious, toggleSavedSong, isSongSaved,
     shuffle, setShuffle, repeat, setRepeat,
     sleepTimer, sleepTimerRemaining, startSleepTimer, cancelSleepTimer,
-    recommendations, playSong, queue, queueIndex
+    recommendations, playSong, queue, queueIndex, reorderQueue
   } = usePlayer()
 
   const [visible, setVisible] = useState(isFullScreenPlayer)
@@ -128,8 +146,15 @@ export default function FullScreenPlayer() {
   const [duration, setDuration] = useState(0)
   const [volume, setVolume] = useState(1)
   const [isFsQueueOpen, setIsFsQueueOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState('queue')
+  const [swipeDirection, setSwipeDirection] = useState(0)
+  const touchStartX = useRef(0)
   const lyricsContainerRef = useRef(null)
+  const captureRef = useRef(null)
+
+  const [selectedLines, setSelectedLines] = useState([])
+  const [selectedColorIdx, setSelectedColorIdx] = useState(0)
+  const [isCapturing, setIsCapturing] = useState(false)
+  const [isShareMode, setIsShareMode] = useState(false)
 
   useEffect(() => {
     setHintSeen(localStorage.getItem('lyricsHintSeen') === 'true')
@@ -190,7 +215,7 @@ export default function FullScreenPlayer() {
 
   // Sync lyrics with time
   useEffect(() => {
-    if (!isFullScreenPlayer || !isPlaying || !isFlipped) return
+    if (!isFullScreenPlayer || !isPlaying || !isFlipped || isShareMode) return
     
     if (lyricsData.synced.length > 0) {
       let index = -1
@@ -210,7 +235,7 @@ export default function FullScreenPlayer() {
       const currentLineIdx = Math.floor(currentTime / lineDuration)
       if (currentLineIdx !== lyricsIdx) setLyricsIdx(currentLineIdx)
     }
-  }, [currentTime, duration, lyricsData, isFlipped, isPlaying, isFullScreenPlayer])
+  }, [currentTime, duration, lyricsData, isFlipped, isPlaying, isFullScreenPlayer, isShareMode])
 
   const handleClose = () => setIsFullScreenPlayer(false)
   const handleSeek = (e) => {
@@ -221,11 +246,11 @@ export default function FullScreenPlayer() {
     const audio = document.querySelector('audio') || window.__musifyAudio
     if (audio) audio.volume = Number(e.target.value)
   }
-  const openMenu = (e) => {
+  const openMenu = (e, song, fromQueue = false) => {
     e.stopPropagation()
     const rect = e.currentTarget.getBoundingClientRect()
     window.dispatchEvent(new CustomEvent('open-context-menu', {
-      detail: { x: rect.left - 200, y: rect.bottom + 8, song: currentSong }
+      detail: { x: rect.left - 200, y: rect.bottom + 8, song: song || currentSong, fromQueue }
     }))
   }
   const openEq = (e) => {
@@ -235,6 +260,88 @@ export default function FullScreenPlayer() {
   const toggleFsQueue = (e) => {
     e.stopPropagation()
     setIsFsQueueOpen(!isFsQueueOpen)
+  }
+
+  const toggleLine = (idx) => {
+    if (selectedLines.includes(idx)) {
+      setSelectedLines(selectedLines.filter(i => i !== idx))
+    } else if (selectedLines.length < 5) {
+      setSelectedLines([...selectedLines, idx].sort((a,b) => a-b))
+    } else {
+      toast.error('Maximum 5 lines allowed')
+    }
+  }
+
+  const handleCaptureShare = async () => {
+    if (selectedLines.length === 0) return
+    setIsCapturing(true)
+    try {
+      const canvas = await html2canvas(captureRef.current, {
+        scale: 3,
+        useCORS: true,
+        backgroundColor: null,
+      })
+      const imgData = canvas.toDataURL('image/png')
+      const res = await fetch(imgData)
+      const blob = await res.blob()
+      const file = new File([blob], 'Lyrics_Share.png', { type: 'image/png' })
+
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: `Lyrics from ${currentSong.title}`
+        })
+      } else {
+        const link = document.createElement('a')
+        link.download = `${currentSong.title}_Lyrics.png`
+        link.href = imgData
+        link.click()
+        toast.success('Downloaded lyrics card!')
+      }
+    } catch (err) {
+      console.error(err)
+      toast.error('Capture failed')
+    } finally {
+      setIsCapturing(false)
+      setIsShareMode(false)
+      setSelectedLines([])
+    }
+  }
+
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX
+  }
+
+  const handleTouchEnd = (e) => {
+    const touchEndX = e.changedTouches[0].clientX
+    const diff = touchStartX.current - touchEndX
+    if (Math.abs(diff) > 70) {
+      if (diff > 0) {
+        setSwipeDirection(1)
+        playNext()
+      } else {
+        setSwipeDirection(-1)
+        playPrevious()
+      }
+    }
+  }
+
+  const handleMouseDown = (e) => {
+    touchStartX.current = e.clientX
+  }
+
+  const handleMouseUp = (e) => {
+    const mouseEndX = e.clientX
+    const diff = touchStartX.current - mouseEndX
+    if (Math.abs(diff) > 100) { // Slightly higher threshold for mouse to avoid accidental skips
+      if (diff > 0) {
+        setSwipeDirection(1)
+        playNext()
+      } else {
+        setSwipeDirection(-1)
+        playPrevious()
+      }
+    }
   }
 
   if (!visible && !isFullScreenPlayer) return null
@@ -258,27 +365,30 @@ export default function FullScreenPlayer() {
       display: 'flex', flexDirection: 'column',
       color: '#fff',
       transform: isFullScreenPlayer ? 'translateY(0)' : 'translateY(100%)',
-      transition: window.innerWidth < 768 
-        ? (isFullScreenPlayer ? 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)' : 'transform 0.4s cubic-bezier(0.32, 0, 0.67, 0)')
-        : (isFullScreenPlayer ? 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)' : 'transform 0.35s ease-in'),
+      transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
       overflow: 'hidden',
       background: '#121212',
-      paddingBottom: window.innerWidth < 768 ? 'var(--safe-bottom, 0px)' : '0'
-    }}>
+      userSelect: 'none'
+    }}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
+    >
       
       {/* Background */}
       <div style={{
         position: 'absolute', inset: 0, zIndex: -2,
-        background: `radial-gradient(circle at 0% 0%, hsl(${hue}, 60%, 25%), transparent 70%), radial-gradient(circle at 100% 100%, hsl(${hue}, 80%, 10%), transparent 70%)`,
+        background: `hsl(${hue}, 35%, 15%)`,
         transition: 'background 0.8s ease'
       }} />
-      <div style={{ position: 'absolute', inset: 0, zIndex: -1, background: 'rgba(0,0,0,0.35)' }} />
+      <div style={{ position: 'absolute', inset: 0, zIndex: -1, background: 'rgba(0,0,0,0.2)' }} />
 
       {/* Suggestions Panel */}
       <div style={{
         position: 'absolute', top: '64px', right: '16px',
-        width: 'min(340px, 90vw)', height: 'calc(100% - 80px)',
-        background: 'rgba(32,32,32,0.85)', backdropFilter: 'blur(24px)',
+        width: 'min(340px, 90vw)', bottom: '135px',
+        background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(24px)',
         borderRadius: '20px', border: '1px solid rgba(255,255,255,0.1)',
         display: 'flex', flexDirection: 'column', zIndex: 10001,
         transition: 'transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.25s ease',
@@ -289,163 +399,359 @@ export default function FullScreenPlayer() {
           <span style={{ fontSize: '16px', fontWeight: 'bold' }}>Up Next</span>
           <button onClick={() => setIsFsQueueOpen(false)} style={{ background: 'none', border: 'none', color: '#b3b3b3', cursor: 'pointer', padding: '4px' }}><FiX size={24} /></button>
         </div>
-        <div style={{ padding: '12px 16px', display: 'flex', gap: '8px' }}>
-          <button onClick={() => setActiveTab('queue')} style={{ background: activeTab === 'queue' ? '#fff' : 'transparent', color: activeTab === 'queue' ? '#000' : '#b3b3b3', borderRadius: '24px', padding: '6px 16px', fontSize: '13px', fontWeight: 600, border: activeTab === 'queue' ? 'none' : '1px solid #535353', cursor: 'pointer' }}>Queue</button>
-          <button onClick={() => setActiveTab('suggestions')} style={{ background: activeTab === 'suggestions' ? '#fff' : 'transparent', color: activeTab === 'suggestions' ? '#000' : '#b3b3b3', borderRadius: '24px', padding: '6px 16px', fontSize: '13px', fontWeight: 600, border: activeTab === 'suggestions' ? 'none' : '1px solid #535353', cursor: 'pointer' }}>Suggestions</button>
-        </div>
-        <div style={{ flex: 1, overflowY: 'auto' }} className="hide-scrollbar">
-          {activeTab === 'queue' ? (
-            <div style={{ padding: '8px 0' }}>
-              <p style={{ fontSize: '10px', color: '#b3b3b3', letterSpacing: '1px', padding: '8px 20px 4px', margin: 0 }}>NOW PLAYING</p>
-              <SongRow song={currentSong} isPlaying={isPlaying} isCurrent={true} />
-              <p style={{ fontSize: '10px', color: '#b3b3b3', letterSpacing: '1px', padding: '16px 20px 4px', margin: 0 }}>NEXT UP</p>
-              {queue.slice(queueIndex + 1, queueIndex + 7).map((s, i) => <SongRow key={s.videoId || i} song={s} onClick={() => playSong(s)} />)}
-            </div>
-          ) : (
-            <div style={{ padding: '8px 0' }}>
-              <p style={{ fontSize: '10px', color: '#b3b3b3', letterSpacing: '1px', padding: '8px 20px 4px', margin: 0 }}>SUGGESTED FOR YOU</p>
-              {recommendations.slice(0, 8).map((s, i) => <SongRow key={s.videoId || i} song={s} showAdd={true} onClick={() => playSong(s)} />)}
-            </div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }} className="hide-scrollbar">
+          {/* NOW PLAYING SECTION */}
+          <p style={{ fontSize: '10px', color: '#b3b3b3', fontWeight: 700, letterSpacing: '1.5px', padding: '16px 20px 8px', margin: 0 }}>NOW PLAYING</p>
+          <SongRow song={currentSong} isPlaying={isPlaying} isCurrent={true} onMore={(e, s) => openMenu(e, s)} />
+          
+          {/* QUEUE SECTION */}
+          {queue.length > queueIndex + 1 && (
+            <>
+              <p style={{ fontSize: '10px', color: '#b3b3b3', fontWeight: 700, letterSpacing: '1.5px', padding: '24px 20px 8px', margin: 0 }}>UP NEXT</p>
+              <Reorder.Group 
+                axis="y" 
+                values={queue} 
+                onReorder={reorderQueue}
+                style={{ listStyle: 'none', padding: 0, margin: 0 }}
+              >
+                {queue.map((s, i) => {
+                  if (i <= queueIndex) return null;
+                  return (
+                    <Reorder.Item 
+                      key={s.videoId || i} 
+                      value={s}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      whileDrag={{ scale: 1.05, boxShadow: '0 8px 24px rgba(0,0,0,0.3)', zIndex: 1 }}
+                    >
+                      <SongRow song={s} onClick={() => { setSwipeDirection(1); playSong(s) }} onMore={(e, s2) => openMenu(e, s2, true)} />
+                    </Reorder.Item>
+                  )
+                })}
+              </Reorder.Group>
+            </>
+          )}
+
+          {/* SUGGESTIONS SECTION */}
+          {recommendations.length > 0 && (
+            <>
+              <p style={{ fontSize: '10px', color: '#b3b3b3', fontWeight: 700, letterSpacing: '1.5px', padding: '24px 20px 8px', margin: 0 }}>SUGGESTED FOR YOU</p>
+              {recommendations.slice(0, 15).map((s, i) => (
+                <SongRow key={s.videoId || i} song={s} showAdd={true} addNext={true} onClick={() => { setSwipeDirection(1); playSong(s) }} />
+              ))}
+            </>
           )}
         </div>
       </div>
 
       {/* Top Bar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: window.innerWidth < 768 ? '16px 16px 0' : '0 24px', height: '56px', flexShrink: 0 }}>
-        <button onClick={handleClose} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '8px' }}>
-          <FiChevronDown size={window.innerWidth < 768 ? 28 : 24}/>
-        </button>
-        <div style={{ textAlign: 'center' }}>
-          <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', letterSpacing: window.innerWidth < 768 ? '1.5px' : '1px', margin: 0, fontWeight: window.innerWidth < 768 ? 800 : 400 }}>PLAYING FROM</p>
-          <p style={{ fontSize: '13px', fontWeight: window.innerWidth < 768 ? 800 : 700, margin: 0 }}>{window.innerWidth < 768 ? currentSong.artist : 'Premium Player'}</p>
+      <div style={{ 
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
+        padding: '0 24px', height: '64px', flexShrink: 0,
+        background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(20px)',
+        borderBottom: '1px solid rgba(255,255,255,0.05)'
+      }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p className="truncate" style={{ fontSize: '13px', fontWeight: 700, margin: 0, opacity: 0.9 }}>{currentSong.album || 'Premium Player'}</p>
         </div>
-        <button onClick={openMenu} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '8px' }}><FiMoreHorizontal size={24} /></button>
-      </div>
-
-      {/* Main Container - Ensuring Bottom Icons are visible */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '0 24px 20px 24px', overflow: 'hidden' }}>
         
-        {/* Album Art / Lyrics Row */}
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button style={{ background: 'none', border: 'none', color: '#fff', opacity: 0.7, cursor: 'pointer', padding: '8px' }}><FiDisc size={18} /></button>
+          <button style={{ background: 'none', border: 'none', color: '#fff', opacity: 0.7, cursor: 'pointer', padding: '8px' }}><FiYoutube size={18} /></button>
+          <button style={{ background: 'none', border: 'none', color: '#fff', opacity: 0.7, cursor: 'pointer', padding: '8px' }}><FiUser size={18} /></button>
+          <button onClick={(e) => openMenu(e, currentSong)} style={{ background: 'none', border: 'none', color: '#fff', opacity: 0.7, cursor: 'pointer', padding: '8px' }}><FiMoreHorizontal size={18} /></button>
+          <button onClick={handleClose} style={{ background: 'none', border: 'none', color: '#fff', opacity: 0.7, cursor: 'pointer', padding: '8px' }}><FiMaximize2 size={18} /></button>
+        </div>
+      </div>      {/* Main Container */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto' }} className="hide-scrollbar">
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          {/* Large Album Art */}
           <div 
-            onClick={() => {
-              setIsFlipped(!isFlipped)
-              if (!hintSeen) { setHintSeen(true); localStorage.setItem('lyricsHintSeen', 'true'); }
-            }}
             style={{ 
-              width: window.innerWidth < 768 ? '85vw' : 'min(300px, 75vw)', 
-              aspectRatio: '1/1', 
-              position: 'relative', 
-              cursor: 'pointer', 
-              perspective: '1200px' 
+              width: 'min(400px, 80vw)', aspectRatio: '1/1', position: 'relative', 
+              perspective: '1200px',
+              cursor: 'pointer'
             }}
           >
-            <div style={{
-              width: '100%', height: '100%', position: 'absolute', transformStyle: 'preserve-3d', 
-              transition: 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)', 
-              transform: isFlipped ? 'rotateY(-180deg)' : 'rotateY(0deg)'
-            }}>
-              <div style={{ position: 'absolute', inset: 0, backfaceVisibility: 'hidden', borderRadius: '20px', overflow: 'hidden', animation: isPlaying && !isFlipped ? 'pulseGlow 3s infinite ease-in-out' : 'none', boxShadow: '0 12px 48px rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                <img src={thumb} style={{width:'100%', height:'100%', objectFit:'cover'}} alt="" />
-              </div>
-              <div 
-                ref={lyricsContainerRef}
-                style={{
-                  position: 'absolute', inset: 0, backfaceVisibility: 'hidden',
-                  borderRadius: '24px', 
-                  background: `linear-gradient(45deg, #FF3366, #33CCFF, #FFD700, #8B5CF6)`,
-                  backgroundSize: '400% 400%',
-                  animation: 'vibrantGradient 15s ease infinite',
-                  backdropFilter: 'blur(10px)',
-                  transform: 'rotateY(180deg)', overflowY: 'auto', padding: '40px 24px',
-                  display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center',
-                  boxShadow: '0 16px 64px rgba(0,0,0,0.6)',
-                  border: '1px solid rgba(255,255,255,0.3)'
-                }} className="hide-scrollbar"
+            <AnimatePresence mode="wait" initial={false} custom={swipeDirection}>
+              <motion.div
+                key={currentSong?.videoId}
+                custom={swipeDirection}
+                variants={{
+                  enter: (direction) => ({
+                    x: direction > 0 ? 1000 : -1000,
+                    opacity: 0,
+                    scale: 0.5,
+                    rotateY: direction > 0 ? 45 : -45
+                  }),
+                  center: {
+                    x: 0,
+                    opacity: 1,
+                    scale: 1,
+                    rotateY: 0,
+                    transition: {
+                      x: { type: "spring", stiffness: 300, damping: 30 },
+                      opacity: { duration: 0.2 },
+                      rotateY: { duration: 0.4 }
+                    }
+                  },
+                  exit: (direction) => ({
+                    x: direction > 0 ? -1000 : 1000,
+                    opacity: 0,
+                    scale: 0.5,
+                    rotateY: direction > 0 ? -45 : 45,
+                    transition: {
+                      x: { type: "spring", stiffness: 300, damping: 30 },
+                      opacity: { duration: 0.2 }
+                    }
+                  })
+                }}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                style={{ width: '100%', height: '100%', position: 'absolute' }}
+                onClick={() => setIsFlipped(!isFlipped)}
               >
-                {isLyricsLoading ? (
-                  <div style={{ textAlign: 'center', color: '#b3b3b3', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <div className="lyrics-loader" />
-                    <p style={{ marginTop: '16px', fontSize: '13px', fontWeight: 600 }}>SYNCING...</p>
+                <div style={{
+                  width: '100%', height: '100%', position: 'absolute', transformStyle: 'preserve-3d', 
+                  transition: 'transform 0.8s cubic-bezier(0.4,0,0.2,1)', transform: isFlipped ? 'rotateY(-180deg)' : 'rotateY(0deg)'
+                }}>
+                  <div style={{ position: 'absolute', inset: 0, backfaceVisibility: 'hidden', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 20px 80px rgba(0,0,0,0.6)' }}>
+                    <img src={thumb} style={{width:'100%', height:'100%', objectFit:'cover'}} alt="" />
                   </div>
-                ) : activeLyrics.length > 0 ? (
-                  activeLyrics.map((l, i) => (
-                    <p key={i} id={`lyric-line-${i}`} style={{
-                      fontSize: i === lyricsIdx ? '20px' : '16px', fontWeight: i === lyricsIdx ? '800' : '600',
-                      color: i === lyricsIdx ? '#fff' : 'rgba(255,255,255,0.3)', textAlign: 'center', margin: 0, 
-                      transition: 'all 0.4s ease', fontFamily: "'Outfit', sans-serif", lineHeight: '1.4',
-                      filter: i === lyricsIdx ? 'drop-shadow(0 0 10px rgba(255,255,255,0.3))' : 'none'
-                    }}>{l.text}</p>
-                  ))
-                ) : (
-                  <div style={{ textAlign: 'center', color: '#b3b3b3', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <span style={{ fontSize: '40px', display: 'block', marginBottom: '12px' }}>🎻</span>
-                    <p style={{ fontSize: '14px', fontWeight: 600 }}>No lyrics</p>
+                  <div 
+                    ref={lyricsContainerRef}
+                    style={{
+                      position: 'absolute', inset: 0, backfaceVisibility: 'hidden',
+                      borderRadius: '12px', 
+                      background: isShareMode ? SWATCHES[selectedColorIdx].value : 'rgba(255,255,255,0.1)',
+                      color: isShareMode ? (SWATCHES[selectedColorIdx].text === 'light' ? '#fff' : '#000') : '#fff',
+                      backdropFilter: isShareMode ? 'none' : 'blur(30px)',
+                      transform: 'rotateY(180deg)', overflowY: 'auto', padding: '40px 24px',
+                      display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center',
+                      boxShadow: '0 16px 64px rgba(0,0,0,0.6)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
+                    }} className="hide-scrollbar"
+                  >
+                    {isLyricsLoading ? (
+                      <div style={{ textAlign: 'center', color: '#b3b3b3', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                        <div className="lyrics-loader" />
+                      </div>
+                    ) : activeLyrics.length > 0 ? (
+                      activeLyrics.map((l, i) => {
+                        const isSelected = selectedLines.includes(i)
+                        const textColor = isShareMode ? (SWATCHES[selectedColorIdx].text === 'light' ? '#fff' : '#000') : '#fff';
+                        const secondaryColor = isShareMode ? (SWATCHES[selectedColorIdx].text === 'light' ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)') : 'rgba(255,255,255,0.4)';
+                        
+                        return (
+                          <p 
+                            key={i} 
+                            id={`lyric-line-${i}`} 
+                            onClick={(e) => {
+                              if (isShareMode) {
+                                e.stopPropagation()
+                                toggleLine(i)
+                              }
+                            }}
+                            style={{
+                              fontSize: i === lyricsIdx || isSelected ? '20px' : '16px', 
+                              fontWeight: i === lyricsIdx || isSelected ? '800' : '600',
+                              color: isSelected ? textColor : (i === lyricsIdx ? textColor : secondaryColor),
+                              textAlign: 'center', margin: 0, 
+                              transition: 'all 0.4s ease', lineHeight: '1.4',
+                              cursor: isShareMode ? 'pointer' : 'default',
+                              padding: '8px 16px',
+                              borderRadius: '12px',
+                              background: isSelected ? (isShareMode ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)') : 'none',
+                              boxShadow: isSelected ? '0 4px 12px rgba(0,0,0,0.1)' : 'none',
+                              transform: isSelected ? 'scale(1.05)' : 'scale(1)',
+                            }}
+                          >
+                            {l.text}
+                          </p>
+                        )
+                      })
+                    ) : (
+                      <div style={{ textAlign: 'center', color: '#b3b3b3', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                        <p>No lyrics found</p>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
+              </motion.div>
+            </AnimatePresence>
+        </div>
+        
+        {/* Selection / Color Palette Toolbar */}
+        <AnimatePresence>
+          {isFlipped && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              style={{ 
+                position: 'absolute', bottom: '140px', left: '0', right: '0',
+                zIndex: 1000, display: 'flex', justifyContent: 'center',
+                pointerEvents: 'none'
+              }}
+            >
+              <div style={{ 
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                pointerEvents: 'auto', position: 'relative'
+              }}>
+                <AnimatePresence>
+                  {isShareMode && (
+                    <motion.div
+                      initial={{ opacity: 0, x: 20, scale: 0.8 }}
+                      animate={{ opacity: 1, x: 0, scale: 1 }}
+                      exit={{ opacity: 0, x: 20, scale: 0.8 }}
+                      style={{ 
+                        display: 'flex', gap: '8px', alignItems: 'center', 
+                        position: 'absolute', right: 'calc(100% + 12px)', top: '50%', transform: 'translateY(-50%)',
+                        background: 'rgba(20,20,20,0.85)', backdropFilter: 'blur(32px)',
+                        padding: '8px 16px', borderRadius: '32px', border: '1px solid rgba(255,255,255,0.1)',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.4)', whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {SWATCHES.map((swatch, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setSelectedColorIdx(idx)}
+                          style={{
+                            width: '20px', height: '20px', borderRadius: '50%', background: swatch.value,
+                            border: selectedColorIdx === idx ? '2px solid #fff' : '2px solid transparent',
+                            cursor: 'pointer', transition: 'all 0.2s ease',
+                          }}
+                        />
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <button 
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    if (!isShareMode) setIsShareMode(true);
+                    else if (selectedLines.length > 0) handleCaptureShare();
+                    else setIsShareMode(false);
+                  }}
+                  style={{
+                    background: isShareMode ? SWATCHES[selectedColorIdx].value : 'rgba(255,255,255,0.15)', 
+                    backdropFilter: isShareMode ? 'none' : 'blur(12px)',
+                    border: '1px solid rgba(255,255,255,0.1)', borderRadius: '24px',
+                    padding: '8px 20px', 
+                    color: isShareMode ? (SWATCHES[selectedColorIdx].text === 'light' ? '#fff' : '#000') : '#fff', 
+                    fontWeight: 800, fontSize: '12px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', 
+                    cursor: 'pointer', boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+                    transition: 'all 0.3s ease',
+                    position: 'relative', zIndex: 2
+                  }}
+                  className="zoom-hover"
+                >
+                  {isCapturing ? '...' : (isShareMode ? (selectedLines.length > 0 ? <><FiShare2 size={14}/> Share</> : <><FiX size={14}/> Cancel</>) : <><FiShare2 size={14}/> Share Lyrics</>)}
+                </button>
               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Hidden Capture Target */}
+        <div 
+          ref={captureRef}
+          style={{ 
+            position: 'absolute', top: '-2000px', left: '-2000px',
+            width: '400px', height: '500px',
+            background: SWATCHES[selectedColorIdx].value,
+            color: SWATCHES[selectedColorIdx].text === 'light' ? '#fff' : '#000',
+            padding: '40px', borderRadius: '24px', display: 'flex', flexDirection: 'column',
+            zIndex: -100
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '32px' }}>
+            <img src={thumb} style={{ width: '64px', height: '64px', borderRadius: '12px' }} crossOrigin="anonymous" />
+            <div>
+              <h4 style={{ margin: 0, fontSize: '20px', fontWeight: 800 }}>{currentSong.title}</h4>
+              <p style={{ margin: '4px 0 0 0', fontSize: '14px', opacity: 0.8 }}>{currentSong.artist}</p>
             </div>
+          </div>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '16px' }}>
+            {selectedLines.map(idx => (
+              <p key={idx} style={{ margin: 0, fontSize: '22px', fontWeight: 700, lineHeight: 1.3 }}>
+                {activeLyrics[idx]?.text}
+              </p>
+            ))}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: 0.6, marginTop: '24px' }}>
+            <FiMusic size={20} />
+            <span style={{ fontSize: '16px', fontWeight: 900, letterSpacing: '4px' }}>MUSIFY</span>
+          </div>
+        </div>
+      </div>
+      </div>
+
+      {/* Bottom Controls Bar */}
+      <div style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(20px)', padding: '20px 32px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+          {/* Left: Song Info */}
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '16px', minWidth: 0 }}>
+            <img src={thumb} style={{ width: '56px', height: '56px', borderRadius: '4px', objectFit: 'cover' }} alt="" />
+            <div style={{ minWidth: 0 }}>
+              <p className="truncate" style={{ margin: 0, fontSize: '15px', fontWeight: 800 }}>{currentSong.title}</p>
+              <p className="truncate" style={{ margin: '4px 0 0 0', fontSize: '13px', opacity: 0.6 }}>{currentSong.artist}</p>
+            </div>
+            <button onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('open-context-menu', { detail: { x: e.clientX, y: e.clientY - 200, song: currentSong, type: 'song' } })) }} style={{ background: 'none', border: 'none', color: '#fff', opacity: 0.7, cursor: 'pointer', padding: '8px' }}>
+              <FiPlusCircle size={20} />
+            </button>
+            <button onClick={() => toggleSavedSong(currentSong)} style={{ background: 'none', border: 'none', color: saved ? '#8B5CF6' : '#fff', cursor: 'pointer', padding: '8px' }}>
+              <FiHeart size={20} style={{ fill: saved ? '#8B5CF6' : 'none', opacity: saved ? 1 : 0.4 }} />
+            </button>
+          </div>
+
+          {/* Center: Playback Controls */}
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '24px' }}>
+            <button onClick={() => setShuffle(!shuffle)} style={{ background: 'none', border: 'none', color: shuffle ? '#8B5CF6' : '#fff', opacity: shuffle ? 1 : 0.4, cursor: 'pointer' }}><FiShuffle size={18} /></button>
+            <button onClick={() => { setSwipeDirection(-1); playPrevious() }} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}><FiSkipBack size={24} /></button>
+            <button onClick={togglePlay} style={{ background: '#fff', border: 'none', borderRadius: '50%', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>{isPlaying ? <FiPause size={24} color="#000" /> : <FiPlay size={24} color="#000" style={{ marginLeft: 3 }} />}</button>
+            <button onClick={() => { setSwipeDirection(1); playNext() }} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}><FiSkipForward size={24} /></button>
+            <button onClick={() => setRepeat(repeat === 'none' ? 'context' : 'none')} style={{ background: 'none', border: 'none', color: repeat !== 'none' ? '#8B5CF6' : '#fff', opacity: repeat !== 'none' ? 1 : 0.4, cursor: 'pointer' }}><FiRepeat size={18} /></button>
+          </div>
+
+          {/* Right: Utility Controls */}
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
+            <button onClick={() => setIsFlipped(!isFlipped)} style={{ background: 'none', border: 'none', color: isFlipped ? '#8B5CF6' : '#fff', opacity: isFlipped ? 1 : 0.6, cursor: 'pointer', padding: '8px' }}><FiMusic size={18} /></button>
+            <button onClick={toggleFsQueue} style={{ background: 'none', border: 'none', color: isFsQueueOpen ? '#8B5CF6' : '#fff', opacity: isFsQueueOpen ? 1 : 0.6, cursor: 'pointer', padding: '8px' }}><FiList size={18} /></button>
+            <button onClick={handleClose} style={{ background: 'none', border: 'none', color: '#fff', opacity: 0.6, cursor: 'pointer', padding: '8px' }}><FiMinimize2 size={20} /></button>
+            <button onClick={() => {
+              if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+              } else {
+                document.exitFullscreen();
+              }
+            }} style={{ background: 'none', border: 'none', color: '#fff', opacity: 0.6, cursor: 'pointer', padding: '8px' }}><FiMonitor size={18} /></button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100px', marginLeft: '8px' }}>
+              <FiVolume2 size={16} style={{ opacity: 0.6 }} />
+              <input type="range" min="0" max="1" step="0.01" value={volume} onChange={handleVolume} className="fs-vol-slider" style={{ flex: 1, height: '4px', borderRadius: '2px', appearance: 'none', background: `linear-gradient(to right, #fff ${volume * 100}%, rgba(255,255,255,0.2) ${volume * 100}%)`, cursor: 'pointer' }} />
+            </div>
+            <button style={{ background: 'none', border: 'none', color: '#fff', opacity: 0.6, cursor: 'pointer', padding: '8px' }}><FiExternalLink size={18} /></button>
           </div>
         </div>
 
-        {/* Info & Controls - These will stay visible */}
-        <div style={{ width: '100%', maxWidth: '440px', margin: '0 auto', flexShrink: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: window.innerWidth < 768 ? '12px' : '8px' }}>
-            <button onClick={toggleFsQueue} style={{ background: 'none', border: 'none', color: isFsQueueOpen ? '#8B5CF6' : '#fff', opacity: 0.8, cursor: 'pointer', padding: window.innerWidth < 768 ? '0' : '8px', display: 'flex', alignItems: 'center' }}>
-              <FiList size={22} />
-            </button>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div onClick={(e) => e.stopPropagation()}>
-                <LyricsShareCard song={currentSong} lyrics={activeLyrics} />
-              </div>
-              {window.innerWidth < 768 && (
-                <button onClick={openEq} style={{ background: 'none', border: 'none', color: '#fff', opacity: 0.8, cursor: 'pointer' }}>
-                  <FiSliders size={22} />
-                </button>
-              )}
-              {window.innerWidth >= 768 && (
-                <button onClick={() => toggleSavedSong(currentSong)} style={{ background: 'none', border: 'none', color: saved ? '#8B5CF6' : '#fff', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                  <FiHeart size={22} style={{ fill: saved ? '#8B5CF6' : 'none', opacity: saved ? 1 : 0.4 }} />
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: window.innerWidth < 768 ? '20px' : '16px' }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <h1 className="truncate" style={{ fontSize: window.innerWidth < 768 ? '24px' : '20px', fontWeight: window.innerWidth < 768 ? '900' : '800', margin: window.innerWidth < 768 ? '0 0 4px 0' : '0 0 2px 0', letterSpacing: window.innerWidth < 768 ? '-0.02em' : 'normal' }}>{currentSong.title}</h1>
-              <p className="truncate" style={{ fontSize: window.innerWidth < 768 ? '16px' : '14px', color: window.innerWidth < 768 ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.5)', fontWeight: 600, margin: 0 }}>{currentSong.artist}</p>
-            </div>
-            {window.innerWidth < 768 && (
-              <button onClick={() => toggleSavedSong(currentSong)} style={{ background: 'none', border: 'none', color: saved ? '#8B5CF6' : '#fff', padding: '12px', cursor: 'pointer' }}>
-                <FiHeart size={28} style={{ fill: saved ? '#8B5CF6' : 'none', opacity: saved ? 1 : 0.5 }} />
-              </button>
-            )}
-          </div>
-
-          <div style={{ marginBottom: '20px' }}>
+        {/* Progress Bar */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span style={{ fontSize: '11px', opacity: 0.5, fontWeight: 700, width: '35px' }}>{fmt(currentTime)}</span>
+          <div style={{ flex: 1, position: 'relative', height: '12px', display: 'flex', alignItems: 'center' }}>
             <input type="range" min="0" max={duration || 100} value={currentTime} onChange={handleSeek} className="fs-seek-slider" style={{ width: '100%', height: '4px', borderRadius: '2px', appearance: 'none', outline: 'none', background: `linear-gradient(to right, #fff ${(currentTime / (duration || 100)) * 100}%, rgba(255,255,255,0.15) ${(currentTime / (duration || 100)) * 100}%)`, cursor: 'pointer' }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>{fmt(currentTime)}</span>
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>{fmt(duration)}</span>
-            </div>
           </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-            <button onClick={() => setShuffle(!shuffle)} style={{ background: 'none', border: 'none', color: shuffle ? '#8B5CF6' : '#fff', opacity: shuffle ? 1 : 0.4, cursor: 'pointer' }}><FiShuffle size={20} /></button>
-            <button onClick={playPrevious} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}><FiSkipBack size={26} /></button>
-            <button onClick={togglePlay} style={{ background: '#fff', border: 'none', borderRadius: '50%', width: '64px', height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 8px 24px rgba(0,0,0,0.3)' }}>{isPlaying ? <FiPause size={28} color="#000" /> : <FiPlay size={28} color="#000" style={{ marginLeft: 4 }} />}</button>
-            <button onClick={playNext} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}><FiSkipForward size={26} /></button>
-            <button onClick={() => setRepeat(repeat === 'none' ? 'context' : 'none')} style={{ background: 'none', border: 'none', color: repeat !== 'none' ? '#8B5CF6' : '#fff', opacity: repeat !== 'none' ? 1 : 0.4, cursor: 'pointer' }}><FiRepeat size={20} /></button>
-          </div>
-
-
+          <span style={{ fontSize: '11px', opacity: 0.5, fontWeight: 700, width: '35px', textAlign: 'right' }}>{fmt(duration)}</span>
         </div>
       </div>
 
       <style>{`
         .fs-bottom-btn { background: none; border: none; color: #fff; cursor: pointer; transition: all 0.2s; padding: 8px; }
-        .fs-bottom-btn:hover { transform: scale(1.15); opacity: 1 !important; }
+        .fs-bottom-btn:hover { transform: scale(1.04) !important; opacity: 1 !important; }
         @keyframes eqBar { from { height: 4px; } to { height: 14px; } }
         .eq-bar { width: 3px; border-radius: 2px; background: #8B5CF6; animation: eqBar 0.6s ease-in-out infinite alternate; }
         @keyframes pulseGlow { 0% { box-shadow: 0 0 30px rgba(139,92,246,0.2); } 50% { box-shadow: 0 0 80px rgba(139,92,246,0.3); } 100% { box-shadow: 0 0 30px rgba(139,92,246,0.2); } }

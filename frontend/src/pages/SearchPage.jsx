@@ -14,7 +14,19 @@ const CATEGORIES = [
   { name: 'Synthwave', color: '#4B0082', emoji: '🌃' },
   { name: 'Acoustic', color: '#BC5900', emoji: '🪵' },
   { name: 'Workout', color: '#E91429', emoji: '💪' },
-  { name: 'Focus', color: '#8B5CF6', emoji: '🧠' }
+  { name: 'Focus', color: '#8B5CF6', emoji: '🧠' },
+  { name: 'Chill', color: '#1E3264', emoji: '🧊' },
+  { name: 'Party', color: '#AF2896', emoji: '🎉' },
+  { name: 'Sleep', color: '#1E3264', emoji: '😴' },
+  { name: 'Gaming', color: '#0D73EC', emoji: '🎮' },
+  { name: 'Indie', color: '#E91429', emoji: '🎸' },
+  { name: 'Soul', color: '#BC5900', emoji: '🔥' },
+  { name: 'Romance', color: '#E91429', emoji: '💖' },
+  { name: 'K-Pop', color: '#AF2896', emoji: '🇰🇷' },
+  { name: 'Metal', color: '#1E3264', emoji: '🤘' },
+  { name: 'Country', color: '#BC5900', emoji: '🤠' },
+  { name: 'Blues', color: '#0D73EC', emoji: '🎸' },
+  { name: 'Reggae', color: '#148A08', emoji: '🦁' }
 ]
 
 export default function SearchPage() {
@@ -81,15 +93,15 @@ export default function SearchPage() {
   const isEmpty = searchQuery.trim().length === 0
 
   return (
-    <div style={{ padding: window.innerWidth < 768 ? '16px 16px 120px' : '24px 32px', minHeight: '100%' }}>
+    <div style={{ padding: '24px 32px', minHeight: '100%' }}>
       
       {/* STATE 1: BROWSE CATEGORIES */}
-      <div style={{ display: isEmpty ? 'block' : 'none' }}>
+      <div style={{ display: isEmpty ? 'block' : 'none', background: '#121212', borderRadius: '12px', padding: '24px' }}>
         <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#fff', marginBottom: '24px' }}>Browse all</h1>
         <div style={{
           display: 'grid',
-          gridTemplateColumns: window.innerWidth < 768 ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(180px, 1fr))',
-          gap: window.innerWidth < 768 ? '12px' : '16px'
+          gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+          gap: '16px'
         }}>
           {CATEGORIES.map(cat => (
             <div 
@@ -119,9 +131,16 @@ export default function SearchPage() {
           {results.songs.length > 0 ? (
             <div style={{ animation: 'staggerIn 0.25s ease forwards' }}>
               <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#fff', marginBottom: '20px' }}>Songs</h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', 
+                gap: '20px',
+                background: '#121212',
+                padding: '24px',
+                borderRadius: '12px'
+              }}>
                 {results.songs.map((song, i) => (
-                  <div key={song.videoId} className="song-result-row" 
+                  <div key={song.videoId} className="search-song-card" 
                     onClick={() => playSong(song, results.songs, i)} 
                     onContextMenu={(e) => {
                       e.preventDefault();
@@ -130,20 +149,32 @@ export default function SearchPage() {
                       }));
                     }}
                     style={{
-                    display: 'flex', alignItems: 'center', gap: '16px', height: '56px', padding: '0 12px', borderRadius: '8px', cursor: 'pointer', transition: 'background 0.2s'
-                  }}>
-                    <div style={{ width: '40px', height: '40px', borderRadius: '4px', background: `hsl(${song.title.charCodeAt(0)*37%360}, 40%, 25%)`, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {song.thumbnail ? (
-                        <img src={song.thumbnail} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '4px' }} />
-                      ) : (
-                        <span style={{ fontSize: '18px' }}>{song.emoji || '♪'}</span>
-                      )}
+                      background: 'rgba(255,255,255,0.05)',
+                      padding: '16px',
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease',
+                      position: 'relative',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '12px'
+                    }}
+                  >
+                    <div style={{ position: 'relative', aspectRatio: '1/1', overflow: 'hidden', borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.3)' }}>
+                      <img src={song.thumbnail} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <div className="search-card-play-btn" style={{
+                        position: 'absolute', bottom: '8px', right: '8px',
+                        width: '40px', height: '40px', borderRadius: '50%', background: '#8B5CF6',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        opacity: 0, transform: 'translateY(10px)', transition: 'all 0.2s'
+                      }}>
+                        <FiPlay size={18} style={{ fill: '#fff', color: '#fff', marginLeft: '2px' }} />
+                      </div>
                     </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p className="truncate" style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#fff' }}>{song.title}</p>
-                      <p className="truncate" style={{ margin: 0, fontSize: '13px', color: '#b3b3b3' }}>{song.artist}</p>
+                    <div style={{ minWidth: 0 }}>
+                      <p className="truncate" style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#fff' }}>{song.title}</p>
+                      <p className="truncate" style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#b3b3b3' }}>{song.artist}</p>
                     </div>
-                    <span style={{ fontSize: '13px', color: '#b3b3b3', flexShrink: 0 }}>{song.duration}</span>
                   </div>
                 ))}
               </div>
@@ -161,14 +192,16 @@ export default function SearchPage() {
       )}
 
       <style>{`
-        .category-card:hover { filter: brightness(1.15); transform: scale(1.02); }
-        .top-result-card:hover { background: #333333 !important; }
-        .top-result-card:hover .premium-play-btn { opacity: 1; transform: translateY(0); }
-        .song-result-row:hover { background: #282828; }
-        .search-card:hover { background: #282828 !important; }
-        .search-card:hover .premium-play-btn-mini { opacity: 1; transform: translateY(0); }
-        .horizontal-scroll::-webkit-scrollbar { display: none; }
-        .horizontal-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+        .category-card:hover { filter: brightness(1.15); transform: scale(1.04) !important; }
+        .search-song-card:hover { 
+          background: rgba(255,255,255,0.1) !important; 
+          transform: scale(1.04) !important;
+          box-shadow: 0 12px 24px rgba(0,0,0,0.3);
+        }
+        .search-song-card:hover .search-card-play-btn {
+          opacity: 1 !important;
+          transform: translateY(0) !important;
+        }
         
         @keyframes staggerIn {
           from { opacity: 0; transform: translateY(10px); }

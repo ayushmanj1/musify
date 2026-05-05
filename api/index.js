@@ -1,18 +1,12 @@
 /**
- * MUSIFY BACKEND v3.0 — youtubei.js Edition
+ * MUSIFY BACKEND v4.0 — yt-dlp & play-dl Edition
  * ─────────────────────────────────────────────
  * REWRITE:
- * - Replaced ALL 6 YouTube libraries with a single `youtubei.js`
- * - Uses YouTube's InnerTube API (same API the YT app uses)
- * - ANDROID client for direct stream URLs (no signature deciphering)
- * - Real "Up Next" recommendations from YouTube's own algorithm
- * - Singleton Innertube instance with auto-reconnect
- * - ~3-5x faster stream extraction (no Python subprocess)
- * - LRU cache (100 streams, 200 searches) with TTL
- * - Compression (gzip) on all routes
- * - Unlimited streaming (Rate limit removed)
- * - Auto-retry with exponential backoff
- * - Keep-alive connections
+ * - Removed youtubei.js entirely (No more "Innertube" logs)
+ * - Uses yt-dlp (via youtube-dl-exec) as the primary stream extractor
+ * - Uses play-dl for fast, reliable search & metadata
+ * - Retains LRU cache for high performance
+ * - Optimization: Direct stream proxying with custom headers to prevent 403s
  */
 
 import express from 'express'
@@ -21,7 +15,7 @@ import dotenv from 'dotenv'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import compression from 'compression'
-import { Innertube } from 'youtubei.js'
+import play from 'play-dl'
 import { LRUCache } from 'lru-cache'
 import { Readable } from 'stream'
 import os from 'os'
@@ -69,34 +63,12 @@ async function withRetry(fn, retries = 2, baseDelay = 200) {
   }
 }
 
-// ─── Singleton Innertube Instances ───
-// WEB client for search & related videos, ANDROID client for stream URLs
-let ytWeb = null
-let ytAndroid = null
-
-async function getYtWeb() {
-  if (!ytWeb) {
-    ytWeb = await Innertube.create()
-    console.log('✅ Innertube WEB client initialized')
-  }
-  return ytWeb
-}
-
-async function getYtAndroid() {
-  if (!ytAndroid) {
-    ytAndroid = await Innertube.create({ client_type: 'ANDROID' })
-    console.log('✅ Innertube ANDROID client initialized')
-  }
-  return ytAndroid
-}
-
-// Pre-initialize both clients at startup
-async function initClients() {
+// ─── Play-DL Initialization ───
+async function initPlayDl() {
   try {
-    await getYtWeb()
-    await getYtAndroid()
+    console.log('✅ play-dl search engine initialized')
   } catch (err) {
-    console.error('⚠️ Failed to pre-init Innertube clients:', err.message)
+    console.error('⚠️ play-dl init error:', err.message)
   }
 }
 
@@ -117,25 +89,22 @@ function parseDurationText(text) {
   return 0
 }
 
-// ─── Search Helper (youtubei.js InnerTube) ───
+// ─── Search Helper (play-dl) ───
 async function performSearch(query, limit = 20) {
   try {
-    const yt = await getYtWeb()
-
     const musicQuery = query.toLowerCase().includes('song') || query.toLowerCase().includes('music')
       ? query
       : `${query} song`
 
-    const search = await withRetry(() => yt.search(musicQuery, { type: 'video' }), 3, 300)
-
-    const videos = search.results || []
+    const videos = await withRetry(() => play.search(musicQuery, { 
+      limit: limit + 10,
+      source: { youtube: 'video' }
+    }), 3, 300)
 
     const formattedResults = videos
       .filter(v => {
-        if (v.type !== 'Video') return false
-        const title = (v.title?.text || '').toLowerCase()
-        const durSec = parseDurationText(v.duration?.text)
-        if (durSec < 60) return false
+        const title = (v.title || '').toLowerCase()
+        if (v.durationInSec < 60) return false
 
         const blacklist = [
           'lyrics', 'lyric', 'karaoke', 'sing along', '4k', '8k', '1080p', '720p', 
@@ -148,47 +117,39 @@ async function performSearch(query, limit = 20) {
         return true
       })
       .map(v => {
-        const title = (v.title?.text || '').toLowerCase()
-        const channelName = (v.author?.name || '').toLowerCase()
-        const isVerified = v.author?.is_verified || v.author?.is_artist || false
+        const title = (v.title || '').toLowerCase()
+        const channelName = (v.channel?.name || '').toLowerCase()
         let score = 0
 
-        if (isVerified && (title.includes('audio') || channelName.includes('topic'))) score = 10
-        else if (isVerified && (title.includes('official video') || title.includes('music video'))) score = 8
-        else if (isVerified) score = 5
+        if (channelName.includes('topic') || channelName.includes('vevo')) score = 10
+        else if (title.includes('official') || title.includes('audio')) score = 8
         else score = 1
 
         return { ...v, _score: score }
       })
       .sort((a, b) => {
         if (b._score !== a._score) return b._score - a._score
-        const viewsA = parseInt(a.view_count?.text?.replace(/[^0-9]/g, '') || 0)
-        const viewsB = parseInt(b.view_count?.text?.replace(/[^0-9]/g, '') || 0)
-        return viewsB - viewsA
+        return b.views - a.views
       })
       .slice(0, limit)
       .map(v => ({
         videoId: v.id,
-        title: v.title?.text || 'Unknown',
-        artist: v.author?.name || 'Unknown',
-        channelTitle: v.author?.name || 'Unknown',
-        thumbnail: `https://i.ytimg.com/vi/${v.id}/mqdefault.jpg`,
-        duration: v.duration?.text || '0:00',
-        views: v.view_count?.text ? parseInt(v.view_count.text.replace(/[^0-9]/g, '')) || 0 : 0,
-        publishedAt: v.published?.text || 'recently'
+        title: v.title || 'Unknown',
+        artist: v.channel?.name || 'Unknown',
+        channelTitle: v.channel?.name || 'Unknown',
+        thumbnail: v.thumbnails[0]?.url || `https://i.ytimg.com/vi/${v.id}/mqdefault.jpg`,
+        duration: v.durationRaw || '0:00',
+        views: v.views || 0,
+        publishedAt: v.uploadedAt || 'recently'
       }))
 
-    // Pre-fetch streams for the top 2 results in the background
-    const topVideos = formattedResults.slice(0, 2)
-    topVideos.forEach(v => prefetchStream(v.videoId))
+    if (formattedResults.length > 0) {
+      prefetchStream(formattedResults[0].videoId)
+    }
 
     return formattedResults
   } catch (err) {
     console.error('Search error:', err.message)
-    // Reset client on auth/session errors so it reconnects next time
-    if (err.message?.includes('session') || err.message?.includes('innertube')) {
-      ytWeb = null
-    }
     return []
   }
 }
@@ -197,40 +158,44 @@ async function performSearch(query, limit = 20) {
 import youtubedl from 'youtube-dl-exec'
 
 async function getStreamUrl(videoId) {
+  console.log(`[Stream] Extracting ${videoId} using yt-dlp...`)
   try {
-    // Attempt 1: Fast extraction with yt-dlp
+    // Primary: yt-dlp — Extremely reliable for direct stream URLs
     const info = await withRetry(() => youtubedl(`https://www.youtube.com/watch?v=${videoId}`, { 
       dumpJson: true, 
       noWarnings: true, 
-      cacheDir: os.tmpdir(),
+      noCheckCertificates: true,
+      preferFreeFormats: true,
+      youtubeSkipDashManifest: true,
+      referer: 'https://www.youtube.com/',
       format: 'bestaudio/best',
       userAgent: getRandomUA()
-    }), 1, 300)
+    }), 2, 500)
     
     if (info && info.url) {
       console.log(`[Stream] ${videoId} extracted via yt-dlp`)
-      const mime = info.ext === 'webm' ? 'audio/webm' : 'audio/mp4'
+      // Map extensions to mime types
+      const mimeMap = {
+        'webm': 'audio/webm',
+        'm4a': 'audio/mp4',
+        'mp3': 'audio/mpeg',
+        'opus': 'audio/ogg'
+      }
+      const mime = mimeMap[info.ext] || 'audio/webm'
       const size = info.filesize || info.filesize_approx || 0
-      return { url: info.url, mime, size }
+      
+      return { 
+        url: info.url, 
+        mime, 
+        size, 
+        client: 'YTDLP' 
+      }
     }
   } catch (err) {
-    console.warn(`[Stream] yt-dlp failed for ${videoId}, trying youtubei.js...`)
+    console.error(`[Stream] yt-dlp failed for ${videoId}:`, err.message)
   }
 
-  try {
-    // Attempt 2: youtubei.js fallback (Android)
-    const yt = await getYtAndroid()
-    const info = await withRetry(() => yt.getBasicInfo(videoId, 'ANDROID'), 1, 300)
-    const format = info.streaming_data?.adaptive_formats?.find(f => f.has_audio && !f.has_video)
-    
-    if (format && format.url) {
-      console.log(`[Stream] ${videoId} extracted via youtubei.js (Android)`)
-      return { url: format.url, mime: format.mime_type, size: parseInt(format.content_length || '0') }
-    }
-  } catch (err) {
-    console.error(`[Stream] youtubei.js failed for ${videoId}:`, err.message)
-    throw new Error('All extraction methods failed')
-  }
+  throw new Error('Streaming extraction failed. YouTube might be blocking requests.')
 }
 
 // ─── Stream Prefetcher ───
@@ -249,54 +214,28 @@ function prefetchStream(videoId) {
     })
 }
 
-// ─── Related Videos (Real YouTube recommendations) ───
+// ─── Related Videos (Simplified for play-dl) ───
 async function getRelatedVideos(videoId, limit = 15) {
   try {
-    const yt = await getYtWeb()
-    const info = await withRetry(() => yt.getInfo(videoId), 2, 300)
-    const watchNext = info.watch_next_feed
+    const info = await withRetry(() => play.video_info(`https://www.youtube.com/watch?v=${videoId}`), 2, 300)
+    const related = info.related_videos || []
 
-    if (!watchNext || !Array.isArray(watchNext)) return []
-
-    return watchNext
-      .filter(item => {
-        // LockupView is the new format for related videos
-        if (item.type === 'LockupView' && item.content_id) return true
-        // Also handle classic CompactVideo format
-        if (item.type === 'CompactVideo' && item.id) return true
-        return false
-      })
-      .slice(0, limit)
-      .map(item => {
-        const id = item.content_id || item.id
-        const title = item.metadata?.title?.text || item.title?.text || 'Unknown'
-        // Extract author from metadata or directly
-        let artist = 'Unknown'
-        if (item.metadata?.metadata_details) {
-          artist = item.metadata.metadata_details.text || 'Unknown'
-        } else if (item.author?.name) {
-          artist = item.author.name
-        }
-
-        return {
-          videoId: id,
-          title,
-          artist: artist.split('·')[0]?.trim() || artist, // "Channel · 1M views" → "Channel"
-          channelTitle: artist,
-          thumbnail: `https://i.ytimg.com/vi/${id}/mqdefault.jpg`,
-          duration: item.duration?.text || item.metadata?.thumbnail_overlays?.[0]?.text || '0:00',
-          views: 0,
-          publishedAt: 'recently'
-        }
-      })
-      .filter(v => v.videoId !== videoId)
-  } catch (err) {
-    console.error('Related videos error:', err.message)
-    if (err.message?.includes('session') || err.message?.includes('innertube')) {
-      ytWeb = null
+    if (related.length > 0) {
+      return related.slice(0, limit).map(v => ({
+        videoId: v.id,
+        title: v.title || 'Unknown',
+        artist: v.channel?.name || 'Unknown',
+        channelTitle: v.channel?.name || 'Unknown',
+        thumbnail: v.thumbnails[0]?.url || `https://i.ytimg.com/vi/${v.id}/mqdefault.jpg`,
+        duration: v.durationRaw || '0:00',
+        views: v.views || 0,
+        publishedAt: v.uploadedAt || 'recently'
+      }))
     }
-    return []
+  } catch (err) {
+    console.warn('Related videos error:', err.message)
   }
+  return []
 }
 
 // ─── Routes ───
@@ -471,7 +410,9 @@ app.get('/api/stream', async (req, res) => {
         'Range': `bytes=${start}-${end !== undefined ? end : ''}`,
         'User-Agent': userAgent,
         'Referer': 'https://www.youtube.com/',
-        'Origin': 'https://www.youtube.com/'
+        'Origin': 'https://www.youtube.com/',
+        'Accept': '*/*',
+        'Connection': 'keep-alive'
       } 
     }
     
@@ -520,6 +461,6 @@ app.get('/api/stream', async (req, res) => {
 })
 
 // ─── Initialize Clients for Serverless ───
-initClients().catch(console.error)
+initPlayDl().catch(console.error)
 
 export default app

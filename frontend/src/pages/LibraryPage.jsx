@@ -93,11 +93,11 @@ import { useNavigate } from 'react-router-dom'
 export default function LibraryPage() {
   const { savedSongs, recentlyPlayed, userPlaylists, playSong } = usePlayer()
   const navigate = useNavigate()
-  const [filter, setFilter] = useState('All') // 'All', 'Playlists', 'Recently Played', 'Albums'
+  const [filter, setFilter] = useState('All') // 'All', 'Playlists', 'Recently Played', 'Albums', 'Liked Songs'
 
   const showRecentlyPlayed = filter === 'All' || filter === 'Recently Played'
   const showPlaylists = filter === 'All' || filter === 'Playlists'
-  const showLikedSongs = filter === 'All' || filter === 'Playlists'
+  const showLikedSongs = filter === 'All' || filter === 'Liked Songs'
 
   return (
     <div style={{
@@ -131,6 +131,7 @@ export default function LibraryPage() {
         }
         .lib-card:hover {
           background: #282828 !important;
+          transform: scale(1.04) !important;
         }
         .lib-card:hover .card-play-btn {
           opacity: 1 !important;
@@ -139,12 +140,12 @@ export default function LibraryPage() {
       `}</style>
 
       {/* ─── Header ─── */}
-      <div style={{ padding: window.innerWidth < 768 ? '32px 16px 16px' : '48px 32px 16px' }}>
+      <div style={{ padding: '48px 32px 16px' }}>
         <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 20 }}>Your Library</h1>
         
         {/* Filter Pills */}
         <div style={{ display: 'flex', gap: 8 }}>
-          {['Playlists', 'Recently Played', 'Albums'].map(f => (
+          {['Playlists', 'Recently Played', 'Albums', 'Liked Songs'].map(f => (
             <button
               key={f}
               onClick={() => setFilter(filter === f ? 'All' : f)}
@@ -157,7 +158,7 @@ export default function LibraryPage() {
         </div>
       </div>
 
-      <div style={{ padding: window.innerWidth < 768 ? '0 16px 120px' : '0 32px' }}>
+      <div style={{ padding: '0 32px' }}>
         {/* ─── Section A: Recently Listened ─── */}
         {showRecentlyPlayed && recentlyPlayed.length > 0 && (
           <div style={{ marginBottom: 40 }}>
@@ -211,8 +212,8 @@ export default function LibraryPage() {
             
             <div style={{ 
               display: 'grid', 
-              gridTemplateColumns: window.innerWidth < 768 ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(180px, 1fr))', 
-              gap: window.innerWidth < 768 ? '12px' : '16px' 
+              gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', 
+              gap: 16 
             }}>
               {userPlaylists.map((pl, i) => {
                 const isObj = typeof pl === 'object' && pl !== null
@@ -267,9 +268,9 @@ export default function LibraryPage() {
               background: 'linear-gradient(135deg, #4C1D95, #1a1a2e)',
               borderRadius: 8, padding: '32px 24px', cursor: 'pointer',
               display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
-              minHeight: 180, transition: 'transform 0.2s ease',
+              minHeight: 180, transition: 'transform 0.3s ease',
             }}
-            onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.01)'}
+            onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.03)'}
             onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
           >
             <div style={{ flex: 1 }} />

@@ -15,7 +15,7 @@ const SWATCHES = [
   { name: 'Chalk White', value: '#F8F9FA', text: 'dark', glow: 'rgba(248, 249, 250, 0.5)' },
 ];
 
-export default function LyricsShareCard({ song, lyrics }) {
+export default function LyricsShareCard({ song, lyrics, minimal }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedLines, setSelectedLines] = useState([]);
   const [selectedColorIdx, setSelectedColorIdx] = useState(0);
@@ -73,9 +73,17 @@ export default function LyricsShareCard({ song, lyrics }) {
     
     try {
       const canvas = await html2canvas(captureRef.current, {
-        scale: 2,
+        scale: 3, // Higher scale for better quality
         useCORS: true,
+        allowTaint: true,
         backgroundColor: null,
+        width: 400,
+        height: 500,
+        onclone: (clonedDoc) => {
+          // Force visibility on cloned element if needed
+          const el = clonedDoc.querySelector('[ref="captureRef"]');
+          if (el) el.style.visibility = 'visible';
+        }
       });
       
       const imgData = canvas.toDataURL('image/png');
@@ -128,10 +136,29 @@ export default function LyricsShareCard({ song, lyrics }) {
   };
 
   if (!isExpanded) {
+    if (minimal) {
+      return (
+        <button 
+          className="lyric-capsule-trigger" 
+          onClick={(e) => { e.stopPropagation(); setIsExpanded(true); }}
+          style={{ 
+            display: 'flex', alignItems: 'center', gap: '8px',
+            background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(12px)',
+            border: '1px solid rgba(255,255,255,0.1)', borderRadius: '24px',
+            padding: '8px 20px', color: '#fff', cursor: 'pointer',
+            fontSize: '13px', fontWeight: 700, transition: 'all 0.3s ease',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+          }}
+        >
+          <FiShare2 size={18} />
+          <span>Share Lyrics</span>
+        </button>
+      );
+    }
     return (
-      <div className="lyric-mini-trigger" onClick={(e) => { e.stopPropagation(); setIsExpanded(true); }} style={{ padding: window.innerWidth < 768 ? '8px' : '8px 16px' }}>
-        <FiMessageCircle size={window.innerWidth < 768 ? 20 : 16} />
-        {window.innerWidth >= 768 && <span>Share Lyrics</span>}
+      <div className="lyric-mini-trigger" onClick={(e) => { e.stopPropagation(); setIsExpanded(true); }}>
+        <FiMessageCircle size={16} />
+        <span>Share Lyrics</span>
       </div>
     );
   }
@@ -144,38 +171,39 @@ export default function LyricsShareCard({ song, lyrics }) {
         <div 
           ref={captureRef}
           style={{ 
-            position: 'fixed',
-            top: 0,
-            left: '-2000px', // Far off-screen but still 'fixed' and rendered
-            width: '360px',
-            height: '450px', // 4:5 ratio to match preview
+            position: 'absolute',
+            top: '-10000px', // Even further away
+            left: '-10000px',
+            width: '400px', // Wider canvas for safety
+            height: '500px', // Taller canvas for safety
             backgroundColor: activeColor.value,
             color: activeColor.text === 'light' ? '#ffffff' : '#000000',
-            padding: '32px',
+            padding: '60px 40px', // Extra safety padding
             borderRadius: '24px',
             display: 'flex',
             flexDirection: 'column',
-            overflow: 'hidden',
-            zIndex: -1
+            zIndex: -1000,
+            pointerEvents: 'none'
           }}
         >
           <div className="lyric-noise-overlay"></div>
-          <div className="lyric-card-header">
-            <img src={songArt} alt={songTitle} className="lyric-card-art" crossOrigin="anonymous" />
-            <div className="lyric-card-meta">
-              <h4 className="lyric-card-title">{songTitle}</h4>
-              <p className="lyric-card-artist truncate">{songArtist}</p>
+          <div className="lyric-card-header" style={{ marginBottom: '40px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <img src={songArt} alt={songTitle} className="lyric-card-art" style={{ width: '64px', height: '64px' }} crossOrigin="anonymous" />
+            <div className="lyric-card-meta" style={{ flex: 1, overflow: 'visible' }}>
+              <h4 className="lyric-card-title" style={{ fontSize: '20px', margin: 0, lineHeight: 1.2 }}>{songTitle}</h4>
+              <p className="lyric-card-artist" style={{ fontSize: '15px', margin: '4px 0 0 0', opacity: 0.8, lineHeight: 1.2 }}>{songArtist}</p>
             </div>
           </div>
-          <div className="lyric-card-body" style={{ justifyContent: 'center', gap: '16px' }}>
+          <div className="lyric-card-body" style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '20px', overflow: 'visible' }}>
             {displayLyrics.map((line, idx) => (
               <div key={idx} className="lyric-line" style={{ opacity: 1, transform: 'scale(1)', fontSize: displayLyrics.length > 3 ? '22px' : '28px' }}>
                 {line.text}
               </div>
             ))}
           </div>
-          <div style={{ position: 'absolute', bottom: '12px', right: '16px', opacity: 0.5, color: '#000', zIndex: 10 }}>
-            <span style={{ fontSize: '10px', fontWeight: 900, letterSpacing: '2px' }}>MUSIFY</span>
+          <div style={{ position: 'absolute', bottom: '30px', left: '40px', opacity: 0.7, color: activeColor.text === 'light' ? '#fff' : '#000', zIndex: 10, display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <FiMusic size={24} />
+            <span style={{ fontSize: '18px', fontWeight: 900, letterSpacing: '4px' }}>MUSIFY</span>
           </div>
         </div>
 
@@ -186,12 +214,12 @@ export default function LyricsShareCard({ song, lyrics }) {
             backgroundColor: activeColor.value,
             boxShadow: `0 20px 50px ${activeColor.glow}`,
             color: activeColor.text === 'light' ? '#ffffff' : '#000000',
-            height: window.innerWidth < 768 ? 'min(450px, 60vh)' : '450px', 
-            width: window.innerWidth < 768 ? 'min(360px, 90vw)' : '360px'
+            height: '450px', 
+            width: '360px'
           }}
         >
           <div className="lyric-noise-overlay"></div>
-          <div className="lyric-card-header">
+          <div className="lyric-card-header" style={{ marginTop: '-8px' }}>
             <img src={songArt} alt={songTitle} className="lyric-card-art" crossOrigin="anonymous" />
             <div className="lyric-card-meta">
               <h4 className="lyric-card-title truncate" style={{ fontSize: '14px' }}>{songTitle}</h4>
@@ -240,8 +268,9 @@ export default function LyricsShareCard({ song, lyrics }) {
             )}
           </div>
 
-          <div style={{ position: 'absolute', bottom: '8px', right: '12px', opacity: 0.5, color: '#000', zIndex: 10 }}>
-            <span style={{ fontSize: '9px', fontWeight: 900, letterSpacing: '1px' }}>MUSIFY</span>
+          <div style={{ position: 'absolute', bottom: '6px', left: '24px', opacity: 0.6, color: activeColor.text === 'light' ? '#fff' : '#000', zIndex: 10, display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <FiMusic size={16} />
+            <span style={{ fontSize: '12px', fontWeight: 900, letterSpacing: '2px' }}>MUSIFY</span>
           </div>
         </div>
 
@@ -249,16 +278,12 @@ export default function LyricsShareCard({ song, lyrics }) {
         {!isCapturing && (
           <div className="lyric-share-controls">
             {/* Color Swatches */}
-            <div className="lyric-color-picker" style={{ gap: window.innerWidth < 768 ? '8px' : '12px', padding: window.innerWidth < 768 ? '6px' : '8px' }}>
+            <div className="lyric-color-picker">
               {SWATCHES.map((swatch, idx) => (
                 <button
                   key={swatch.name}
                   className={`color-swatch ${selectedColorIdx === idx ? 'active' : ''}`}
-                  style={{ 
-                    backgroundColor: swatch.value,
-                    width: window.innerWidth < 768 ? '20px' : '24px',
-                    height: window.innerWidth < 768 ? '20px' : '24px'
-                  }}
+                  style={{ backgroundColor: swatch.value }}
                   onClick={(e) => { e.stopPropagation(); setSelectedColorIdx(idx); }}
                   title={swatch.name}
                 />
@@ -270,7 +295,6 @@ export default function LyricsShareCard({ song, lyrics }) {
               className="lyric-share-btn-main"
               disabled={selectedLines.length === 0}
               onClick={(e) => { e.stopPropagation(); handleShare('main'); }}
-              style={{ width: window.innerWidth < 768 ? 'min(280px, 85vw)' : '280px' }}
             >
               {selectedLines.length > 0 ? (
                 <>

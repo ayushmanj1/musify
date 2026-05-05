@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { usePlayer } from '../context/PlayerContext.jsx'
 import { FiPlay, FiClock, FiHeart, FiMoreHorizontal, FiArrowLeft, FiSearch, FiMusic } from 'react-icons/fi'
+import { getTrending, searchSongs } from '../utils/api.js'
 
 function fmt(s) {
   if (!s || isNaN(s)) return '0:00'
@@ -20,24 +21,54 @@ export default function PlaylistPage() {
     userPlaylists 
   } = usePlayer()
 
+  const [dynamicSongs, setDynamicSongs] = useState([])
+  const [isLoading, setIsLoading] = useState(false)
+
   const isLikedPlaylist = playlistName === 'Liked Songs'
-  
+  const isNewReleases = playlistName === 'New Releases'
+  const isRecommended = playlistName === 'Recommended For You'
+  const isSpecial = isNewReleases || isRecommended
+
   // Find persistent playlist from context
   const persistentPlaylist = userPlaylists.find(p => p.name === playlistName)
   
-  // For Liked Songs, we use savedSongs. For others, we use their .songs array
-  // If it's a "generated" one that isn't persistent yet, we'd need a fallback, 
-  // but my PlayerContext refactor made all of them persistent.
-  const songs = isLikedPlaylist ? savedSongs : (persistentPlaylist?.songs || [])
+  // Load dynamic data for special categories
+  useEffect(() => {
+    if (!isSpecial || persistentPlaylist) return
+    
+    const loadData = async () => {
+      setIsLoading(true)
+      try {
+        let data = []
+        if (isNewReleases) data = await getTrending()
+        else if (isRecommended) data = await searchSongs('recommended music 2024')
+        setDynamicSongs(data || [])
+      } catch (err) {
+        console.error('Failed to load special playlist:', err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    loadData()
+  }, [playlistName, isSpecial, persistentPlaylist])
+
+  const songs = useMemo(() => {
+    if (isLikedPlaylist) return savedSongs
+    if (persistentPlaylist) return persistentPlaylist.songs || []
+    if (isSpecial) return dynamicSongs
+    return []
+  }, [isLikedPlaylist, savedSongs, persistentPlaylist, isSpecial, dynamicSongs])
 
   const color = useMemo(() => {
     if (persistentPlaylist?.color) return persistentPlaylist.color
     if (isLikedPlaylist) return '#5b21b6'
+    if (isNewReleases) return '#8B5CF6'
+    if (isRecommended) return '#1E3264'
     // Fallback generate color from name
     let hash = 0;
     for (let i = 0; i < playlistName.length; i++) hash = playlistName.charCodeAt(i) + ((hash << 5) - hash);
     return `hsl(${Math.abs(hash % 360)}, 50%, 30%)`
-  }, [playlistName, isLikedPlaylist, persistentPlaylist])
+  }, [playlistName, isLikedPlaylist, persistentPlaylist, isNewReleases, isRecommended])
 
   const openHeaderMenu = (e) => {
     e.stopPropagation()
@@ -53,7 +84,7 @@ export default function PlaylistPage() {
       <div style={{
         background: `linear-gradient(to bottom, ${color}, var(--bg-primary))`,
         padding: '64px 32px 32px',
-        position: 'sticky', top: 0, zIndex: 10,
+        position: 'relative', zIndex: 10,
         display: 'flex', alignItems: 'flex-end', gap: '24px',
         transition: 'background 0.5s ease'
       }}>
@@ -117,7 +148,15 @@ export default function PlaylistPage() {
       </div>
 
       {/* ─── Song List ─── */}
-      <div style={{ padding: '0 32px' }}>
+      <div 
+        className="glass-box"
+        style={{ 
+          padding: '32px', 
+          margin: '0 32px',
+          borderRadius: '24px',
+          overflow: 'hidden'
+        }}
+      >
         {songs.length === 0 ? (
           <div style={{ padding: '80px 0', textAlign: 'center', color: '#b3b3b3' }}>
             <FiMusic size={64} style={{ marginBottom: '24px', opacity: 0.3 }} />
@@ -212,19 +251,6 @@ export default function PlaylistPage() {
         )}
       </div>
 
-      {/* ─── Search Add Songs Section ─── */}
-      {!isLikedPlaylist && (
-        <div id="playlist-search" style={{ padding: '64px 32px 0' }}>
-          <h2 style={{ color: '#fff', fontSize: '24px', fontWeight: 700, marginBottom: '24px' }}>Let's find something for your playlist</h2>
-          <div style={{ position: 'relative', maxWidth: '400px' }}>
-            <FiSearch style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#b3b3b3' }} />
-            <input 
-              type="text" placeholder="Search for songs" 
-              style={{ width: '100%', background: '#242424', border: 'none', borderRadius: '4px', padding: '12px 12px 12px 40px', color: '#fff', fontSize: '14px', outline: 'none' }} 
-            />
-          </div>
-        </div>
-      )}
 
       <style>{`
         .song-row:hover { background-color: rgba(255,255,255,0.1); }

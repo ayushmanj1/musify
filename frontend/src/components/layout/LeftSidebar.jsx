@@ -39,14 +39,16 @@ export default function LeftSidebar() {
   ]
 
   return (
-    <div className="left-sidebar" style={{ 
+    <div className="left-sidebar" 
+      style={{ 
       padding: isLeftSidebarCollapsed ? '24px 0' : '24px 12px', 
       position: 'relative',
       width: '100%',
       height: '100%',
       transition: isReady ? (isLeftSidebarCollapsed ? 'width 0.35s cubic-bezier(0.4,0,0.2,1)' : 'width 0.35s cubic-bezier(0.34,1.56,0.64,1)') : 'none',
       borderRight: isLeftSidebarCollapsed ? '2px solid #8B5CF6' : 'none',
-      display: 'flex', flexDirection: 'column'
+      display: 'flex', flexDirection: 'column',
+      cursor: isLeftSidebarCollapsed ? 'pointer' : 'default'
     }}>
       
       {/* Top Header Row */}
@@ -66,7 +68,7 @@ export default function LeftSidebar() {
       </div>
 
       {/* Nav Group */}
-      <div style={{ background: 'var(--bg-primary)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '8px', padding: isLeftSidebarCollapsed ? '0' : '8px 12px', marginBottom: '8px' }}>
+      <div className="glass-box" style={{ borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '4px', padding: isLeftSidebarCollapsed ? '0' : '8px 12px', margin: '0 4px 24px 4px' }}>
         {navItems.map(({ path, label, Icon }) => {
           const isActive = pathname === path
           return (
@@ -89,7 +91,7 @@ export default function LeftSidebar() {
 
       {/* Library Group */}
       {!isLeftSidebarCollapsed ? (
-        <div style={{ background: 'var(--bg-primary)', borderRadius: '8px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div className="glass-box" style={{ borderRadius: '12px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', margin: '0 4px 8px 4px' }}>
           <div style={{ padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
             <div onClick={() => setIsPlaylistsExpanded(!isPlaylistsExpanded)} style={{ display: 'flex', alignItems: 'center', gap: '16px', fontWeight: 700, cursor: 'pointer' }} className="hover-text-primary">
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>

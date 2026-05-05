@@ -94,23 +94,66 @@ export function PlayerProvider({ children }) {
       if (saved && Array.isArray(saved)) return saved
     } catch {}
     
-    // Default playlists with curated gradients for premium "avatar" look
     const defaults = [
-      { name: 'Liked Songs', color: 'linear-gradient(135deg, #450aef, #c359ff)' },
-      { name: 'Chill Vibes', color: 'linear-gradient(135deg, #064e3b, #059669)' },
-      { name: 'Workout Mix', color: 'linear-gradient(135deg, #7f1d1d, #ef4444)' },
-      { name: 'Focus 2024', color: 'linear-gradient(135deg, #1e3a8a, #3b82f6)' },
-      { name: 'Roadtrip', color: 'linear-gradient(135deg, #b45309, #f59e0b)' },
-      { name: 'Coding Flow', color: 'linear-gradient(135deg, #4c1d95, #8b5cf6)' },
-      { name: 'Discover Weekly', color: 'linear-gradient(135deg, #0f766e, #14b8a6)' },
-      { name: 'Release Radar', color: 'linear-gradient(135deg, #831843, #ec4899)' },
-      { name: 'Synthwave', color: 'linear-gradient(135deg, #db2777, #f472b6)' },
-      { name: 'Lo-Fi Beats', color: 'linear-gradient(135deg, #3f6212, #84cc16)' },
-      { name: 'Acoustic Covers', color: 'linear-gradient(135deg, #854d0e, #eab308)' },
-      { name: 'Classical', color: 'linear-gradient(135deg, #172554, #1e40af)' }
+      { name: 'Liked Songs', color: 'linear-gradient(135deg, #FF00FF, #7000FF)' },
+      { name: 'Chill Vibes', color: 'linear-gradient(135deg, #00FF00, #00FF99)' },
+      { name: 'Workout Mix', color: 'linear-gradient(135deg, #FF3131, #FF914D)' },
+      { name: 'Focus 2024', color: 'linear-gradient(135deg, #00FFFF, #0077FF)' },
+      { name: 'Roadtrip', color: 'linear-gradient(135deg, #FFBD59, #FF914D)' },
+      { name: 'Coding Flow', color: 'linear-gradient(135deg, #8C52FF, #5CE1E6)' },
+      { name: 'Discover Weekly', color: 'linear-gradient(135deg, #FF5757, #8C52FF)' },
+      { name: 'Release Radar', color: 'linear-gradient(135deg, #FF66C4, #FFDE59)' },
+      { name: 'Synthwave', color: 'linear-gradient(135deg, #FF00CC, #3333FF)' },
+      { name: 'Lo-Fi Beats', color: 'linear-gradient(135deg, #39FF14, #04D9FF)' },
+      { name: 'Acoustic Covers', color: 'linear-gradient(135deg, #F9D423, #FF4E50)' },
+      { name: 'Classical', color: 'linear-gradient(135deg, #7000FF, #00FFFF)' }
     ]
     return defaults.map(p => ({ name: p.name, songs: [], color: p.color }))
   })
+
+  // Migration: Update existing playlists to neon colors
+  useEffect(() => {
+    const neonGradients = [
+      'linear-gradient(135deg, #FF00FF, #7000FF)',
+      'linear-gradient(135deg, #00FF00, #00FF99)',
+      'linear-gradient(135deg, #00FFFF, #0077FF)',
+      'linear-gradient(135deg, #FF3131, #FF914D)',
+      'linear-gradient(135deg, #FFBD59, #FF914D)',
+      'linear-gradient(135deg, #8C52FF, #5CE1E6)',
+      'linear-gradient(135deg, #FFDE59, #FF66C4)'
+    ]
+    const defaults = [
+      { name: 'Liked Songs', color: 'linear-gradient(135deg, #FF00FF, #7000FF)' },
+      { name: 'Chill Vibes', color: 'linear-gradient(135deg, #00FF00, #00FF99)' },
+      { name: 'Workout Mix', color: 'linear-gradient(135deg, #FF3131, #FF914D)' },
+      { name: 'Focus 2024', color: 'linear-gradient(135deg, #00FFFF, #0077FF)' },
+      { name: 'Roadtrip', color: 'linear-gradient(135deg, #FFBD59, #FF914D)' },
+      { name: 'Coding Flow', color: 'linear-gradient(135deg, #8C52FF, #5CE1E6)' },
+      { name: 'Discover Weekly', color: 'linear-gradient(135deg, #FF5757, #8C52FF)' },
+      { name: 'Release Radar', color: 'linear-gradient(135deg, #FF66C4, #FFDE59)' },
+      { name: 'Synthwave', color: 'linear-gradient(135deg, #FF00CC, #3333FF)' },
+      { name: 'Lo-Fi Beats', color: 'linear-gradient(135deg, #39FF14, #04D9FF)' },
+      { name: 'Acoustic Covers', color: 'linear-gradient(135deg, #F9D423, #FF4E50)' },
+      { name: 'Classical', color: 'linear-gradient(135deg, #7000FF, #00FFFF)' }
+    ]
+
+    setUserPlaylists(prev => {
+      let changed = false
+      const next = prev.map(pl => {
+        const def = defaults.find(d => d.name === pl.name)
+        if (def && pl.color !== def.color) {
+          changed = true
+          return { ...pl, color: def.color }
+        }
+        if (pl.color && pl.color.startsWith('hsl')) {
+          changed = true
+          return { ...pl, color: neonGradients[Math.floor(Math.random() * neonGradients.length)] }
+        }
+        return pl
+      })
+      return changed ? next : prev
+    })
+  }, [])
 
   // Update master data whenever recommendations or trending changes
   useEffect(() => {
@@ -614,9 +657,25 @@ export function PlayerProvider({ children }) {
     }
   }, [playbackHistory, playSong])
 
-  const addToQueue = useCallback((song) => {
-    setQueue(prev => [...prev, song])
-    toast.success(`Added to queue`)
+  const addToQueue = useCallback((song, atTop = false) => {
+    setQueue(prev => {
+      if (atTop) {
+        const next = [...prev]
+        next.splice(queueIndexRef.current + 1, 0, song)
+        return next
+      }
+      return [...prev, song]
+    })
+    toast.success(atTop ? 'Playing next' : 'Added to queue')
+  }, [])
+
+  const removeFromQueue = useCallback((songId) => {
+    setQueue(prev => prev.filter(s => s.videoId !== songId))
+    toast.success('Removed from queue')
+  }, [])
+
+  const reorderQueue = useCallback((newQueue) => {
+    setQueue(newQueue)
   }, [])
 
   // ─── Sleep Timer Actions ───
@@ -732,7 +791,7 @@ export function PlayerProvider({ children }) {
     crossfadeEnabled, setCrossfadeEnabled,
     crossfadeDuration, setCrossfadeDuration,
     playSong, togglePlay, seekTo, setPlayerVolume,
-    playNext, playPrevious, addToQueue,
+    playNext, playPrevious, addToQueue, removeFromQueue, reorderQueue,
     toggleSavedSong, isSongSaved,
     shuffle, setShuffle, repeat, setRepeat,
     eqBands, onEQChange,
@@ -744,7 +803,7 @@ export function PlayerProvider({ children }) {
     isRightSidebarOpen, isLeftSidebarCollapsed, preFSLeftSidebarState, userPlaylists,
     searchQuery, searchResults, isSearchLoading, navHistory, navIndex, masterPlaylistData,
     playSong, togglePlay, seekTo, setPlayerVolume,
-    playNext, playPrevious, addToQueue,
+    playNext, playPrevious, addToQueue, removeFromQueue, reorderQueue,
     toggleSavedSong, isSongSaved,
     shuffle, repeat, sleepTimer, sleepTimerRemaining,
     crossfadeEnabled, crossfadeDuration, eqBands, onEQChange,
