@@ -4,8 +4,7 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "postinstall": "node -e \"import('youtube-dl-exec').then(m => m.default.download?.()).catch(() => {})\""
+    "start": "node index.js"
   },
   "engines": {
     "node": ">=20.0.0"

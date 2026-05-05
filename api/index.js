@@ -10,6 +10,7 @@
  */
 
 import express from 'express'
+process.env.YOUTUBE_DL_SKIP_PYTHON_CHECK = '1'
 import cors from 'cors'
 import dotenv from 'dotenv'
 import path from 'path'
