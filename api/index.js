@@ -30,7 +30,11 @@ const PORT = process.env.PORT || 3001
 
 // ─── Middleware ───
 app.use(compression())
-app.use(cors())
+app.use(cors({
+  origin: 'https://musify-self-sigma.vercel.app',
+  methods: ['GET', 'POST', 'OPTIONS'],
+  credentials: true
+}))
 app.use(express.json())
 
 // ─── Caches ───
@@ -239,6 +243,8 @@ async function getRelatedVideos(videoId, limit = 15) {
 }
 
 // ─── Routes ───
+app.get('/', (req, res) => res.send('Musify API is Live! 🚀'))
+app.get('/health', (req, res) => res.json({ status: 'ok', time: new Date() }))
 
 // Search (no rate limiting)
 app.get('/api/search', async (req, res) => {
@@ -462,5 +468,9 @@ app.get('/api/stream', async (req, res) => {
 
 // ─── Initialize Clients for Serverless ───
 initPlayDl().catch(console.error)
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Musify Standalone Server running on port ${PORT}`)
+})
 
 export default app

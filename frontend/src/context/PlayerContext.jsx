@@ -14,7 +14,7 @@
 
 import { createContext, useContext, useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import toast from 'react-hot-toast'
-import { getRecommendations } from '../utils/api.js'
+import { getRecommendations, getStreamUrl } from '../utils/api.js'
 import { crossfadeManager } from '../utils/crossfade.js'
 
 const PlayerContext = createContext(null)
@@ -551,7 +551,7 @@ export function PlayerProvider({ children }) {
 
     console.log(`[Audio] Loading: ${song.title}`)
     // Add cache-buster to avoid stale browser cache
-    audio.src = `/api/stream?id=${song.videoId}&t=${Date.now()}`
+    audio.src = `${getStreamUrl(song.videoId)}&t=${Date.now()}`
     audio.load()
 
     // Try playing immediately
@@ -577,7 +577,7 @@ export function PlayerProvider({ children }) {
 
     if (nextSongId) {
       console.log(`[Audio] Preloading next track ID: ${nextSongId}`)
-      preloader.src = `/api/stream?id=${nextSongId}`
+      preloader.src = getStreamUrl(nextSongId)
       preloader.load()
     }
   }, [queue, queueIndex, recommendations])
