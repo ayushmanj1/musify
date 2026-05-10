@@ -61,8 +61,8 @@ export default function PlaylistPage() {
 
   const color = useMemo(() => {
     if (persistentPlaylist?.color) return persistentPlaylist.color
-    if (isLikedPlaylist) return '#5b21b6'
-    if (isNewReleases) return '#8B5CF6'
+    if (isLikedPlaylist) return '#007799'
+    if (isNewReleases) return 'var(--accent)'
     if (isRecommended) return '#1E3264'
     // Fallback generate color from name
     let hash = 0;
@@ -79,10 +79,17 @@ export default function PlaylistPage() {
   }
 
   return (
-    <div style={{ paddingBottom: 100, animation: 'fadeIn 0.3s ease' }}>
+    <div style={{ 
+      paddingBottom: 100, 
+      animation: 'fadeIn 0.3s ease',
+      background: `linear-gradient(to bottom, ${color.includes('gradient') ? 'rgba(0,0,0,0)' : color + '33'}, transparent 500px)`,
+      minHeight: '100%'
+    }}>
       {/* ─── Hero Section ─── */}
       <div style={{
-        background: `linear-gradient(to bottom, ${color}, var(--bg-primary))`,
+        background: color.includes('gradient') 
+          ? `${color}, linear-gradient(to bottom, transparent, var(--bg-primary))` 
+          : `linear-gradient(to bottom, ${color}, var(--bg-primary))`,
         padding: '64px 32px 32px',
         position: 'relative', zIndex: 10,
         display: 'flex', alignItems: 'flex-end', gap: '24px',
@@ -104,7 +111,7 @@ export default function PlaylistPage() {
 
         <div style={{
           width: '232px', height: '232px',
-          background: isLikedPlaylist ? 'linear-gradient(135deg, #4C1D95, #1a1a2e)' : '#282828',
+          background: isLikedPlaylist ? 'linear-gradient(135deg, var(--hero-start), #001a1a)' : (color.includes('gradient') ? color : '#282828'),
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: '84px', borderRadius: '4px', boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
           flexShrink: 0
@@ -133,7 +140,7 @@ export default function PlaylistPage() {
             cursor: songs.length > 0 ? 'pointer' : 'not-allowed', color: '#fff',
             opacity: songs.length > 0 ? 1 : 0.5,
             transition: 'transform 0.1s ease, background 0.2s ease',
-            boxShadow: '0 4px 12px rgba(139,92,246,0.3)'
+            boxShadow: '0 4px 12px rgba(0, 210, 255, 0.3)'
           }}
           className="play-btn-big"
         >
@@ -165,7 +172,7 @@ export default function PlaylistPage() {
           </div>
         ) : (
           <>
-            <div style={{ display: 'flex', alignItems: 'center', color: '#b3b3b3', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '8px', marginBottom: '16px', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1.2px', fontWeight: 600 }}>
+            <div style={{ display: 'flex', alignItems: 'center', color: '#b3b3b3', borderBottom: 'none', paddingBottom: '8px', marginBottom: '16px', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1.2px', fontWeight: 600 }}>
               <div style={{ width: '40px', textAlign: 'center' }}>#</div>
               <div style={{ flex: 1 }}>Title</div>
               <div className="col-album" style={{ flex: 1 }}>Album</div>
@@ -222,10 +229,10 @@ export default function PlaylistPage() {
                   <div style={{ width: '100px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '16px', paddingRight: '16px' }}>
                     <button
                       onClick={(e) => { e.stopPropagation(); toggleSavedSong(song) }}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: saved ? '#8B5CF6' : '#b3b3b3' }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: saved ? 'var(--accent)' : '#b3b3b3' }}
                       className="hover-pop"
                     >
-                      <FiHeart size={18} style={{ fill: saved ? '#8B5CF6' : 'none' }} />
+                      <FiHeart size={18} style={{ fill: saved ? 'var(--accent)' : 'none' }} />
                     </button>
                     
                     <span style={{ fontSize: '14px', color: '#b3b3b3', width: '40px', textAlign: 'right' }}>{fmt(song.duration || 210)}</span>

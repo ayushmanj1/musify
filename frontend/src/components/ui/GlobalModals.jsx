@@ -462,7 +462,7 @@ export default function GlobalModals() {
             style={{
               borderRadius: '24px', padding: '32px', width: '420px',
               animation: 'modalScaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
-              border: '1px solid rgba(255,255,255,0.08)'
+              border: 'none'
             }}
             onMouseDown={e => e.stopPropagation()}
           >
@@ -500,7 +500,7 @@ export default function GlobalModals() {
                   </div>
                   <div style={{ textAlign: 'center' }}>
                     <p style={{ color: '#fff', fontSize: '11px', fontWeight: 700, margin: 0 }}>{label}</p>
-                    <p style={{ color: localEq[i] > 0 ? '#8B5CF6' : localEq[i] < 0 ? '#ef4444' : '#b3b3b3', fontSize: '10px', fontWeight: 800, margin: '2px 0 0 0' }}>
+                    <p style={{ color: localEq[i] > 0 ? 'var(--accent)' : localEq[i] < 0 ? '#ef4444' : '#b3b3b3', fontSize: '10px', fontWeight: 800, margin: '2px 0 0 0' }}>
                       {localEq[i] > 0 ? `+${localEq[i]}` : localEq[i]}dB
                     </p>
                   </div>
@@ -524,8 +524,8 @@ export default function GlobalModals() {
                     key={p.name}
                     onClick={() => setLocalEq(p.vals)}
                     style={{
-                      background: JSON.stringify(localEq) === JSON.stringify(p.vals) ? 'rgba(139,92,246,0.2)' : 'rgba(255,255,255,0.05)',
-                      border: JSON.stringify(localEq) === JSON.stringify(p.vals) ? '1px solid #8B5CF6' : '1px solid transparent',
+                      background: JSON.stringify(localEq) === JSON.stringify(p.vals) ? 'rgba(0, 210, 255, 0.2)' : 'rgba(255,255,255,0.05)',
+                      border: JSON.stringify(localEq) === JSON.stringify(p.vals) ? '1px solid var(--accent)' : 'none',
                       color: JSON.stringify(localEq) === JSON.stringify(p.vals) ? '#fff' : '#b3b3b3',
                       borderRadius: '8px', padding: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s'
                     }}
@@ -547,7 +547,7 @@ export default function GlobalModals() {
               </button>
               <button 
                 onClick={() => { setEqBands(localEq); toast.success('Equalizer profile applied'); setEqOpen(false); }} 
-                style={{ flex: 1, background: '#fff', border: 'none', color: '#000', borderRadius: '12px', padding: '14px', fontSize: '14px', fontWeight: 800, cursor: 'pointer', boxShadow: '0 8px 20px rgba(139,92,246,0.3)', transition: 'transform 0.2s' }}
+                style={{ flex: 1, background: '#fff', border: 'none', color: '#000', borderRadius: '12px', padding: '14px', fontSize: '14px', fontWeight: 800, cursor: 'pointer', boxShadow: '0 8px 20px rgba(0, 210, 255, 0.3)', transition: 'transform 0.2s' }}
                 onMouseDown={e => e.currentTarget.style.transform = 'scale(0.96)'}
                 onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
               >
@@ -557,14 +557,14 @@ export default function GlobalModals() {
           </div>
           <style>{`
             .eq-slider-vertical {
-              accent-color: #8B5CF6;
+              accent-color: var(--accent);
             }
             .eq-slider-vertical::-webkit-slider-runnable-track {
               background: rgba(255,255,255,0.1);
               border-radius: 10px;
             }
             .eq-slider-vertical::-webkit-slider-thumb {
-              box-shadow: 0 0 15px rgba(139,92,246,0.5);
+              box-shadow: 0 0 15px rgba(0, 210, 255, 0.5);
             }
           `}</style>
         </div>
@@ -614,7 +614,7 @@ export default function GlobalModals() {
               <div style={{ borderTop: '1px solid #282828', padding: '24px', background: 'rgba(255,255,255,0.02)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
                   <h4 style={{ color: '#fff', fontSize: '15px', fontWeight: 700, margin: 0 }}>Add songs to your playlist</h4>
-                  <span style={{ fontSize: '11px', color: '#8B5CF6', fontWeight: 800, background: 'rgba(139,92,246,0.1)', padding: '2px 8px', borderRadius: '4px' }}>{playlistModal.songs.length} SELECTED</span>
+                  <span style={{ fontSize: '11px', color: 'var(--accent)', fontWeight: 800, background: 'rgba(0, 210, 255, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>{playlistModal.songs.length} SELECTED</span>
                 </div>
                 
                 <div style={{ position: 'relative', marginBottom: '20px' }}>
@@ -625,7 +625,7 @@ export default function GlobalModals() {
                     value={playlistModal.searchQuery} 
                     onChange={e => setPlaylistModal(p => ({ ...p, searchQuery: e.target.value }))} 
                     style={{ width: '100%', background: '#242424', border: '1px solid #333', borderRadius: '8px', color: '#fff', fontSize: '14px', padding: '12px 12px 12px 40px', outline: 'none', transition: 'border-color 0.2s' }} 
-                    onFocus={e => e.currentTarget.style.borderColor = '#8B5CF6'}
+                    onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'}
                     onBlur={e => e.currentTarget.style.borderColor = '#333'}
                   />
                 </div>
@@ -637,7 +637,7 @@ export default function GlobalModals() {
                     .map((song, i) => {
                     const isAdded = playlistModal.songs.some(s => s.videoId === song.videoId)
                     return (
-                      <div key={song.videoId || i} style={{ display: 'flex', alignItems: 'center', padding: '8px', borderRadius: '8px', background: isAdded ? 'rgba(139,92,246,0.05)' : 'transparent', transition: 'background 0.2s' }}>
+                      <div key={song.videoId || i} style={{ display: 'flex', alignItems: 'center', padding: '8px', borderRadius: '8px', background: isAdded ? 'rgba(0, 210, 255, 0.05)' : 'transparent', transition: 'background 0.2s' }}>
                         <img src={song.thumbnail} alt="" style={{ width: '40px', height: '40px', borderRadius: '4px', marginRight: '12px', objectFit: 'cover' }} />
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <p className="truncate" style={{ color: '#fff', fontSize: '14px', fontWeight: 600, margin: 0 }}>{song.title}</p>
@@ -649,7 +649,7 @@ export default function GlobalModals() {
                             else setPlaylistModal(p => ({ ...p, songs: p.songs.filter(s => s.videoId !== song.videoId) }));
                           }}
                           style={{ 
-                            background: isAdded ? '#8B5CF6' : 'transparent', 
+                            background: isAdded ? 'var(--accent)' : 'transparent', 
                             border: isAdded ? 'none' : '1px solid #535353', 
                             borderRadius: '24px', color: isAdded ? '#fff' : '#fff', 
                             padding: '6px 16px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', minWidth: '80px' 
@@ -688,7 +688,7 @@ export default function GlobalModals() {
             onMouseDown={e => e.stopPropagation()}
           >
             
-            <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ padding: '20px 24px', borderBottom: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <h3 style={{ color: '#fff', fontSize: '18px', fontWeight: 700, margin: 0 }}>Add to {addSongsModal.playlistName}</h3>
               <button onClick={() => setAddSongsModal(p => ({ ...p, isOpen: false }))} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: '#fff', cursor: 'pointer', width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <FiX size={18} />

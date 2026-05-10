@@ -28,7 +28,7 @@ export default function MobileNav() {
       background: 'rgba(18, 18, 18, 0.8)',
       backdropFilter: 'blur(20px) saturate(180%)',
       WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-      borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+      borderTop: 'none',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-around',
@@ -55,7 +55,7 @@ export default function MobileNav() {
             }}>
               <Icon size={24} style={{ 
                 strokeWidth: active ? 2.5 : 2,
-                filter: active ? 'drop-shadow(0 0 8px rgba(139, 92, 246, 0.5))' : 'none'
+                filter: active ? 'drop-shadow(0 0 8px rgba(0, 210, 255, 0.5))' : 'none'
               }} />
             </div>
             <span style={{ 

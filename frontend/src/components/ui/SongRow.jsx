@@ -38,13 +38,13 @@ const SongRow = memo(({ song, songs = [], index = 0, showIndex = false }) => {
       style={{
         display: 'flex', alignItems: 'center', gap: 12,
         height: 64, padding: '0 12px', borderRadius: 12,
-        background: isActive ? 'rgba(124,58,237,0.08)' : 'transparent',
-        border: `1px solid ${isActive ? 'rgba(124,58,237,0.15)' : 'transparent'}`,
+        background: isActive ? 'rgba(0, 210, 255, 0.08)' : 'transparent',
+        border: `1px solid ${isActive ? 'rgba(0, 210, 255, 0.15)' : 'transparent'}`,
         cursor: 'pointer', transition: 'background 0.15s',
       }}
     >
       {showIndex && (
-        <span style={{ width: 28, textAlign: 'center', fontSize: 12, fontWeight: 700, color: isActive ? '#7C3AED' : 'rgba(255,255,255,0.15)' }}>
+        <span style={{ width: 28, textAlign: 'center', fontSize: 12, fontWeight: 700, color: isActive ? 'var(--accent)' : 'rgba(255,255,255,0.15)' }}>
           {index + 1}
         </span>
       )}
@@ -54,7 +54,7 @@ const SongRow = memo(({ song, songs = [], index = 0, showIndex = false }) => {
       </div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: 14, fontWeight: 600, color: isActive ? '#7C3AED' : '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{song.title}</p>
+        <p style={{ fontSize: 14, fontWeight: 600, color: isActive ? 'var(--accent)' : '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{song.title}</p>
         <p style={{ fontSize: 11, fontWeight: 500, color: 'rgba(255,255,255,0.35)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{song.artist || song.channelTitle}</p>
       </div>
 
@@ -71,13 +71,13 @@ const SongRow = memo(({ song, songs = [], index = 0, showIndex = false }) => {
             position: 'absolute', right: 0, bottom: 40, zIndex: 100,
             width: 200, padding: 6, borderRadius: 12,
             background: 'rgba(18,18,26,0.98)',
-            border: '1px solid rgba(255,255,255,0.09)',
+            border: 'none',
           }}>
             <button
               onClick={(e) => { e.stopPropagation(); toggleSavedSong(song); setShowMenu(false) }}
               style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
             >
-              <FiHeart size={14} style={isSongSaved(song.videoId) ? { fill: '#7C3AED', color: '#7C3AED' } : {}} />
+              <FiHeart size={14} style={isSongSaved(song.videoId) ? { fill: 'var(--accent)', color: 'var(--accent)' } : {}} />
               {isSongSaved(song.videoId) ? 'Unlike' : 'Like'}
             </button>
             <button

@@ -97,7 +97,7 @@ export default function SearchOverlay() {
               flex: 1, display: 'flex', alignItems: 'center', gap: 12,
               padding: '12px 16px', borderRadius: 12,
               background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.09)',
+              border: 'none',
             }}>
               <FiSearch size={18} style={{ color: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
               <input

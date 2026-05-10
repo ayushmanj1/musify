@@ -53,14 +53,14 @@ function SongRow({ song, index, onPlay, onRemove, isSaved }) {
             onClick={handleRemove}
             style={{
               background: 'none', border: 'none', padding: 8, cursor: 'pointer',
-              color: '#8B5CF6', touchAction: 'manipulation',
+              color: 'var(--accent)', touchAction: 'manipulation',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               transition: 'transform 0.2s ease'
             }}
             onMouseDown={e => e.currentTarget.style.transform = 'scale(0.8)'}
             onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
           >
-            <FiHeart size={20} style={{ fill: '#8B5CF6' }} />
+            <FiHeart size={20} style={{ fill: 'var(--accent)' }} />
           </button>
           <button
             onClick={(e) => {
@@ -241,7 +241,7 @@ export default function LibraryPage() {
                       {/* Hover Play Button */}
                       <div className="card-play-btn" style={{
                         position: 'absolute', bottom: '8px', right: '8px',
-                        width: '40px', height: '40px', borderRadius: '50%', background: '#8B5CF6',
+                        width: '40px', height: '40px', borderRadius: '50%', background: 'var(--accent)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         boxShadow: '0 8px 16px rgba(0,0,0,0.3)', opacity: 0, transform: 'translateY(8px)',
                         transition: 'all 0.2s ease'
@@ -265,7 +265,7 @@ export default function LibraryPage() {
           <div 
             onClick={() => navigate('/playlist/Liked%20Songs')}
             style={{
-              background: 'linear-gradient(135deg, #4C1D95, #1a1a2e)',
+              background: 'linear-gradient(135deg, var(--hero-start), #001a1a)',
               borderRadius: 8, padding: '32px 24px', cursor: 'pointer',
               display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
               minHeight: 180, transition: 'transform 0.3s ease',

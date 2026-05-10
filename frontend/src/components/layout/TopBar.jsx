@@ -187,7 +187,7 @@ export default function TopBar() {
         background: 'rgba(0,0,0,0.5)', 
         borderRadius: '24px', 
         overflow: 'hidden',
-        border: '1px solid rgba(255,255,255,0.1)',
+        border: 'none',
         alignItems: 'center'
       }}>
         <button onClick={goBack} disabled={navIndex === 0} 
@@ -264,7 +264,7 @@ export default function TopBar() {
         )}
 
         <div style={{ position: 'relative' }}>
-          <div onClick={() => { setIsProfileOpen(!isProfileOpen); }} className="zoom-hover" style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #8B5CF6, #4C1D95)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+          <div onClick={() => { setIsProfileOpen(!isProfileOpen); }} className="zoom-hover" style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent), var(--hero-start))', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
             <span style={{ color: '#fff', fontWeight: 700, fontSize: '14px' }}>A</span>
           </div>
 
@@ -282,7 +282,7 @@ export default function TopBar() {
 
       <style>{`
         .search-bar-container:focus-within { 
-          border: 1px solid rgba(255,255,255,0.2) !important; 
+          border: none !important; 
           background: #2a2a2a !important;
         }
         .search-bar-container:hover { background: #2a2a2a !important; }

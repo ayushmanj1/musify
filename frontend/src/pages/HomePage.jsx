@@ -70,7 +70,7 @@ function HoverPlayButton({ style }) {
       position: 'absolute',
       width: '48px', height: '48px',
       borderRadius: '50%',
-      background: '#8B5CF6',
+      background: 'var(--accent)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       boxShadow: '0 8px 16px rgba(0,0,0,0.3)',
       opacity: 0,
@@ -88,7 +88,6 @@ function HoverPlayButton({ style }) {
 function VerticalCard({ song, isArtist, isNewRelease, isRecommended, onClick }) {
   return (
     <div 
-      className="vertical-card" 
       onClick={onClick} 
       onContextMenu={(e) => {
         e.preventDefault();
@@ -114,7 +113,7 @@ function VerticalCard({ song, isArtist, isNewRelease, isRecommended, onClick }) 
         {isNewRelease && (
           <div style={{
             position: 'absolute', top: '8px', left: '8px',
-            background: '#8B5CF6', color: '#fff',
+            background: 'var(--accent)', color: '#fff',
             fontSize: '8px', fontWeight: 700, padding: '2px 6px',
             borderRadius: '500px', zIndex: 2
           }}>
@@ -127,7 +126,7 @@ function VerticalCard({ song, isArtist, isNewRelease, isRecommended, onClick }) 
         <p className="truncate" style={{ fontSize: '14px', fontWeight: 700, color: '#ffffff', marginBottom: '4px' }}>
           {song.title || song.name}
         </p>
-        <p className="truncate" style={{ fontSize: '14px', color: isRecommended ? '#A78BFA' : '#b3b3b3' }}>
+        <p className="truncate" style={{ fontSize: '14px', color: isRecommended ? 'var(--accent-hover)' : '#b3b3b3' }}>
           {isArtist ? 'Artist' : (isRecommended ? song.genre || 'Electronic' : song.artist)}
         </p>
       </div>
@@ -226,7 +225,6 @@ export default function HomePage() {
               <div 
                 key={i} 
                 onClick={() => navigate(`/playlist/${encodeURIComponent(playlist.name)}`)}
-                className="playlist-quick-card"
                 style={{
                   borderRadius: '8px',
                   padding: '12px',
@@ -241,7 +239,7 @@ export default function HomePage() {
               >
                 <div style={{
                   width: '56px', height: '56px',
-                  background: playlist.color || '#4C1D95',
+                  background: playlist.color || 'var(--hero-start)',
                   borderRadius: '6px',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   color: '#fff', fontSize: '24px', fontWeight: 900,
@@ -255,7 +253,7 @@ export default function HomePage() {
                   <p style={{ fontSize: '12px', color: '#b3b3b3', margin: '4px 0 0 0' }}>Playlist</p>
                 </div>
                 <div className="card-play-btn" style={{
-                  width: '32px', height: '32px', borderRadius: '50%', background: '#8B5CF6',
+                  width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   opacity: 0, transform: 'scale(0.8)', transition: 'all 0.2s'
                 }}>

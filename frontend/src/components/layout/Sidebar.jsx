@@ -23,7 +23,7 @@ export default function Sidebar() {
       display: 'flex', flexDirection: 'column', alignItems: 'center',
       paddingTop: 32, gap: 24,
       background: 'rgba(255,255,255,0.02)',
-      borderRight: '1px solid rgba(255,255,255,0.04)',
+      borderRight: 'none',
     }}>
       <NavItem to="/" icon={<FiHome size={20} />} isActive={location.pathname === '/'} />
       <NavItem icon={<FiSearch size={20} />} onClick={() => setIsSearchOpen(true)} />
@@ -36,9 +36,9 @@ function NavItem({ to, icon, isActive, onClick }) {
   const style = {
     width: 44, height: 44, borderRadius: 12,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    color: isActive ? '#7C3AED' : 'rgba(255,255,255,0.3)',
-    background: isActive ? 'rgba(124,58,237,0.1)' : 'transparent',
-    border: `1px solid ${isActive ? 'rgba(124,58,237,0.15)' : 'transparent'}`,
+    color: isActive ? 'var(--accent)' : 'rgba(255,255,255,0.3)',
+    background: isActive ? 'rgba(0, 210, 255, 0.1)' : 'transparent',
+    border: `1px solid ${isActive ? 'rgba(0, 210, 255, 0.15)' : 'transparent'}`,
     cursor: 'pointer', transition: 'all 0.15s',
   }
 

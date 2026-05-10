@@ -10,9 +10,9 @@
   --bg-panel: #121212;
   --bg-bottom: #181818;
   --surface-highlight: #333333;
-  --accent: #8B5CF6; /* Primary purple */
-  --accent-hover: #A78BFA; /* Soft purple hover/glow */
-  --hero-start: #4C1D95; /* Deep purple gradient start */
+  --accent: #00d2ff; /* Primary cyan-blue */
+  --accent-hover: #6beaff; /* Soft cyan glow */
+  --hero-start: #003d4d; /* Deep cyan-blue gradient start */
   --text-primary: #FFFFFF;
   --text-secondary: #B3B3B3;
   --text-muted: #6A6A6A;
@@ -174,9 +174,19 @@ button, a, .song-row, .song-item, .song-card, .vertical-card, .playlist-quick-ca
   -webkit-tap-highlight-color: transparent;
 }
 
-button:hover, a:hover, .song-card:hover, .song-item:hover, .vertical-card:hover, .playlist-quick-card:hover, .lib-card:hover, .search-song-card:hover, .category-card:hover, .podcast-card-premium:hover, .hover-bg-card:hover, .zoom-hover:hover, .premium-song-row:hover, .nav-arrow-btn:hover:not(:disabled), .search-bar-container:hover {
-  transform: scale(1.04) !important;
+button:hover, a:hover, .song-card:hover, .song-item:hover, .song-row:hover, .vertical-card:hover, .playlist-quick-card:hover, .lib-card:hover, .search-song-card:hover, .category-card:hover, .podcast-card-premium:hover, .hover-bg-card:hover, .zoom-hover:hover, .premium-song-row:hover, .nav-arrow-btn:hover:not(:disabled), .search-bar-container:hover, .icon-zoom:hover {
+  transform: scale(1.12) !important;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 210, 255, 0.3) !important;
+  z-index: 10;
 }
+
+/* Specific Icon Magnify */
+button svg:hover, .icon-zoom svg:hover, .search-bar-container svg:hover {
+  transform: scale(1.2) !important;
+  color: var(--accent) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
 
 .song-row:hover {
   background-color: var(--bg-card);
@@ -222,6 +232,14 @@ input[type=range].spotify-slider:hover::-webkit-slider-thumb {
   -webkit-backdrop-filter: blur(24px) !important;
   border: none !important;
   box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6) !important;
+}
+
+.glassy-accent {
+  background: rgba(0, 210, 255, 0.15) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: none !important;
+  color: #00d2ff !important;
 }
 
 /* Responsive Grid */

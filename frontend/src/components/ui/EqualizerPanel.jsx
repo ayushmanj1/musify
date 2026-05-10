@@ -79,7 +79,7 @@ export function EqualizerPanel({ isOpen, onClose, onEQChange, currentBands, isPl
         transform: 'translateX(-50%)',
         width: 300,
         background: 'rgba(18,18,18,0.96)',
-        border: '1px solid rgba(255,255,255,0.12)',
+        border: 'none',
         borderRadius: 16,
         padding: 20,
         backdropFilter: 'blur(20px)',
@@ -107,7 +107,7 @@ export function EqualizerPanel({ isOpen, onClose, onEQChange, currentBands, isPl
             onClick={() => handlePresetClick(preset)}
             style={{
               width: 52, height: 26, borderRadius: 500, flexShrink: 0,
-              background: activePreset === preset ? '#00C9FF' : 'rgba(255,255,255,0.08)',
+              background: activePreset === preset ? 'var(--accent)' : 'rgba(255,255,255,0.08)',
               color: activePreset === preset ? '#000' : '#B3B3B3',
               fontSize: 11, border: 'none', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -121,7 +121,7 @@ export function EqualizerPanel({ isOpen, onClose, onEQChange, currentBands, isPl
           <button
             style={{
               width: 52, height: 26, borderRadius: 500, flexShrink: 0,
-              background: '#00C9FF', color: '#000',
+              background: 'var(--accent)', color: '#000',
               fontSize: 11, border: 'none',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
@@ -196,8 +196,8 @@ export function EqualizerButton({ isPlaying, isOpen, onClick }) {
       onClick={handleClick}
       style={{
         width: 40, height: 40, borderRadius: '50%',
-        background: isOpen ? '#00C9FF' : 'rgba(255,255,255,0.1)',
-        border: `1px solid ${isOpen ? 'transparent' : 'rgba(255,255,255,0.15)'}`,
+        background: isOpen ? 'var(--accent)' : 'rgba(255,255,255,0.1)',
+        border: 'none',
         color: isOpen ? '#000' : '#fff',
         display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 2,
         paddingBottom: 11, cursor: 'pointer',

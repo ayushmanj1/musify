@@ -105,7 +105,7 @@ export default function Player() {
           gap: '12px',
           zIndex: 900,
           boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
+          border: 'none',
           animation: 'slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
         }}
       >
@@ -267,14 +267,14 @@ export default function Player() {
             onClick={() => setIsSleepTimerOpen(!isSleepTimerOpen)}
             style={{ 
               background: 'none', border: 'none', 
-              color: sleepTimer.active ? '#8B5CF6' : 'var(--text-secondary)',
+              color: sleepTimer.active ? 'var(--accent)' : 'var(--text-secondary)',
               position: 'relative'
             }}
           >
             <FiClock size={16} />
             {sleepTimer.active && sleepTimerRemaining > 0 && (
               <span style={{ 
-                position: 'absolute', top: '-8px', right: '-12px', background: '#8B5CF6', 
+                position: 'absolute', top: '-8px', right: '-12px', background: 'var(--accent)', 
                 color: '#fff', fontSize: '9px', fontWeight: 'bold', padding: '2px 4px', borderRadius: '8px' 
               }}>
                 {Math.ceil(sleepTimerRemaining / 60000)}m
@@ -314,7 +314,7 @@ export default function Player() {
                       <button key={m} onClick={() => { startSleepTimer(m); setIsSleepTimerOpen(false) }} style={{
                         background: '#333', border: 'none', color: '#fff', padding: '8px 0',
                         borderRadius: '8px', fontSize: '13px', cursor: 'pointer', transition: 'background 0.2s'
-                      }} onMouseEnter={e=>e.currentTarget.style.background='#8B5CF6'} onMouseLeave={e=>e.currentTarget.style.background='#333'}>
+                      }} onMouseEnter={e=>e.currentTarget.style.background='var(--accent)'} onMouseLeave={e=>e.currentTarget.style.background='#333'}>
                         {m} min
                       </button>
                     ))}
@@ -331,13 +331,13 @@ export default function Player() {
                       if (val && !isNaN(val) && val > 0 && val <= 120) {
                         startSleepTimer(Number(val)); setIsSleepTimerOpen(false)
                       }
-                    }} style={{ background: '#8B5CF6', color: '#fff', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '12px', cursor: 'pointer' }}>Set</button>
+                    }} style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '12px', cursor: 'pointer' }}>Set</button>
                   </div>
 
                   <button onClick={() => { startSleepTimer('endOfSong'); setIsSleepTimerOpen(false) }} style={{
                     background: '#333', border: 'none', color: '#fff', padding: '8px',
                     borderRadius: '8px', fontSize: '13px', cursor: 'pointer', width: '100%', transition: 'background 0.2s'
-                  }} onMouseEnter={e=>e.currentTarget.style.background='#8B5CF6'} onMouseLeave={e=>e.currentTarget.style.background='#333'}>
+                  }} onMouseEnter={e=>e.currentTarget.style.background='var(--accent)'} onMouseLeave={e=>e.currentTarget.style.background='#333'}>
                     End of song
                   </button>
                 </div>

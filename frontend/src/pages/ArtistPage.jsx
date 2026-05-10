@@ -33,7 +33,12 @@ export default function ArtistPage() {
   }, [id])
 
   return (
-    <div style={{ paddingBottom: 100, animation: 'fadeIn 0.3s ease' }}>
+    <div style={{ 
+      paddingBottom: 100, 
+      animation: 'fadeIn 0.3s ease',
+      background: `linear-gradient(to bottom, ${color}33, transparent 500px)`,
+      minHeight: '100%'
+    }}>
       {/* ─── Hero Section ─── */}
       <div style={{
         background: `linear-gradient(to bottom, ${color}, var(--bg-primary))`,
@@ -62,7 +67,7 @@ export default function ArtistPage() {
           boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
           flexShrink: 0,
           background: '#282828',
-          border: '4px solid rgba(255,255,255,0.1)'
+          border: 'none'
         }}>
           {artist?.image ? (
             <img src={artist.image.replace('mqdefault', 'hqdefault')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
@@ -104,7 +109,7 @@ export default function ArtistPage() {
             cursor: songs.length > 0 ? 'pointer' : 'not-allowed', color: '#fff',
             opacity: songs.length > 0 ? 1 : 0.5,
             transition: 'transform 0.1s ease, background 0.2s ease',
-            boxShadow: '0 4px 12px rgba(139,92,246,0.3)'
+            boxShadow: '0 4px 12px rgba(0, 210, 255, 0.3)'
           }}
           className="play-btn-big"
         >
@@ -113,7 +118,7 @@ export default function ArtistPage() {
         
         <button style={{ 
           background: 'transparent', 
-          border: '1px solid rgba(255,255,255,0.3)', 
+          border: 'none', 
           borderRadius: '4px', 
           padding: '8px 16px', 
           color: '#fff', 

@@ -460,7 +460,29 @@ app.get('/api/stream', async (req, res) => {
   }
 })
 
-// ─── Initialize Clients for Serverless ───
+// ─── Serve static files ───
+const frontendPath = path.join(__dirname, '../frontend/dist')
+app.use(express.static(frontendPath))
+
+// ─── API Routes ───
+// (All the routes are defined above)
+
+// ─── Catch-all to serve Frontend ───
+app.get('*', (req, res) => {
+  // If it's an API route that didn't match, return 404
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ error: 'API route not found' })
+  }
+  res.sendFile(path.join(frontendPath, 'index.html'))
+})
+
+// ─── Initialize & Start ───
 initPlayDl().catch(console.error)
+
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`🎵 Musify Backend running locally on port ${PORT}`)
+  })
+}
 
 export default app

@@ -7,7 +7,7 @@ import './LyricsShareCard.css';
 const SWATCHES = [
   { name: 'Spotify Green', value: '#1DB954', text: 'dark', glow: 'rgba(29, 185, 84, 0.5)' },
   { name: 'Deep Teal', value: '#006466', text: 'light', glow: 'rgba(0, 100, 102, 0.5)' },
-  { name: 'Electric Purple', value: '#8B5CF6', text: 'light', glow: 'rgba(139, 92, 246, 0.5)' },
+  { name: 'Cyan Blue', value: '#00d2ff', text: 'light', glow: 'rgba(0, 210, 255, 0.5)' },
   { name: 'Coral Flame', value: '#FF5E5B', text: 'light', glow: 'rgba(255, 94, 91, 0.5)' },
   { name: 'Amber Gold', value: '#FFB800', text: 'dark', glow: 'rgba(255, 184, 0, 0.5)' },
   { name: 'Midnight Navy', value: '#0A192F', text: 'light', glow: 'rgba(10, 25, 47, 0.5)' },
@@ -144,7 +144,7 @@ export default function LyricsShareCard({ song, lyrics, minimal }) {
           style={{ 
             display: 'flex', alignItems: 'center', gap: '8px',
             background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(12px)',
-            border: '1px solid rgba(255,255,255,0.1)', borderRadius: '24px',
+            border: 'none', borderRadius: '24px',
             padding: '8px 20px', color: '#fff', cursor: 'pointer',
             fontSize: '13px', fontWeight: 700, transition: 'all 0.3s ease',
             boxShadow: '0 4px 12px rgba(0,0,0,0.2)'

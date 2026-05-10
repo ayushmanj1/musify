@@ -12,7 +12,7 @@ import { Reorder, motion, AnimatePresence } from 'framer-motion'
 import html2canvas from 'html2canvas'
 
 const SWATCHES = [
-  { name: 'Electric Purple', value: '#8B5CF6', text: 'light', glow: 'rgba(139, 92, 246, 0.5)' },
+  { name: 'Cyan Blue', value: '#00d2ff', text: 'light', glow: 'rgba(0, 210, 255, 0.5)' },
   { name: 'Deep Teal', value: '#006466', text: 'light', glow: 'rgba(0, 100, 102, 0.5)' },
   { name: 'Coral Flame', value: '#FF5E5B', text: 'light', glow: 'rgba(255, 94, 91, 0.5)' },
   { name: 'Amber Gold', value: '#FFB800', text: 'dark', glow: 'rgba(255, 184, 0, 0.5)' },
@@ -74,8 +74,8 @@ function SongRow({ song, isPlaying, isCurrent, showAdd, onClick, onMore, addNext
       style={{
         display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 20px',
         margin: '0 8px', borderRadius: '8px', cursor: 'pointer',
-        background: isCurrent ? 'rgba(139,92,246,0.1)' : 'transparent',
-        borderLeft: isCurrent ? '3px solid #8B5CF6' : '3px solid transparent',
+        background: isCurrent ? 'rgba(0, 210, 255, 0.1)' : 'transparent',
+        borderLeft: isCurrent ? '3px solid var(--accent)' : '3px solid transparent',
         transition: 'background 0.2s ease'
       }}
     >
@@ -107,8 +107,8 @@ function SongRow({ song, isPlaying, isCurrent, showAdd, onClick, onMore, addNext
       <div style={{ flexShrink: 0, width: 24, display: 'flex', justifyContent: 'flex-end' }}>
         {showAdd ? (
           <button onClick={handleAdd} style={{
-            width: 20, height: 20, borderRadius: '50%', border: added ? '1px solid #8B5CF6' : '1px solid #535353',
-            background: 'none', color: added ? '#8B5CF6' : '#b3b3b3', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: 20, height: 20, borderRadius: '50%', border: added ? '1px solid var(--accent)' : '1px solid #535353',
+            background: 'none', color: added ? 'var(--accent)' : '#b3b3b3', display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer', transition: 'all 0.2s'
           }} className="add-btn">
             {added ? '✓' : '+'}
@@ -389,13 +389,13 @@ export default function FullScreenPlayer() {
         position: 'absolute', top: '64px', right: '16px',
         width: 'min(340px, 90vw)', bottom: '135px',
         background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(24px)',
-        borderRadius: '20px', border: '1px solid rgba(255,255,255,0.1)',
+        borderRadius: '20px', border: 'none',
         display: 'flex', flexDirection: 'column', zIndex: 10001,
         transition: 'transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.25s ease',
         transform: isFsQueueOpen ? 'translateX(0)' : 'translateX(120%)',
         opacity: isFsQueueOpen ? 1 : 0, pointerEvents: isFsQueueOpen ? 'auto' : 'none', overflow: 'hidden'
       }}>
-        <div style={{ height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', borderBottom: '1px solid rgba(255,255,255,0.08)', background: 'rgba(0,0,0,0.2)' }}>
+        <div style={{ height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', borderBottom: 'none', background: 'rgba(0,0,0,0.2)' }}>
           <span style={{ fontSize: '16px', fontWeight: 'bold' }}>Up Next</span>
           <button onClick={() => setIsFsQueueOpen(false)} style={{ background: 'none', border: 'none', color: '#b3b3b3', cursor: 'pointer', padding: '4px' }}><FiX size={24} /></button>
         </div>
@@ -450,7 +450,7 @@ export default function FullScreenPlayer() {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
         padding: '0 24px', height: '64px', flexShrink: 0,
         background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(20px)',
-        borderBottom: '1px solid rgba(255,255,255,0.05)'
+        borderBottom: 'none'
       }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <p className="truncate" style={{ fontSize: '13px', fontWeight: 700, margin: 0, opacity: 0.9 }}>{currentSong.album || 'Premium Player'}</p>
@@ -531,7 +531,7 @@ export default function FullScreenPlayer() {
                       transform: 'rotateY(180deg)', overflowY: 'auto', padding: '40px 24px',
                       display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center',
                       boxShadow: '0 16px 64px rgba(0,0,0,0.6)',
-                      border: '1px solid rgba(255,255,255,0.1)',
+                      border: 'none',
                       transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
                     }} className="hide-scrollbar"
                   >
@@ -611,7 +611,7 @@ export default function FullScreenPlayer() {
                         display: 'flex', gap: '8px', alignItems: 'center', 
                         position: 'absolute', right: 'calc(100% + 12px)', top: '50%', transform: 'translateY(-50%)',
                         background: 'rgba(20,20,20,0.85)', backdropFilter: 'blur(32px)',
-                        padding: '8px 16px', borderRadius: '32px', border: '1px solid rgba(255,255,255,0.1)',
+                        padding: '8px 16px', borderRadius: '32px', border: 'none',
                         boxShadow: '0 8px 32px rgba(0,0,0,0.4)', whiteSpace: 'nowrap'
                       }}
                     >
@@ -640,7 +640,7 @@ export default function FullScreenPlayer() {
                   style={{
                     background: isShareMode ? SWATCHES[selectedColorIdx].value : 'rgba(255,255,255,0.15)', 
                     backdropFilter: isShareMode ? 'none' : 'blur(12px)',
-                    border: '1px solid rgba(255,255,255,0.1)', borderRadius: '24px',
+                    border: 'none', borderRadius: '24px',
                     padding: '8px 20px', 
                     color: isShareMode ? (SWATCHES[selectedColorIdx].text === 'light' ? '#fff' : '#000') : '#fff', 
                     fontWeight: 800, fontSize: '12px',
@@ -693,7 +693,7 @@ export default function FullScreenPlayer() {
       </div>
 
       {/* Bottom Controls Bar */}
-      <div style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(20px)', padding: '20px 32px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+      <div style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(20px)', padding: '20px 32px', borderTop: 'none' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
           {/* Left: Song Info */}
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '16px', minWidth: 0 }}>
@@ -705,24 +705,24 @@ export default function FullScreenPlayer() {
             <button onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('open-context-menu', { detail: { x: e.clientX, y: e.clientY - 200, song: currentSong, type: 'song' } })) }} style={{ background: 'none', border: 'none', color: '#fff', opacity: 0.7, cursor: 'pointer', padding: '8px' }}>
               <FiPlusCircle size={20} />
             </button>
-            <button onClick={() => toggleSavedSong(currentSong)} style={{ background: 'none', border: 'none', color: saved ? '#8B5CF6' : '#fff', cursor: 'pointer', padding: '8px' }}>
-              <FiHeart size={20} style={{ fill: saved ? '#8B5CF6' : 'none', opacity: saved ? 1 : 0.4 }} />
+            <button onClick={() => toggleSavedSong(currentSong)} style={{ background: 'none', border: 'none', color: saved ? 'var(--accent)' : '#fff', cursor: 'pointer', padding: '8px' }}>
+              <FiHeart size={20} style={{ fill: saved ? 'var(--accent)' : 'none', opacity: saved ? 1 : 0.4 }} />
             </button>
           </div>
 
           {/* Center: Playback Controls */}
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '24px' }}>
-            <button onClick={() => setShuffle(!shuffle)} style={{ background: 'none', border: 'none', color: shuffle ? '#8B5CF6' : '#fff', opacity: shuffle ? 1 : 0.4, cursor: 'pointer' }}><FiShuffle size={18} /></button>
+            <button onClick={() => setShuffle(!shuffle)} style={{ background: 'none', border: 'none', color: shuffle ? 'var(--accent)' : '#fff', opacity: shuffle ? 1 : 0.4, cursor: 'pointer' }}><FiShuffle size={18} /></button>
             <button onClick={() => { setSwipeDirection(-1); playPrevious() }} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}><FiSkipBack size={24} /></button>
             <button onClick={togglePlay} style={{ background: '#fff', border: 'none', borderRadius: '50%', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>{isPlaying ? <FiPause size={24} color="#000" /> : <FiPlay size={24} color="#000" style={{ marginLeft: 3 }} />}</button>
             <button onClick={() => { setSwipeDirection(1); playNext() }} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}><FiSkipForward size={24} /></button>
-            <button onClick={() => setRepeat(repeat === 'none' ? 'context' : 'none')} style={{ background: 'none', border: 'none', color: repeat !== 'none' ? '#8B5CF6' : '#fff', opacity: repeat !== 'none' ? 1 : 0.4, cursor: 'pointer' }}><FiRepeat size={18} /></button>
+            <button onClick={() => setRepeat(repeat === 'none' ? 'context' : 'none')} style={{ background: 'none', border: 'none', color: repeat !== 'none' ? 'var(--accent)' : '#fff', opacity: repeat !== 'none' ? 1 : 0.4, cursor: 'pointer' }}><FiRepeat size={18} /></button>
           </div>
 
           {/* Right: Utility Controls */}
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
-            <button onClick={() => setIsFlipped(!isFlipped)} style={{ background: 'none', border: 'none', color: isFlipped ? '#8B5CF6' : '#fff', opacity: isFlipped ? 1 : 0.6, cursor: 'pointer', padding: '8px' }}><FiMusic size={18} /></button>
-            <button onClick={toggleFsQueue} style={{ background: 'none', border: 'none', color: isFsQueueOpen ? '#8B5CF6' : '#fff', opacity: isFsQueueOpen ? 1 : 0.6, cursor: 'pointer', padding: '8px' }}><FiList size={18} /></button>
+            <button onClick={() => setIsFlipped(!isFlipped)} style={{ background: 'none', border: 'none', color: isFlipped ? 'var(--accent)' : '#fff', opacity: isFlipped ? 1 : 0.6, cursor: 'pointer', padding: '8px' }}><FiMusic size={18} /></button>
+            <button onClick={toggleFsQueue} style={{ background: 'none', border: 'none', color: isFsQueueOpen ? 'var(--accent)' : '#fff', opacity: isFsQueueOpen ? 1 : 0.6, cursor: 'pointer', padding: '8px' }}><FiList size={18} /></button>
             <button onClick={handleClose} style={{ background: 'none', border: 'none', color: '#fff', opacity: 0.6, cursor: 'pointer', padding: '8px' }}><FiMinimize2 size={20} /></button>
             <button onClick={() => {
               if (!document.fullscreenElement) {
@@ -731,11 +731,11 @@ export default function FullScreenPlayer() {
                 document.exitFullscreen();
               }
             }} style={{ background: 'none', border: 'none', color: '#fff', opacity: 0.6, cursor: 'pointer', padding: '8px' }}><FiMonitor size={18} /></button>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100px', marginLeft: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100px', marginLeft: '8px', marginRight: '12px' }}>
               <FiVolume2 size={16} style={{ opacity: 0.6 }} />
               <input type="range" min="0" max="1" step="0.01" value={volume} onChange={handleVolume} className="fs-vol-slider" style={{ flex: 1, height: '4px', borderRadius: '2px', appearance: 'none', background: `linear-gradient(to right, #fff ${volume * 100}%, rgba(255,255,255,0.2) ${volume * 100}%)`, cursor: 'pointer' }} />
             </div>
-            <button style={{ background: 'none', border: 'none', color: '#fff', opacity: 0.6, cursor: 'pointer', padding: '8px' }}><FiExternalLink size={18} /></button>
+
           </div>
         </div>
 
@@ -753,11 +753,11 @@ export default function FullScreenPlayer() {
         .fs-bottom-btn { background: none; border: none; color: #fff; cursor: pointer; transition: all 0.2s; padding: 8px; }
         .fs-bottom-btn:hover { transform: scale(1.04) !important; opacity: 1 !important; }
         @keyframes eqBar { from { height: 4px; } to { height: 14px; } }
-        .eq-bar { width: 3px; border-radius: 2px; background: #8B5CF6; animation: eqBar 0.6s ease-in-out infinite alternate; }
-        @keyframes pulseGlow { 0% { box-shadow: 0 0 30px rgba(139,92,246,0.2); } 50% { box-shadow: 0 0 80px rgba(139,92,246,0.3); } 100% { box-shadow: 0 0 30px rgba(139,92,246,0.2); } }
+        .eq-bar { width: 3px; border-radius: 2px; background: var(--accent); animation: eqBar 0.6s ease-in-out infinite alternate; }
+        @keyframes pulseGlow { 0% { box-shadow: 0 0 30px rgba(0, 210, 255, 0.2); } 50% { box-shadow: 0 0 80px rgba(0, 210, 255, 0.3); } 100% { box-shadow: 0 0 30px rgba(0, 210, 255, 0.2); } }
         .fs-seek-slider::-webkit-slider-thumb { appearance: none; width: 12px; height: 12px; border-radius: 50%; background: #fff; cursor: pointer; }
         @keyframes lyricsSpin { to { transform: rotate(360deg); } }
-        .lyrics-loader { width: 28px; height: 28px; border: 2px solid rgba(255,255,255,0.1); border-top-color: #fff; border-radius: 50%; animation: lyricsSpin 0.8s linear infinite; }
+        .lyrics-loader { width: 28px; height: 28px; border: 2px solid transparent; border-top-color: #fff; border-radius: 50%; animation: lyricsSpin 0.8s linear infinite; }
         
         @keyframes vibrantGradient {
           0% { background-position: 0% 50%; }

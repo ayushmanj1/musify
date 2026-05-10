@@ -46,7 +46,7 @@ export default function LeftSidebar() {
       width: '100%',
       height: '100%',
       transition: isReady ? (isLeftSidebarCollapsed ? 'width 0.35s cubic-bezier(0.4,0,0.2,1)' : 'width 0.35s cubic-bezier(0.34,1.56,0.64,1)') : 'none',
-      borderRight: isLeftSidebarCollapsed ? '2px solid #8B5CF6' : 'none',
+      borderRight: isLeftSidebarCollapsed ? '2px solid var(--accent)' : 'none',
       display: 'flex', flexDirection: 'column',
       cursor: isLeftSidebarCollapsed ? 'pointer' : 'default'
     }}>
@@ -57,7 +57,7 @@ export default function LeftSidebar() {
         padding: isLeftSidebarCollapsed ? '0' : '0 12px', marginBottom: '24px' 
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ fontSize: '24px', color: '#8B5CF6', fontWeight: 900 }}>♪</span>
+          <span style={{ fontSize: '24px', color: 'var(--accent)', fontWeight: 900 }}>♪</span>
           {!isLeftSidebarCollapsed && (
             <span style={{ fontSize: '20px', fontWeight: 800, color: '#fff', letterSpacing: '-0.5px' }}>Musify</span>
           )}
@@ -78,7 +78,7 @@ export default function LeftSidebar() {
               style={{
                 display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 12px', textDecoration: 'none',
                 justifyContent: isLeftSidebarCollapsed ? 'center' : 'flex-start',
-                color: isActive ? '#8B5CF6' : 'var(--text-secondary)',
+                color: isActive ? 'var(--accent)' : 'var(--text-secondary)',
                 fontWeight: isActive ? 700 : 600, borderRadius: '8px', transition: 'all 0.2s ease'
               }}
             >

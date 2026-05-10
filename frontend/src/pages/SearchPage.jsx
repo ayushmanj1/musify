@@ -14,7 +14,7 @@ const CATEGORIES = [
   { name: 'Synthwave', color: '#4B0082', emoji: '🌃' },
   { name: 'Acoustic', color: '#BC5900', emoji: '🪵' },
   { name: 'Workout', color: '#E91429', emoji: '💪' },
-  { name: 'Focus', color: '#8B5CF6', emoji: '🧠' },
+  { name: 'Focus', color: '#00d2ff', emoji: '🧠' },
   { name: 'Chill', color: '#1E3264', emoji: '🧊' },
   { name: 'Party', color: '#AF2896', emoji: '🎉' },
   { name: 'Sleep', color: '#1E3264', emoji: '😴' },
@@ -164,7 +164,7 @@ export default function SearchPage() {
                       <img src={song.thumbnail} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       <div className="search-card-play-btn" style={{
                         position: 'absolute', bottom: '8px', right: '8px',
-                        width: '40px', height: '40px', borderRadius: '50%', background: '#8B5CF6',
+                        width: '40px', height: '40px', borderRadius: '50%', background: 'var(--accent)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         opacity: 0, transform: 'translateY(10px)', transition: 'all 0.2s'
                       }}>

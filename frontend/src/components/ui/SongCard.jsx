@@ -71,8 +71,8 @@ const SongCard = memo(({
         height: 64,
         padding: '0 12px',
         borderRadius: 12,
-        background: isCurrent ? 'rgba(124,58,237,0.08)' : 'rgba(255,255,255,0.03)',
-        border: `1px solid ${isCurrent ? 'rgba(124,58,237,0.2)' : 'rgba(255,255,255,0.04)'}`,
+        background: isCurrent ? 'rgba(0, 210, 255, 0.08)' : 'rgba(255,255,255,0.03)',
+        border: `1px solid ${isCurrent ? 'rgba(0, 210, 255, 0.2)' : 'transparent'}`,
         cursor: 'pointer',
         transition: 'background 0.15s, border-color 0.15s',
         touchAction: 'manipulation',
@@ -110,7 +110,7 @@ const SongCard = memo(({
                 <div
                   key={i}
                   style={{
-                    width: 2, borderRadius: 1, background: '#7C3AED',
+                    width: 2, borderRadius: 1, background: 'var(--accent)',
                     animation: `eq-bar 0.6s ease-in-out ${i * 0.1}s infinite alternate`,
                   }}
                 />
@@ -124,7 +124,7 @@ const SongCard = memo(({
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{
           fontSize: 14, fontWeight: 600,
-          color: isCurrent ? '#7C3AED' : '#fff',
+          color: isCurrent ? 'var(--accent)' : '#fff',
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           lineHeight: 1.3,
         }}>

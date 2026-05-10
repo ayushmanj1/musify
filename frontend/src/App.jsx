@@ -149,8 +149,8 @@ function AppShell({ location }) {
         .premium-spinner {
           width: 48px;
           height: 48px;
-          border: 3px solid rgba(139, 92, 246, 0.1);
-          border-top: 3px solid #8B5CF6;
+          border: 3px solid rgba(0, 210, 255, 0.1);
+          border-top: 3px solid var(--accent);
           border-radius: 50%;
           animation: spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
           position: relative;
@@ -160,7 +160,7 @@ function AppShell({ location }) {
           position: absolute;
           top: -3px; left: -3px; right: -3px; bottom: -3px;
           border: 3px solid transparent;
-          border-left: 3px solid #A78BFA;
+          border-left: 3px solid var(--accent-hover);
           border-radius: 50%;
           animation: spin 1.5s linear infinite reverse;
           opacity: 0.5;

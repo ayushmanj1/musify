@@ -126,7 +126,7 @@ export function FlipAlbumArt({ song, currentTime, duration, isPlaying, onExpandL
           }}
         >
           {/* Top Zone 14% */}
-          <div style={{ height: '14%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px', gap: 6, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+          <div style={{ height: '14%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px', gap: 6, borderBottom: 'none' }}>
             <FiMusic size={12} color="rgba(255,255,255,0.8)" />
             <div style={{ minWidth: 0, flex: 1, textAlign: 'center' }}>
               <p style={{ color: '#fff', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{song?.title}</p>
@@ -172,7 +172,7 @@ export function FlipAlbumArt({ song, currentTime, duration, isPlaying, onExpandL
           </div>
 
           {/* Bottom Zone 14% */}
-          <div style={{ height: '14%', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ height: '14%', borderTop: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
              <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 9, fontWeight: 600, letterSpacing: 1 }}>TAP TO EXPAND</p>
           </div>
         </div>

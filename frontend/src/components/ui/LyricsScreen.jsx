@@ -2,10 +2,11 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { FiArrowLeft, FiDownload, FiInstagram, FiTwitter, FiSend } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 import { fetchLyrics } from '../../utils/lyricsApi.js';
+import html2canvas from 'html2canvas';
 
 function Spinner() {
   return (
-    <div style={{ width: 24, height: 24, border: '2px solid rgba(255,255,255,0.1)', borderTopColor: '#00C9FF', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+    <div style={{ width: 24, height: 24, border: '2px solid transparent', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
   );
 }
 
@@ -175,7 +176,7 @@ export function LyricsScreen({ isOpen, onClose, currentSong, currentTime, durati
           {/* Selection indicator */}
           <div style={{ height: 24, textAlign: 'center', flexShrink: 0 }}>
             {isSelectionMode ? (
-              <span style={{ color: '#00C9FF', fontSize: 12, fontWeight: 600 }}>
+              <span style={{ color: 'var(--accent)', fontSize: 12, fontWeight: 600 }}>
                 Select up to 5 lines ({selectedLines.size}/5)
               </span>
             ) : null}
@@ -209,7 +210,7 @@ export function LyricsScreen({ isOpen, onClose, currentSong, currentTime, durati
             {error && (
               <div style={{ textAlign: 'center', marginTop: 60 }}>
                 <p style={{ color: '#B3B3B3', fontSize: 14, marginBottom: 16 }}>{error}</p>
-                <button onClick={() => setLyrics(null)} style={{ color: '#00C9FF', background: 'none', border: 'none', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Try again</button>
+                <button onClick={() => setLyrics(null)} style={{ color: 'var(--accent)', background: 'none', border: 'none', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Try again</button>
               </div>
             )}
 
@@ -238,8 +239,8 @@ export function LyricsScreen({ isOpen, onClose, currentSong, currentTime, durati
                     transition: 'color 300ms, font-size 200ms, transform 150ms, background 150ms',
                     cursor: isSelectionMode ? 'pointer' : 'default',
                     transform: isSelected ? 'scale(1.02)' : 'scale(1)',
-                    background: isSelected ? 'rgba(0,201,255,0.08)' : 'transparent',
-                    borderLeft: isSelected ? '3px solid #00C9FF' : '3px solid transparent',
+                    background: isSelected ? 'rgba(0,210,255,0.08)' : 'transparent',
+                    borderLeft: isSelected ? '3px solid var(--accent)' : '3px solid transparent',
                     paddingLeft: isSelected ? 12 : 0,
                     marginLeft: isSelected ? -15 : 0,
                     paddingTop: isSelected ? 4 : 0,
@@ -274,10 +275,10 @@ export function LyricsScreen({ isOpen, onClose, currentSong, currentTime, durati
               }
             }}
             style={{
-              width: '100%', height: 48, background: '#00C9FF', borderRadius: 500,
+              width: '100%', height: 48, background: 'var(--accent)', borderRadius: 500,
               color: '#000', fontSize: 15, fontWeight: 700, border: 'none',
               cursor: 'pointer', touchAction: 'manipulation',
-              boxShadow: '0 4px 12px rgba(0,201,255,0.3)'
+              boxShadow: '0 4px 12px rgba(0,210,255,0.3)'
             }}
           >
             {isSelectionMode ? `Share ${selectedLines.size} Line${selectedLines.size !== 1 ? 's' : ''}` : 'Share Lyrics Card'}
@@ -305,13 +306,13 @@ function LyricsCardPreview({ isOpen, onClose, song, lines }) {
     'Gradient': { background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)' },
     'Dark': { background: '#121212', backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '4px 4px' },
     'Blur': { background: `url(${song?.thumbnail})`, backgroundSize: 'cover', backgroundPosition: 'center', filter: 'blur(20px) brightness(0.5)' },
-    'Neon': { background: '#0a0a0f', border: '1px solid rgba(0,201,255,0.6)', boxShadow: '0 0 24px rgba(0,201,255,0.25)' }
+    'Neon': { background: '#0a0a0f', border: '1px solid rgba(0,210,255,0.6)', boxShadow: '0 0 24px rgba(0,210,255,0.25)' }
   };
 
   const handleShare = async (platform) => {
     if (platform === 'Download') {
       try {
-        const canvas = await window.html2canvas(cardRef.current, { scale: 2, backgroundColor: null });
+        const canvas = await html2canvas(cardRef.current, { scale: 2, backgroundColor: null });
         const link = document.createElement('a');
         link.download = `${song.title}-lyrics.png`;
         link.href = canvas.toDataURL('image/png');
@@ -323,7 +324,7 @@ function LyricsCardPreview({ isOpen, onClose, song, lines }) {
     }
 
     try {
-      const canvas = await window.html2canvas(cardRef.current, { scale: 2, backgroundColor: null });
+      const canvas = await html2canvas(cardRef.current, { scale: 2, backgroundColor: null });
       canvas.toBlob(async (blob) => {
         const file = new File([blob], 'lyrics.png', { type: 'image/png' });
         const shareData = {
@@ -415,7 +416,7 @@ function LyricsCardPreview({ isOpen, onClose, song, lines }) {
               onClick={() => setVariant(k)}
               style={{
                 width: 56, height: 56, borderRadius: 8, flexShrink: 0,
-                border: variant === k ? '2px solid #00C9FF' : '2px solid transparent',
+                border: variant === k ? '2px solid var(--accent)' : '2px solid transparent',
                 position: 'relative', overflow: 'hidden'
               }}
             >

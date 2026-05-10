@@ -40,8 +40,8 @@ function SongRow({ song, isPlaying, isCurrent, showAdd, onClick, onMore }) {
       style={{
         display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 20px',
         margin: '0 8px', borderRadius: '8px', cursor: 'pointer',
-        background: isCurrent ? 'rgba(139,92,246,0.1)' : 'transparent',
-        borderLeft: isCurrent ? '3px solid #8B5CF6' : '3px solid transparent',
+        background: isCurrent ? 'rgba(0, 210, 255, 0.1)' : 'transparent',
+        borderLeft: isCurrent ? '3px solid var(--accent)' : '3px solid transparent',
         transition: 'background 0.2s ease'
       }}
     >
@@ -64,7 +64,7 @@ function SongRow({ song, isPlaying, isCurrent, showAdd, onClick, onMore }) {
       </div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ margin: 0, fontSize: '13px', fontWeight: 500, color: isCurrent ? '#A78BFA' : '#fff' }} className="truncate">{song.title}</p>
+        <p style={{ margin: 0, fontSize: '13px', fontWeight: 500, color: isCurrent ? 'var(--accent-hover)' : '#fff' }} className="truncate">{song.title}</p>
         <p style={{ margin: 0, fontSize: '12px', color: '#b3b3b3' }} className="truncate">{song.artist}</p>
       </div>
 
@@ -73,8 +73,8 @@ function SongRow({ song, isPlaying, isCurrent, showAdd, onClick, onMore }) {
       <div style={{ flexShrink: 0, width: 24, display: 'flex', justifyContent: 'flex-end' }}>
         {showAdd ? (
           <button onClick={handleAdd} style={{
-            width: 20, height: 20, borderRadius: '50%', border: added ? '1px solid #8B5CF6' : '1px solid #535353',
-            background: 'none', color: added ? '#8B5CF6' : '#b3b3b3', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: 20, height: 20, borderRadius: '50%', border: added ? '1px solid var(--accent)' : '1px solid #535353',
+            background: 'none', color: added ? 'var(--accent)' : '#b3b3b3', display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer', transition: 'all 0.2s'
           }} className="add-btn">
             {added ? '✓' : '+'}
@@ -190,7 +190,7 @@ export default function RightSidebar() {
       position: 'relative',
       height: '100%',
       background: !isRightSidebarOpen ? '#121212' : '#121212',
-      borderLeft: !isRightSidebarOpen ? '2px solid #8B5CF6' : 'none',
+      borderLeft: !isRightSidebarOpen ? '2px solid var(--accent)' : 'none',
       transition: 'background 0.3s ease, border-left 0.3s ease',
       display: 'flex',
       flexDirection: 'column',
@@ -203,7 +203,7 @@ export default function RightSidebar() {
           <button 
             onClick={handleOpen}
             style={{ 
-              background: 'none', border: 'none', color: '#8B5CF6', cursor: 'pointer',
+              background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer',
               padding: '16px 8px', fontSize: '18px', fontWeight: 'bold'
             }}
           >
@@ -238,9 +238,9 @@ export default function RightSidebar() {
               <>
                 <style>{`
                   @keyframes sidebarPulse {
-                    0% { box-shadow: 0 0 15px rgba(139,92,246,0.2); }
-                    50% { box-shadow: 0 0 30px rgba(139,92,246,0.35); }
-                    100% { box-shadow: 0 0 15px rgba(139,92,246,0.2); }
+                    0% { box-shadow: 0 0 15px rgba(0, 210, 255, 0.2); }
+                    50% { box-shadow: 0 0 30px rgba(0, 210, 255, 0.35); }
+                    100% { box-shadow: 0 0 15px rgba(0, 210, 255, 0.2); }
                   }
                 `}</style>
                 <div className="glass-box" style={{ borderRadius: '12px', padding: '16px', marginBottom: '24px' }}>
@@ -253,7 +253,7 @@ export default function RightSidebar() {
                         height: '100%',
                         borderRadius: '12px',
                         objectFit: 'cover',
-                        boxShadow: isPlaying ? '0 8px 32px rgba(139,92,246,0.3)' : '0 8px 32px rgba(0,0,0,0.5)',
+                        boxShadow: isPlaying ? '0 8px 32px rgba(0, 210, 255, 0.3)' : '0 8px 32px rgba(0,0,0,0.5)',
                         transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
                       }}
                     />
@@ -263,7 +263,7 @@ export default function RightSidebar() {
                     <h2 className="truncate" style={{ fontSize: '18px', fontWeight: 800, color: '#fff', marginBottom: '4px' }}>
                       {currentSong.title}
                     </h2>
-                    <p className="truncate" style={{ color: '#A78BFA', fontSize: '14px', fontWeight: 600 }}>
+                    <p className="truncate" style={{ color: 'var(--accent-hover)', fontSize: '14px', fontWeight: 600 }}>
                       {currentSong.artist}
                     </p>
                   </div>
@@ -341,7 +341,7 @@ export default function RightSidebar() {
           to { height: 14px; }
         }
         .eq-bar {
-          width: 3px; border-radius: 2px; background: #8B5CF6;
+          width: 3px; border-radius: 2px; background: var(--accent);
           animation: eqBar 0.6s ease-in-out infinite alternate;
         }
 
