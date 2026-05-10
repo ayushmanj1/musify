@@ -168,51 +168,58 @@ async function getStreamUrl(videoId) {
   
   // ─── Primary: play-dl (Fast & Cloud Friendly) ───
   try {
-    console.log(`[Stream] Extracting ${videoId} using play-dl...`)
-    const stream = await play.stream(url, { 
-      quality: 0, // highest audio
+    const userAgent = getRandomUA()
+    console.log(`[Stream] Extracting ${videoId} using play-dl (Cookies: ${process.env.YT_COOKIES ? 'YES' : 'NO'})...`)
+    
+    // Get video info first for better stability
+    const videoInfo = await play.video_info(url)
+    const stream = await play.stream_from_info(videoInfo, { 
+      quality: 0,
       seek: 0,
-      htmldata: false // faster
+      htmldata: false
     })
     
     if (stream && stream.url) {
-      console.log(`[Stream] ${videoId} extracted via play-dl`)
+      console.log(`[Stream] ${videoId} extracted via play-dl (Success)`)
       return {
         url: stream.url,
         mime: stream.type || 'audio/webm',
         size: 0,
-        client: 'PLAYDL'
+        client: 'PLAYDL',
+        ua: userAgent
       }
     }
   } catch (err) {
-    console.warn(`[Stream] play-dl failed for ${videoId}:`, err.message)
+    console.error(`[Stream] play-dl ERROR for ${videoId}:`, err.message)
   }
 
-  // ─── Fallback: yt-dlp (Reliable but heavy) ───
-  console.log(`[Stream] Falling back to yt-dlp for ${videoId}...`)
-  try {
-    const info = await withRetry(() => youtubedl(url, { 
-      dumpJson: true, 
-      noWarnings: true, 
-      noCheckCertificates: true,
-      preferFreeFormats: true,
-      youtubeSkipDashManifest: true,
-      referer: 'https://www.youtube.com/',
-      format: 'bestaudio/best',
-      userAgent: getRandomUA()
-    }), 2, 500)
-    
-    if (info && info.url) {
-      const mimeMap = { 'webm': 'audio/webm', 'm4a': 'audio/mp4', 'mp3': 'audio/mpeg', 'opus': 'audio/ogg' }
-      return { 
-        url: info.url, 
-        mime: mimeMap[info.ext] || 'audio/webm', 
-        size: info.filesize || info.filesize_approx || 0, 
-        client: 'YTDLP' 
+  // ─── yt-dlp is disabled on Vercel ───
+  if (!process.env.VERCEL) {
+    console.log(`[Stream] Falling back to yt-dlp for ${videoId}...`)
+    try {
+      const info = await withRetry(() => youtubedl(url, { 
+        dumpJson: true, 
+        noWarnings: true, 
+        noCheckCertificates: true,
+        preferFreeFormats: true,
+        youtubeSkipDashManifest: true,
+        referer: 'https://www.youtube.com/',
+        format: 'bestaudio/best',
+        userAgent: getRandomUA()
+      }), 2, 500)
+      
+      if (info && info.url) {
+        const mimeMap = { 'webm': 'audio/webm', 'm4a': 'audio/mp4', 'mp3': 'audio/mpeg', 'opus': 'audio/ogg' }
+        return { 
+          url: info.url, 
+          mime: mimeMap[info.ext] || 'audio/webm', 
+          size: info.filesize || info.filesize_approx || 0, 
+          client: 'YTDLP' 
+        }
       }
+    } catch (err) {
+      console.error(`[Stream] yt-dlp also failed for ${videoId}:`, err.message)
     }
-  } catch (err) {
-    console.error(`[Stream] yt-dlp also failed for ${videoId}:`, err.message)
   }
 
   throw new Error('Streaming extraction failed. YouTube might be blocking requests.')
@@ -399,7 +406,7 @@ app.get('/api/stream', async (req, res) => {
 
     const streamUrl = streamInfo.url
     const mimeType = streamInfo.mime || 'audio/webm'
-    const userAgent = getRandomUA()
+    const userAgent = streamInfo.ua || getRandomUA()
 
     // Force small 2MB chunk sizes for Vercel Serverless
     const CHUNK_SIZE = 1024 * 1024 * 2
@@ -432,7 +439,8 @@ app.get('/api/stream', async (req, res) => {
         'Referer': 'https://www.youtube.com/',
         'Origin': 'https://www.youtube.com/',
         'Accept': '*/*',
-        'Connection': 'keep-alive'
+        'Connection': 'keep-alive',
+        ...(process.env.YT_COOKIES ? { 'Cookie': process.env.YT_COOKIES } : {})
       } 
     }
     
