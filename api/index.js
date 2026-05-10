@@ -168,11 +168,18 @@ async function getStreamUrl(videoId) {
   
   // ─── Primary: play-dl (Fast & Cloud Friendly) ───
   try {
-    const userAgent = getRandomUA()
-    console.log(`[Stream] Extracting ${videoId} using play-dl (Cookies: ${process.env.YT_COOKIES ? 'YES' : 'NO'})...`)
+    const userAgent = 'com.google.ios.youtube/19.08.2 (iPhone16,2; U; CPU iOS 17_3_1 like Mac OS X; en_US)'
+    console.log(`[Stream] Extracting ${videoId} using play-dl (iOS Mode)...`)
     
-    // Get video info first for better stability
-    const videoInfo = await play.video_info(url)
+    // Force play-dl to use the iOS client which is less restricted
+    const videoInfo = await play.video_info(url, {
+      httprequest: {
+        headers: {
+          'user-agent': userAgent
+        }
+      }
+    })
+    
     const stream = await play.stream_from_info(videoInfo, { 
       quality: 0,
       seek: 0,
@@ -180,12 +187,12 @@ async function getStreamUrl(videoId) {
     })
     
     if (stream && stream.url) {
-      console.log(`[Stream] ${videoId} extracted via play-dl (Success)`)
+      console.log(`[Stream] ${videoId} extracted via play-dl (iOS Success)`)
       return {
         url: stream.url,
         mime: stream.type || 'audio/webm',
         size: 0,
-        client: 'PLAYDL',
+        client: 'PLAYDL_IOS',
         ua: userAgent
       }
     }
