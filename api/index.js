@@ -158,10 +158,34 @@ async function performSearch(query, limit = 20) {
 import youtubedl from 'youtube-dl-exec'
 
 async function getStreamUrl(videoId) {
-  console.log(`[Stream] Extracting ${videoId} using yt-dlp...`)
+  const url = `https://www.youtube.com/watch?v=${videoId}`
+  
+  // ─── Primary: play-dl (Fast & Cloud Friendly) ───
   try {
-    // Primary: yt-dlp — Extremely reliable for direct stream URLs
-    const info = await withRetry(() => youtubedl(`https://www.youtube.com/watch?v=${videoId}`, { 
+    console.log(`[Stream] Extracting ${videoId} using play-dl...`)
+    const stream = await play.stream(url, { 
+      quality: 0, // highest audio
+      seek: 0,
+      htmldata: false // faster
+    })
+    
+    if (stream && stream.url) {
+      console.log(`[Stream] ${videoId} extracted via play-dl`)
+      return {
+        url: stream.url,
+        mime: stream.type || 'audio/webm',
+        size: 0,
+        client: 'PLAYDL'
+      }
+    }
+  } catch (err) {
+    console.warn(`[Stream] play-dl failed for ${videoId}:`, err.message)
+  }
+
+  // ─── Fallback: yt-dlp (Reliable but heavy) ───
+  console.log(`[Stream] Falling back to yt-dlp for ${videoId}...`)
+  try {
+    const info = await withRetry(() => youtubedl(url, { 
       dumpJson: true, 
       noWarnings: true, 
       noCheckCertificates: true,
@@ -173,26 +197,16 @@ async function getStreamUrl(videoId) {
     }), 2, 500)
     
     if (info && info.url) {
-      console.log(`[Stream] ${videoId} extracted via yt-dlp`)
-      // Map extensions to mime types
-      const mimeMap = {
-        'webm': 'audio/webm',
-        'm4a': 'audio/mp4',
-        'mp3': 'audio/mpeg',
-        'opus': 'audio/ogg'
-      }
-      const mime = mimeMap[info.ext] || 'audio/webm'
-      const size = info.filesize || info.filesize_approx || 0
-      
+      const mimeMap = { 'webm': 'audio/webm', 'm4a': 'audio/mp4', 'mp3': 'audio/mpeg', 'opus': 'audio/ogg' }
       return { 
         url: info.url, 
-        mime, 
-        size, 
+        mime: mimeMap[info.ext] || 'audio/webm', 
+        size: info.filesize || info.filesize_approx || 0, 
         client: 'YTDLP' 
       }
     }
   } catch (err) {
-    console.error(`[Stream] yt-dlp failed for ${videoId}:`, err.message)
+    console.error(`[Stream] yt-dlp also failed for ${videoId}:`, err.message)
   }
 
   throw new Error('Streaming extraction failed. YouTube might be blocking requests.')
