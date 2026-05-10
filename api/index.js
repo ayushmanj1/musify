@@ -64,6 +64,14 @@ async function withRetry(fn, retries = 2, baseDelay = 200) {
 // ─── Play-DL Initialization ───
 async function initPlayDl() {
   try {
+    if (process.env.YT_COOKIES) {
+      console.log('🔑 Using YouTube cookies for authentication')
+      await play.setToken({
+        youtube: {
+          cookie: process.env.YT_COOKIES
+        }
+      })
+    }
     console.log('✅ play-dl search engine initialized')
   } catch (err) {
     console.error('⚠️ play-dl init error:', err.message)
@@ -431,6 +439,7 @@ app.get('/api/stream', async (req, res) => {
     const response = await fetch(streamUrl, fetchOptions)
 
     if (!response.ok && response.status !== 206) {
+      console.error(`[Stream] YouTube Error: ${response.status} for ${videoId}`)
       throw new Error(`Upstream returned ${response.status}`)
     }
 
