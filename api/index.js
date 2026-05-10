@@ -169,13 +169,23 @@ async function getStreamUrl(videoId) {
   // ─── Primary: play-dl (Fast & Cloud Friendly) ───
   try {
     const userAgent = 'com.google.ios.youtube/19.08.2 (iPhone16,2; U; CPU iOS 17_3_1 like Mac OS X; en_US)'
-    console.log(`[Stream] Extracting ${videoId} using play-dl (iOS Mode)...`)
+    console.log(`[Stream] Extracting ${videoId} (Cookies: ${process.env.YT_COOKIES ? 'YES' : 'NO'})`)
     
-    // Force play-dl to use the iOS client which is less restricted
+    // Ensure cookies are set for this specific request
+    if (process.env.YT_COOKIES) {
+      await play.setToken({
+        youtube: {
+          cookie: process.env.YT_COOKIES
+        }
+      })
+    }
+
     const videoInfo = await play.video_info(url, {
       httprequest: {
         headers: {
-          'user-agent': userAgent
+          'user-agent': userAgent,
+          'x-youtube-client-name': '5',
+          'x-youtube-client-version': '19.08.2'
         }
       }
     })
@@ -187,17 +197,21 @@ async function getStreamUrl(videoId) {
     })
     
     if (stream && stream.url) {
-      console.log(`[Stream] ${videoId} extracted via play-dl (iOS Success)`)
+      console.log(`[Stream] ${videoId} success via iOS Client`)
       return {
         url: stream.url,
         mime: stream.type || 'audio/webm',
         size: 0,
-        client: 'PLAYDL_IOS',
+        client: 'PLAYDL_IOS_ULTRA',
         ua: userAgent
       }
     }
   } catch (err) {
-    console.error(`[Stream] play-dl ERROR for ${videoId}:`, err.message)
+    console.error(`[Stream] play-dl ERROR:`, err.message)
+    // If we still get "Sign in", it means the cookie string is invalid or incomplete
+    if (err.message.includes('Sign in')) {
+      console.error('[CRITICAL] YouTube is still demanding a sign-in. Your cookie string might be incomplete.')
+    }
   }
 
   // ─── yt-dlp is disabled on Vercel ───
