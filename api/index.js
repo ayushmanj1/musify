@@ -436,8 +436,6 @@ app.get('/api/stream', async (req, res) => {
       headers: { 
         'Range': `bytes=${start}-${end !== undefined ? end : ''}`,
         'User-Agent': userAgent,
-        'Referer': 'https://www.youtube.com/',
-        'Origin': 'https://www.youtube.com/',
         'Accept': '*/*',
         'Connection': 'keep-alive',
         ...(process.env.YT_COOKIES ? { 'Cookie': process.env.YT_COOKIES } : {})
@@ -445,9 +443,10 @@ app.get('/api/stream', async (req, res) => {
     }
     
     const response = await fetch(streamUrl, fetchOptions)
-
+    
     if (!response.ok && response.status !== 206) {
-      console.error(`[Stream] YouTube Error: ${response.status} for ${videoId}`)
+      const errorText = await response.text().catch(() => 'No body')
+      console.error(`[Stream] YouTube Error: ${response.status} for ${videoId}. Body: ${errorText.substring(0, 100)}`)
       throw new Error(`Upstream returned ${response.status}`)
     }
 
