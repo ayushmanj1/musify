@@ -33,22 +33,20 @@ app.use(compression())
 app.use(cors())
 app.use(express.json())
 
-// ─── Caches ───
-const streamCache = new LRUCache({ max: 100, ttl: 1000 * 60 * 60 })       // 1 hour
-const searchCache = new LRUCache({ max: 200, ttl: 1000 * 60 * 30 })       // 30 min
-
-
 // ─── Stealth Identity Mimicry ───
 const USER_AGENTS = [
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 Edg/119.0.0.0'
+  'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+  'Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1',
+  'Mozilla/5.0 (Linux; Android 13; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Mobile Safari/537.36'
 ]
 
 function getRandomUA() {
   return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)]
 }
+
+// ─── Caches ───
+const streamCache = new LRUCache({ max: 100, ttl: 1000 * 60 * 60 })       // 1 hour
+const searchCache = new LRUCache({ max: 200, ttl: 1000 * 60 * 30 })       // 30 min
 
 
 // ─── Retry Helper ───
